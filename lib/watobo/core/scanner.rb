@@ -338,7 +338,7 @@ module Watobo
       #puts @prefs[:login_chats]
       #puts @prefs[:logout_signatures]
       puts "= create scanner =" if $DEBUG
-      puts @prefs.to_yaml if $DEBUG
+      p @prefs if $DEBUG
 
       @filtered_chat_list = filteredChats(@chat_list, @prefs)
       puts "#ActiveChecks: #{@active_checks.length}"

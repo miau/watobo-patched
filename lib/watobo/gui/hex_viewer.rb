@@ -42,6 +42,7 @@ module Watobo
         
         if raw_text and not raw_text.empty? then
           raw_text = normalizeText(raw_text)
+          raw_text.force_encoding(Encoding::ASCII_8BIT)
           pos = 1
           col = 0
           

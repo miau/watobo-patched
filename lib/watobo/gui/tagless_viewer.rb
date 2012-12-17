@@ -26,11 +26,12 @@ module Watobo
       def normalizeText(text)
         return '' if text.nil?
         
-        raw_text = text
+        raw_text = text.dup
         
         if text.is_a? Array then
         raw_text = text.join
         end
+        Watobo::Utils.decode! raw_text
 
         #remove headers
         body_start = raw_text.index("\r\n\r\n")
@@ -42,7 +43,7 @@ module Watobo
         # remove all inbetween tags
         normalized.gsub!(/<.*?>/m, '')
         # remove non printable characters, except LF (\x0a)
-        normalized.gsub!(/[\x00-\x09\x0b-\x1f\x7f-\xff]+/m,'')
+        normalized.gsub!(/[\x00-\x09\x0b-\x1f]+/m,'')
         # remove empty lines
         normalized.gsub!(/((\x20+)?\x0a(\x20+)?)+/,"\n")
        # decode html entities for better readability

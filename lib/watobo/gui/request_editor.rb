@@ -274,6 +274,7 @@ module Watobo
       end
 
       def showText(text)
+        text = Watobo::Utils.decode text
         begin
         if @max_len > 0 and @max_len < text.length
         text = text[0..@max_len] + "\n---8<--- WATOBO ---8<---\n* PRESS RESET TO SEE FULL RESPONSE *"
@@ -281,8 +282,8 @@ module Watobo
        # text.encode('iso_8859_1')
        # UTF-8 CleanUp
        text = text.unpack("C*").pack("C*")
-        text.gsub!(/\x0d/u, '')
-       text.gsub!(/[\x00-\x09\x0b-\x1f\x7f-\xff]+/m,'.')
+        text.gsub!(/\x0d/, '')
+       text.gsub!(/[\x00-\x09\x0b-\x1f]+/m,'.')
            @textbox.setText(text)
         rescue => bang
           puts bang
@@ -307,7 +308,7 @@ module Watobo
         t = t.unpack("C*").pack("C*")
         
  t.gsub!(/\x0d/, '')
-       t.gsub!(/[\x00-\x09\x0b-\x1f\x7f-\xff]+/m,'.')
+       t.gsub!(/[\x00-\x09\x0b-\x1f]+/m,'.')
         return t
         rescue => bang
           puts bang

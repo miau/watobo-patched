@@ -49,6 +49,8 @@ module Watobo
               x = l if l == cdata[:response].last
             end   
             
+            Watobo::Utils.decode! x
+            
             x
           }
           # puts cdata

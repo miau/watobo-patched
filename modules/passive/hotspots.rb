@@ -54,7 +54,7 @@ module Watobo
           begin
             #  puts "running module: #{Module.nesting[0].name}"
             if chat.response.content_type =~ /(text|script)/ and chat.response.status !~ /404/ then
-              if chat.response.each do |chunk|
+              if Utils.decode(chat.response).each do |chunk|
                   chunk.split(/\n/).each do |line|
                     @pattern_list.each do |ext|
                       if line =~ /([\w%\/\\\.:-]*\.#{ext})[^\w]/ then

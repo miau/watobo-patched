@@ -52,7 +52,7 @@ module Watobo
           begin
             #  puts "running module: #{Module.nesting[0].name}"
             if chat.response.content_type =~ /text/ and not chat.response.content_type =~ /text.csv/ then
-            if chat.response.each do |line|
+            if Utils.decode(chat.response).each do |line|
                 if line =~ /(#{@pattern})/ then
                   match = $1
                   if not @mail_list.include?(match) then

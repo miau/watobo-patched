@@ -51,7 +51,7 @@ module Watobo
           begin
             #  puts "running module: #{Module.nesting[0].name}"
             if chat.response.content_type =~ /text/ then
-              if chat.response.each do |line|
+              if Utils.decode(chat.response).each do |line|
                   if line =~ /#{@pattern}/ then
                     ip_addr = $1
                     octets = ip_addr.split('.')

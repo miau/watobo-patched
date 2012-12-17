@@ -60,7 +60,7 @@ module Watobo
         def do_test(chat)
           begin
             @pattern_list.each do |pat|
-              if  chat.response.body =~ /(#{pat})/i then
+              if Util.decode(chat.response.body) =~ /(#{pat})/i then
                 match = $1
                 addFinding(  
                            :proof_pattern => "#{match}", 

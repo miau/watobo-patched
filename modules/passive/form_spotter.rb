@@ -49,9 +49,10 @@ module Watobo
             #  puts "running module: #{Module.nesting[0].name}"
             return true unless chat.response.content_type =~ /(text|script)/
             return true if chat.response.body.nil?
-            off = chat.response.body.index(/<form/i, 0)
+            body = Utils.decode(chat.response.body)
+            off = body.index(/<form/i, 0)
             until off.nil?
-              action = chat.response.body[off..-1] =~ /<form [^<\/form]*action="([^"]*)"/i ? $1 : "undefined" 
+              action = body[off..-1] =~ /<form [^<\/form]*action="([^"]*)"/i ? $1 : "undefined" 
               title = action.strip.empty? ? "[none]" : "#{action}"
             #  puts "!FOUND FORM #{action}"
               addFinding(  
@@ -59,7 +60,7 @@ module Watobo
               :title => title,
               :chat => chat
               )  
-              off = chat.response.body.index(/<form/i, off+1)
+              off = body.index(/<form/i, off+1)
             end
           rescue => bang
             #  raise

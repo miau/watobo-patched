@@ -58,7 +58,7 @@ module Watobo
                   cname = dummy.shift
                   cval = Regexp.quote(dummy.join)
                   
-                    if chat.response.body =~ /#{cval}/ and cval.length > 5 then
+                    if Utils.decode(chat.response.body) =~ /#{cval}/ and cval.length > 5 then
                       
                       addFinding(:proof_pattern => "#{cval}", 
                       :check_pattern => "#{cval}", 

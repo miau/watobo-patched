@@ -40,15 +40,15 @@ module Watobo
 
       def cleanupHTTP(text)
 
-        if text.class.to_s =~ /Array/i then
+        if text.class.to_s =~ /Array/ni then
           dummy = []
           text.each do |line|
-            chunk = line.gsub(/\r/,'').strip
+            chunk = Watobo::Utils.decode(line).gsub(/\r/,'').strip
             dummy.push chunk.gsub("\x00","")
           end
           return dummy.join("\n")
         elsif text.class.to_s =~ /String/i then
-          chunk = text.gsub(/\r/,'').strip
+          chunk = Watobo::Utils.decode(text).gsub(/\r/,'').strip
           return chunk.gsub("\x00","")
           #return text.gsub(/\r/,"")
 

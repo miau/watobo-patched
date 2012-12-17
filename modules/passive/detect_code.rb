@@ -62,7 +62,7 @@ module Watobo
             
               @pattern_list.each do |pat, type|
                 #   puts "+check pattern #{pat}"
-                if  chat.response.body =~ /(#{pat})/i then
+                if Utils.decode(chat.response.body) =~ /(#{pat})/i then
                   #   puts "!!! MATCH !!!"
                   
                   match = $1

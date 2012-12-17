@@ -68,7 +68,7 @@ module Watobo
             return true unless chat.response.content_type =~ /(text|script)/ 
             
             @dom_functions.each do |pattern|
-              if chat.response.body =~ /#{pattern}/i then
+              if Utils.decode(chat.response.body) =~ /#{pattern}/i then
                
                 addFinding(
                            :check_pattern => "#{pattern}", 

@@ -52,7 +52,7 @@ module Watobo
                           
               @pattern_list.each do |pat|
               #puts "+check pattern #{pat}"
-                if pat.match(chat.response.body) # =~ /(#{pat})/i then
+                if pat.match(utils.decode chat.response.body) # =~ /(#{pat})/i then
                 #   puts "!!! MATCH (FILE UPLOAD)!!!"
                 match = $1
                 #   puts match
