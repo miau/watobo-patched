@@ -1291,7 +1291,9 @@ end
                   old_value = $2
                   # if @session[:valid_csrf_tokens][request.site].has_key?(key) then
                   if csrf_cache.has_key?(key) then
-                    res = line.gsub!(/#{Regexp.quote(old_value)}/, csrf_cache[key])
+                    res = line.gsub!(/#{pat}/i) do |match|
+                      match.gsub(/#{Regexp.quote(old_value)}/, csrf_cache[key])
+                    end
                     if res.nil? then
                       res = line
                       puts "!!!could not update token (#{key})"
