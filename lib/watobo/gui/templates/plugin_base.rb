@@ -42,11 +42,10 @@ module Watobo#:nodoc: all
       if order.empty?
         libs = Dir.glob("#{lpath}/*")
       else
-        libs = order
+        libs = order.map{|l| l.to_s + ".rb" }
       end
       libs.each do |lib|
-        puts "> #{lib.to_s}"
-      require File.join(lib.to_s)
+        load File.join(lib)
       end      
     end
     
@@ -74,11 +73,11 @@ module Watobo#:nodoc: all
       if order.empty?
         libs = Dir.glob("#{gui_path}/*")
       else
-        libs = order
+        libs = order.map{|l| l.to_s + ".rb" }
       end
       libs.each do |lib|
         puts "loading gui-lib #{lib} ..."
-      require File.join(gui_path, lib.to_s)
+        load File.join(gui_path, lib)
       end
       else
         puts "WATOBO NOT IN GUI MODE!"

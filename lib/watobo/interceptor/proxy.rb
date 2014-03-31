@@ -19,7 +19,7 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-# @private 
+# @private
 module Watobo#:nodoc: all
   module Interceptor
     #
@@ -31,17 +31,16 @@ module Watobo#:nodoc: all
 
       attr_accessor :proxy_mode
 
-      attr_accessor :contentLength
-      attr_accessor :contentTypes
+     # attr_accessor :contentLength
+      #attr_accessor :contentTypes
       attr_accessor :target
-      attr :www_auth
+      #attr :www_auth
       attr_accessor :client_certificates
-      
       def self.transparent?
         return true if ( Watobo::Conf::Interceptor.proxy_mode & Watobo::Interceptor::MODE_TRANSPARENT ) > 0
         return false
       end
-      
+
       def server
         @bind_addr
       end
@@ -91,7 +90,7 @@ module Watobo#:nodoc: all
           puts "[#{self.class}] stop"
           if @t_server.respond_to? :status
             puts @t_server.status
-          Thread.kill @t_server
+            Thread.kill @t_server
           @intercept_srv.close
           end
         rescue IOError => bang
@@ -111,6 +110,7 @@ module Watobo#:nodoc: all
       end
 
       def start()
+        @wait_queue = Queue.new
 
         if transparent?
           Watobo::Interceptor::Transparent.start
@@ -136,25 +136,30 @@ module Watobo#:nodoc: all
 
             c_sock = Watobo::HTTPSocket::ClientSocket.connect(session)
             Thread.exit if c_sock.nil?
+            # loop for reusing client connections
+            max_loop = 0
             loop do
             flags = []
             begin
-
-              request = c_sock.request
-
-              if request.nil? or request.empty? then
+              
+            # puts "#{c_sock} - read request"
+             request = c_sock.request
+             if request.nil? or request.empty? then
+                print "c/"
                 c_sock.close
                 Thread.exit
               end
-              puts "*[I] #{request.url}"
+              
+              url = ( request.url.to_s.length > 65 ) ? request.url.to_s.slice(0,65) + "..." : request.url.to_s
+              puts "\n[I] #{url}"
 
             rescue => bang
               puts "!!! Error reading client request "
               puts bang
               puts bang.backtrace
-              puts request.class
+             # puts request.class
              # puts request
-             closeSocket(c_sock)
+             c_sock.close
              Thread.exit
             #break
             end
@@ -164,18 +169,18 @@ module Watobo#:nodoc: all
               if request.first =~ /WATOBOPreview=([0-9a-zA-Z]*)/ then
 
                 puts "* preview requested ..."
-                puts request.url
+              #  puts request.url
 
                 hashid = $1
                 response = @preview[hashid]
 
                 if response then
                   c_sock.write response.join
-                  closeSocket(c_sock)
+                  c_sock.close
                 end
               end
             #next
-            Thread.current.exit
+            Thread.exit
             end
 
             request_intercepted = false
@@ -197,9 +202,9 @@ module Watobo#:nodoc: all
                   #notify(:modify_request, request, Thread.current)
                   Watobo.print_debug "send request to target"
                   @target.addRequest(request, Thread.current)
-                  puts "* stopping thread: #{Thread.current} ..."
+               #   puts "* stopping thread: #{Thread.current} ..."
                   Thread.stop
-                  puts "* released thread: #{Thread.current}"
+               #   puts "* released thread: #{Thread.current}"
                 else
                   p "! no target for editing request"
                 end
@@ -213,13 +218,15 @@ module Watobo#:nodoc: all
             begin
 
             s_sock, req, resp = @sender.sendHTTPRequest(request, :update_sids => true, :update_session => false, :update_contentlength => true, :www_auth => @www_auth, :client_certificates => @client_certificates)
+            
             if s_sock.nil? then
+              puts "s_sock is nil! bye, bye, ..."
               puts request if $DEBUG
               c_sock.write resp.join unless resp.nil?
               c_sock.close
             #Thread.kill Thread.current
             Thread.exit
-            next
+            #next
             end
 
             rescue => bang
@@ -232,16 +239,22 @@ module Watobo#:nodoc: all
 
             # check if response should be passed throug
             #Thread.current.exit if isPassThrough?(req, resp, s_sock, c_sock)
+            if isPassThrough?(req, resp, s_sock, c_sock)
+              Watobo::HTTPSocket.close s_sock
+              c_sock.close                
+              Thread.exit
+            end
             #p "no pass-through"
 
             begin
             # puts "* got response status: #{resp.status}"
               missing_credentials = false
               rs = resp.status
+               auth_type = AUTH_TYPE_NONE
               if rs =~ /^(401|407)/ then
                 missing_credentials = true
 
-                auth_type = AUTH_TYPE_NONE
+               
                 resp.each do |rl|
                   if rl =~ /^(Proxy|WWW)-Authenticate: Basic/i
                     auth_type = AUTH_TYPE_BASIC
@@ -272,11 +285,11 @@ module Watobo#:nodoc: all
                 resp.fix_content_length
 
                 end
-              else
+              end
+              unless auth_type == AUTH_TYPE_UNKNOWN or req.method =~ /^head/i
                 # don't try to read body if request method is HEAD
-                unless req.method =~ /^head/i
                 @sender.readHTTPBody(s_sock, resp, req, :update_sids => true)
-                 end
+                Watobo::HTTPSocket.close s_sock
               end
             rescue => bang
               puts "!!! could not send request !!!"
@@ -310,17 +323,29 @@ module Watobo#:nodoc: all
               end
 
              # puts ">> SEND TO CLIENT"
+         #    puts ">>C<< - Close: #{request.connection_close?}"
+             #request.headers("Connection"){ |h| puts h }
+             
              if missing_credentials
                resp.set_header("Connection", "close")
-                c_sock.write resp.join
-                c_sock.close
+             elsif request.connection_close? or resp.content_length < 0 or max_loop > 4
+               resp.set_header("Proxy-Connection","close")
+               resp.set_header("Connection","close")
              else
-              c_sock.write resp.join
-              end
-             # puts resp.join
-             # puts "-----"
-             # closeSocket(c_sock)
-
+               resp.set_header("Connection","keep-alive")
+               resp.set_header("Keep-Alive", "max=4, timeout=120")
+             end
+             
+             resp_data = resp.join
+             c_sock.write resp_data
+             c_sock.flush
+            # puts "= RESPONSE ="
+            # puts resp_data
+            # puts "---"
+            #  puts resp_data.unpack("H*")[0]
+            #  puts "==="
+            #  puts
+             
             rescue Errno::ECONNRESET
               print "x"
               #  puts "!!! ERROR (Reset): reading body"
@@ -337,11 +362,19 @@ module Watobo#:nodoc: all
             #return
             end
 
-            chat = Chat.new(request.copy, resp.copy, :source => CHAT_SOURCE_INTERCEPT)
-           # notify(:new_interception, chat)
+           chat = Chat.new(request.copy, resp.copy, :source => CHAT_SOURCE_INTERCEPT)
+
            Watobo::Chats.add chat
-           Thread.current.exit if missing_credentials
-end
+           
+           
+           if missing_credentials or request.connection_close? or resp.content_length < 0 or max_loop > 4
+             c_sock.close
+             Thread.exit
+           end
+           print "o"
+           max_loop += 1
+
+           end
           }
 
         end
@@ -400,24 +433,7 @@ end
           @preview = Hash.new
           @preview['ProxyTest'] = ["HTTP/1.0 200 OK\r\nServer: Watobo-Interceptor\r\nConnection: close\r\nContent-Type: text/html; charset=iso-8859-1\r\n\r\n<html><body>PROXY_OK</body></html>"]
 
-          # p @settings[:certificate_path]
-          # p @settings[:cert_file]
-          # p @settings[:key_file]
-          # crt_path = Watobo::Conf::Interceptor.certificate_path
-          # crt_file = Watobo::Conf::Interceptor.cert_file
-          # key_file = Watobo::Conf::Interceptor.key_file
-          # dh_key_file = Watobo::Conf::Interceptor.dh_key_file
-
-          # crt_filename = File.join(Watobo.base_directory, crt_path, crt_file)
-          # key_filename = File.join(Watobo.base_directory, crt_path, key_file)
-
-          #  @ctx = OpenSSL::SSL::SSLContext.new('SSLv23_server')
-          # @cert = OpenSSL::X509::Certificate.new(File.read(crt_filename))
-          # @key = OpenSSL::PKey::RSA.new(File.read(key_filename))
-
-          #@dh_key = OpenSSL::PKey::DH.new(File.read(dh_filename))
           @dh_key = Watobo::CA.dh_key
-          #  @ctx.ciphers = nil # ['TLSv1/SSLv3', 56, 56 ]
 
         rescue => bang
           puts "!!!could not read certificate files:"
@@ -548,7 +564,7 @@ end
           end
         end
         return false if match_ctype == false
-        puts "* pass ctype filter"
+        #puts "* pass ctype filter"
         match_rcode = true
         rcode_filter = @response_filter_settings[:response_code_filter]
         negate = @response_filter_settings[:negate_response_code_filter]
@@ -564,7 +580,7 @@ end
           end
         end
         return false if match_rcode == false
-        puts "* pass rcode filter"
+        #puts "* pass rcode filter"
         true
       end
 
@@ -574,10 +590,9 @@ end
       #
       #
       def pass_through(server, client, maxbytes = 0)
-        buf = ''
-        print "[~"
+       
         bytes_read = 0
-        while buf
+        while 1
           begin
           #timeout(2) do
             buf = nil
@@ -586,18 +601,25 @@ end
           rescue EOFError
           #client.write buf if buf
           #print "~]"
+         # msg = "\n[pass_through] EOF - "
+         # msg += buf.nil? ? "nil" : buf.size
+         #   puts msg
             return if buf.nil?
           rescue Errno::ECONNRESET
           # puts "!!! ERROR (Reset): reading body"
           # puts "* last data seen on socket: #{buf}"
-            print "R"
+         # msg = "!R - "
+         # msg += buf.nil? ? "nil" : buf.size
+         # msg << " !\n"
+         #   puts msg
+            
             return if buf.nil?
           rescue Timeout::Error
           #puts "!!! ERROR (Timeout): reading body"
           #puts "* last data seen on socket:"
           #client.write buf if buf
             print "T"
-            return if buf.nil?
+            return 
           rescue => bang
             puts "!!! could not read body !!!"
             puts bang
@@ -611,25 +633,24 @@ end
 
           begin
             return if buf.nil?
-            print "~"
+           # print "~"
             client.write buf
             bytes_read += buf.length
-            # puts "##{bytes_read} of #{maxbytes}"
+           # puts "#{server} #{bytes_read} of #{maxbytes}"
             if maxbytes > 0 and bytes_read >= maxbytes
-              print "~]"
-            return
+              #print "~]"
+               return
             end
-
           rescue Errno::ECONNRESET
-            print "~x]"
+            #print "~x]"
             #  puts "!!! ERROR (Reset): reading body"
             #  puts "* last data seen on socket: #{buf}"
             return
           rescue Errno::ECONNABORTED
-            print "~x]"
+           # print "~x]"
             return
           rescue Errno::EPIPE
-            print "~x]"
+           # print "~x]"
             return
           rescue => bang
             puts "!!! client communication broken !!!"
@@ -642,8 +663,7 @@ end
       end
 
       def transparent?
-        return true if ( @proxy_mode & Watobo::Interceptor::MODE_TRANSPARENT ) > 0
-        return false
+        ( @proxy_mode & Watobo::Interceptor::MODE_TRANSPARENT ) > 0
       end
 
       def read_request(socket)
@@ -809,6 +829,7 @@ end
 
       def isPassThrough?(request, response, s_sock, c_sock)
         begin
+         # return false if true
           reason = nil
           clen = response.content_length
           # no pass-through necessary if request method is HEAD
@@ -816,19 +837,25 @@ end
 
           if matchContentType?(response.content_type) then
             # first forward headers
-            c_sock.write response.join
+            #c_sock.write response.join
             reason = []
             reason.push "---> WATOBO: PASS_THROUGH <---"
             reason.push "Reason: Content-Type = #{response.content_type}"
           elsif clen > @contentLength
             # puts "PASS-THROUGH: #{response.content_length}"
-            c_sock.write response.join
+            #c_sock.write response.join
             reason = []
             reason.push "---> WATOBO: PASS_THROUGH <---"
             reason.push "Reason: Content-Length > #{@contentLength} (#{response.content_length})"
           end
 
           return false if reason.nil?
+         
+          response.remove_header("Keep-Alive")
+          response.set_header("Connection", "close")
+          
+          c_sock.write response.join
+          
           reason.push "* DO MANUAL REQUEST TO GET FULL RESPONSE *"
           response.push reason.join("\n")
           chat = Watobo::Chat.new(request, response, :source => CHAT_SOURCE_INTERCEPT)
@@ -837,45 +864,16 @@ end
 
           pass_through(s_sock, c_sock, clen)
           #  puts "* Close Server Socket..."
-          closeSocket(c_sock)
+          #closeSocket(c_sock)
           #  puts "* Close Client Socket..."
-          closeSocket(s_sock)
+          #closeSocket(s_sock)
           #  puts "... done."
-          true
-        rescue => bang
-          puts bang
-          puts bang.backtrace if $DEBUG
-        return false
-        end
-      end
-
-      def notify(event, *args)
-        if @event_dispatcher_listeners[event]
-          @event_dispatcher_listeners[event].each do |m|
-            m.call(*args) if m.respond_to? :call
-          end
-        end
-      end
-
-      def closeSocket(socket)
-        #puts socket.class
-        return false if socket.nil?
-        begin
-        #if socket.class.to_s =~ /SSLSocket/
-          if socket.respond_to? :sysclose
-          #socket.io.shutdown(2)
-          socket.sysclose
-          elsif socket.respond_to? :shutdown
-          socket.shutdown(2)
-          elsif socket.respond_to? :close
-          socket.close
-          end
           return true
         rescue => bang
           puts bang
           puts bang.backtrace if $DEBUG
         end
-        false
+        return false
       end
 
     end

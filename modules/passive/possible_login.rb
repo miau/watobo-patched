@@ -91,11 +91,8 @@ module Watobo#:nodoc: all
                     old_cookies = chat.request.cookies.select do |rc|
                       cookie_old = true
                       chat.response.new_cookies do |nc|
-                        if rc =~ /^#{nc.name}/
-                          rc_name, rc_value = rc.split("=") 
-                          cookie_old = false unless rc_value == nc.value
-                        end
-                         puts ":#{rc} - #{nc.name} - #{cookie_old}"                        
+                         cookie_old = false unless rc.value == nc.value
+                         #puts ":#{rc} - #{nc.name} - #{cookie_old}"                        
                       end
                       puts ":#{rc} >> #{cookie_old}"     
                       cookie_old

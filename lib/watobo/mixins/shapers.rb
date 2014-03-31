@@ -186,10 +186,12 @@ module Watobo#:nodoc: all
 
         def removeHeader(header)
           begin
-            eoh_index = self.length
-            eoh_index -= 1 unless self.body.nil?
-
-            self.delete_if {|x| self.index(x) <= eoh_index and x =~ /#{header}/i }
+            matches = []
+            headers.each_with_index do |h,i|
+              matches << i if h =~ /#{header}/i
+            end
+            matches.map{ |m| self.delete_at(m) }
+          
           rescue => bang
             puts bang
             puts bang.backtrace if $DEBUG

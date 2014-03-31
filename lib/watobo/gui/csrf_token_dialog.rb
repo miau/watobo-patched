@@ -240,7 +240,7 @@ module Watobo#:nodoc: all
         sunken = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN, :padding => 0)
         @response_viewer = SidPreview.new(sunken, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-        Watobo::Conf::Scanner.csrf_patterns.each do |p|
+        Watobo::Conf::OttCache.patterns.each do |p|
             item = @pattern_list.appendItem("#{p}")
             @pattern_list.setItemData(item, p)
           end

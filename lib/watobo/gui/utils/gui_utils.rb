@@ -44,8 +44,11 @@ module Watobo#:nodoc: all
         if text.is_a?(Request) or text.is_a?(Response)
           dummy = []
           text.each do |line|
-            chunk = line.gsub(/\r/,'').strip
-            dummy.push chunk.gsub("\x00","")
+             clean = line.unpack("C*").pack("C*")
+             clean.gsub!(/\r/,'')
+             clean.strip!
+             clean.gsub!("\x00","")
+            dummy << clean
           end
           return dummy.join("\n")
         elsif text.is_a? String

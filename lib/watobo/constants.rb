@@ -83,6 +83,7 @@ module Watobo#:nodoc: all
     AUTH_TYPE_BASIC =  0x01
     AUTH_TYPE_DIGEST = 0x02
     AUTH_TYPE_NTLM =   0x04
+    AUTH_TYPE_UNKNOWN = 0x10
     
     GUI_SMALL_FONT_SIZE = 7
     GUI_REGULAR_FONT_SIZE = 9

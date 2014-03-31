@@ -426,23 +426,7 @@ module Watobo#:nodoc: all
 
       end
 
-      #     def get_parm_names
-
-      #       parm_names=[]
-      #       parmlist=[]
-      #       parmlist.concat(get_parms)
-
-      #       parmlist.each do |p|
-      #        if p then
-      #           p.gsub!(/=.*/,'')
-      #           parm_names.push p
-      #         end
-      #       end
-
-      #       return parm_names
-
-      #     end
-
+    
       def header_value(header_name)
         header_values =[]
         self.headers.each do |header|
@@ -593,6 +577,20 @@ def content_encoding
       def has_body?
         self.body.nil? ? false : true
       end
+      
+      def __connection_close?
+        headers("Connection") do |h|
+          return true if h =~ /close/i
+        end
+        return false
+      end
+      
+      def connection_close?
+        headers("Connection") do |h|
+          return false if h =~ /keep\-alive/i
+        end
+        return true
+      end
 
       def has_header?(name)
         self.each do |l|
@@ -708,6 +706,7 @@ end
         rescue => bang
           puts "! no headers available !".upcase
           puts bang
+          puts bang.backtrace
           if $DEBUG
             puts bang.backtrace
             puts self.to_yaml

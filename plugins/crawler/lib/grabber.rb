@@ -54,7 +54,7 @@ module Watobo#:nodoc: all
       end
 
       def run
-        Thread.new(@link_queue, @page_queue){ |lq, pq|
+        @grab_thread = Thread.new(@link_queue, @page_queue){ |lq, pq|
           loop do
             begin
               #link, referer, depth = lq.deq
@@ -69,12 +69,15 @@ module Watobo#:nodoc: all
             end
           end
         }
+         @grab_thread
       end
 
       def initialize(link_queue, page_queue, opts = {} )
         @link_queue = link_queue
         @page_queue = page_queue
         @opts = opts
+        @grab_thread = nil
+        
         begin
           @agent = Crawler::Agent.new(@opts)
     

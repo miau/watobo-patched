@@ -34,8 +34,9 @@ module Watobo#:nodoc: all
  
   %w( load_icons gui_utils load_plugins session_history save_default_settings master_password session_history save_project_settings save_proxy_settings ).each do |l|
   f = File.join("watobo","gui","utils", l)
+  puts "SQLMap >> Loading #{f}"
   require f
-  puts "Loading #{f}"
+  
 end
 
 require 'watobo/gui/utils/init_icons'

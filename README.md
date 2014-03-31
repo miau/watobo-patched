@@ -1,6 +1,6 @@
 ﻿WATOBO - THE Web Application Toolbox
 ===
-WATOBO is a security tool for web applications. It is intended to enable security professionals to perform efficient (semi-automated) web application security audits.
+WATOBO is a security tool for testing web applications. It is intended to enable security professionals to perform efficient (semi-automated) web application security audits.
 
 Most important features:
 

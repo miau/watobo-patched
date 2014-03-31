@@ -170,7 +170,11 @@ module Watobo#:nodoc: all
             #  timeout(6) do
             #puts "* no proxy - direct connection"
             tcp_socket = TCPSocket.new( host, port )
-            tcp_socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
+            optval = [1, 5000].pack("I_2")
+            tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
+            tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval    
+            tcp_socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)    
+            tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1
             tcp_socket.sync = true
 
             socket =  tcp_socket
@@ -214,17 +218,19 @@ module Watobo#:nodoc: all
               unless request.has_body? 
                 data << "\r\n" unless data =~ /\r\n\r\n$/ 
               end
-             # puts "= SESSION ="
-             # puts data
-             # puts data.unpack("H*")[0].gsub(/0d0a/,"0d0a\n")
+           #  puts "= SESSION ="
+           #  puts data
+           #  puts data.unpack("H*")[0]#.gsub(/0d0a/,"0d0a\n")
               
               unless socket.nil?                
                 socket.print data
-               # if socket.is_a? OpenSSL::SSL::SSLSocket
-               #   socket.io.shutdown(Socket::SHUT_WR)
-               # else
-               #   socket.shutdown(Socket::SHUT_WR)
-               # end
+                socket.flush
+                # tell finished sending data
+                if socket.is_a? OpenSSL::SSL::SSLSocket
+                  socket.io.shutdown(Socket::SHUT_WR)
+                else
+                  socket.shutdown(Socket::SHUT_WR)
+                end
                 response_header = readHTTPHeader(socket, current_prefs)
               end
               # RESTORE URI FOR HISTORY/LOG

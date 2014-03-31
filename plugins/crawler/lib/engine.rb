@@ -181,8 +181,10 @@ false
       end
 
       def run(url, opts={})
+        @engine_status = CRAWL_RUNNING
+        
         @opts.update opts
-           @opts[:head_request_pattern] = '' if @opts[:head_request_pattern].nil? 
+        @opts[:head_request_pattern] = '' if @opts[:head_request_pattern].nil? 
 
         @link_queue = Queue.new
         @page_queue = Queue.new
@@ -214,7 +216,7 @@ puts "---"
           @grabber_threads << g.run
         end
 
-        @engine_status = CRAWL_RUNNING
+        puts "* startet #{@grabber_threads.length} grabbers"
 
         loop do
           pagebag = @page_queue.deq
@@ -251,7 +253,8 @@ puts "---"
       private
 
 def current_status
-  { :engine_status => @engine_status,
+  { 
+    :engine_status => @engine_status,
     :link_size => @link_queue.size,
     :page_size => @page_queue.size
     }.update @stats

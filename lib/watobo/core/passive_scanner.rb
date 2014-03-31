@@ -40,8 +40,8 @@ module Watobo#:nodoc: all
                   test_module.do_test(chat)
                 rescue => bang
                   puts bang
-                  puts bang.backtrace if $DEBUG
-                  return false
+                  puts bang.backtrace #if $DEBUG
+                  #return false
                 end
               end
             end

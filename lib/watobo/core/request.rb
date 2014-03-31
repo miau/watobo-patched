@@ -51,7 +51,7 @@ module Watobo#:nodoc: all
     end
     
     def copy
-      c = YAML.load(YAML.dump(self))
+      c = Watobo::Utils.copyObject self
       Watobo::Request.new c
     end
     

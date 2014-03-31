@@ -22,6 +22,31 @@
 # @private 
 module Watobo#:nodoc: all
   module HTTPSocket
+    
+    def self.close(socket)
+      def close
+        begin
+        #if socket.class.to_s =~ /SSLSocket/
+          if socket.respond_to? :sysclose
+          #socket.io.shutdown(2)
+          socket.sysclose
+          elsif @socket.respond_to? :shutdown
+            puts "SHUTDOWN"
+          socket.shutdown(Socket::SHUT_RDWR)
+          end
+          # finally close it
+          if socket.respond_to? :close
+            socket.close
+          end
+          return true
+        rescue => bang
+          puts bang
+          puts bang.backtrace if $DEBUG
+        end
+        false
+      end
+    end
+    
     def self.siteAlive?(chat)
       #puts chat.class
       site = nil
@@ -262,6 +287,48 @@ module Watobo#:nodoc: all
         end
 
         return if buf.nil?
+
+        yield buf if block_given?
+        return if buf.strip.empty?
+      end
+    end
+    
+    def self.read_client_header(socket)
+      buf = ''
+
+      while true
+        begin
+          #Timeout::timeout(1.5) do
+             buf = socket.gets
+          #end
+        rescue EOFError => e
+          puts "EOFError: #{e}"
+          #puts "!!! EOF: reading header"
+          # buf = nil
+          return true
+        rescue Errno::ECONNRESET => e
+          puts "ECONNRESET: #{e}"
+        #puts "!!! CONNECTION RESET: reading header"
+        #buf = nil
+        #return
+          #raise
+          return false
+        rescue Errno::ECONNABORTED => e
+          puts "ECONNABORTED: #{e}"
+          #raise
+          return false
+        rescue Timeout::Error => e
+          puts "TIMEOUT: #{e}"
+          return false
+        rescue => bang
+         # puts "!!! READING HEADER:"
+          # puts buf
+          puts bang
+          puts bang.backtrace
+          raise
+        end
+
+        return false if buf.nil?
 
         yield buf if block_given?
         return if buf.strip.empty?

@@ -32,6 +32,11 @@ module Watobo#:nodoc: all
       
       def write(data)
         @socket.write data
+        @socket.flush
+      end
+      
+      def flush
+        @socket.flush
       end
 
       def close
@@ -39,11 +44,13 @@ module Watobo#:nodoc: all
         #if socket.class.to_s =~ /SSLSocket/
           if @socket.respond_to? :sysclose
           #socket.io.shutdown(2)
-          @socket.sysclose
-          elsif @socket.respond_to? :shutdown
-          @socket.shutdown(2)
-          elsif @socket.respond_to? :close
-          @socket.close
+            @socket.sysclose
+          elsif @socket.respond_to? :shutdown            
+            @socket.shutdown(Socket::SHUT_RDWR)
+          end
+          # finally close it
+          if @socket.respond_to? :close
+            @socket.close
           end
           return true
         rescue => bang
@@ -55,7 +62,7 @@ module Watobo#:nodoc: all
 
       def read_header
         request = []
-        Watobo::HTTPSocket.read_header(@socket) do |line|
+        Watobo::HTTPSocket.read_client_header(@socket) do |line|
           request << line
         end
         
@@ -75,13 +82,12 @@ module Watobo#:nodoc: all
         begin
         unless @initial_request.nil?
           request = @initial_request.copy
-          puts request
           @initial_request = nil
         return request
         end
-
+        
         request = read_header
-        puts request
+        
         return nil if request.nil?
 
         clen = request.content_length
@@ -121,6 +127,13 @@ module Watobo#:nodoc: all
         ra = socket.remote_address
         cport = ra.ip_port
         caddr = ra.ip_address
+        
+        optval = [1, 500_000].pack("I_2")
+        socket.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
+        socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
+        socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)    
+        socket.setsockopt Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1
+        socket.sync = true        
 
         session = socket
         
@@ -134,7 +147,7 @@ module Watobo#:nodoc: all
 
           begin
             ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ctx)
-            ssl_socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
+            #ssl_socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
             # ssl_socket.sync_close = true
             ssl_socket.sync = true
             # puts ssl_socket.methods.sort
@@ -245,7 +258,7 @@ module Watobo#:nodoc: all
           session = ssl_session
           request = nil
         else
-           puts "* create request object"
+          # puts "* create request object"
            request = Watobo::Request.new(request)
            site = request.site
            #puts request

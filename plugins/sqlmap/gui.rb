@@ -19,9 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-require File.join(File.expand_path(File.dirname(__FILE__)), "sqlmap")
+require_relative 'sqlmap'
 
-gui_path = File.join(File.expand_path(File.dirname(__FILE__)), "gui")
 %w( main options_frame ).each do |l|
-  require File.join(gui_path, l + ".rb")
+  require_relative File.join('gui', l )
 end

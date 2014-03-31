@@ -1,3 +1,15 @@
+Version 0.9.14
+===
+Fixes
+---
+**Manual Request Editor**
+
+ * fixed crash when clicking OTT-Settings
+ 
+**Crawler**
+
+ * watobo stopped working when crawler was started (Linux only) - workaround
+
 Version 0.9.13
 ===
 News

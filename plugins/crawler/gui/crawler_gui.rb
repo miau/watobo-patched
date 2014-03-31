@@ -266,15 +266,14 @@ module Watobo#:nodoc: all
           prefs.update general_settings
           prefs.update hook_settings
 
-          # puts prefs.to_yaml
+          add_update_timer(250)
 
-          Thread.new{
-            url = @url_txt.text
-            @crawler.run(url, prefs)
+          Thread.new(@url_txt.text,prefs){|turl,tprefs|
+            @crawler.run(turl, tprefs)
           }
 
           @start_button.text = 'Cancel'
-          add_update_timer()
+          
           
           rescue PasswordMatchError
             #puts "Passwords Don't Match!"   

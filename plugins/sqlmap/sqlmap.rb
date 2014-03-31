@@ -19,8 +19,6 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-path = File.expand_path(File.dirname(__FILE__))
-
 %w( sqlmap_ctrl ).each do |l|
-  require File.join(path, "lib", l)
+  require_relative File.join("lib", l )
 end

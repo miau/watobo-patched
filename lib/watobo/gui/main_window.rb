@@ -93,6 +93,18 @@ module Watobo#:nodoc: all
         
     end
     
+    @msg_lock.synchronize do
+      while @msg_queue.length > 0
+        msg = @msg_queue.shift
+        case msg
+        when :modal_finished
+          puts "stopping modal ..."
+          getApp.stopModal
+          puts "modal stopped"
+        end
+      end
+    end
+    
   }
  end
 
@@ -766,7 +778,9 @@ module Watobo#:nodoc: all
 
                   
             Watobo::Gui.clear_plugins
+            print "* load plugins ..."
             Watobo::Gui::Utils.load_plugins(@project)
+            print "[OK]\n"
        
             @sites_tree.project = @project
             @findings_tree.project = @project
@@ -780,7 +794,10 @@ module Watobo#:nodoc: all
             puts "!!! Could not create project :("
           ensure
           puts "* stop modal mode" if $DEBUG
-          getApp.stopModal
+          @msg_lock.synchronize do
+          #getApp.stopModal
+          @msg_queue << :modal_finished
+          end
 
           end
 
@@ -1165,9 +1182,11 @@ module Watobo#:nodoc: all
         @finding_lock = Mutex.new
         @chat_lock = Mutex.new
         @status_lock = Mutex.new
+        @msg_lock = Mutex.new
 
         @finding_queue = []
         @chat_queue = []
+        @msg_queue = []
 
         # setup clipboard
         @clipboard_text = ""

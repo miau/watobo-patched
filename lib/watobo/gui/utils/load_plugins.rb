@@ -55,7 +55,7 @@ module Watobo#:nodoc: all
               puts
               puts ">> ClassName: #{class_name}"
               puts
-              require pgf
+              load pgf
               class_constant = Watobo.class_eval(class_name)
 
               Watobo::Gui.add_plugin class_constant.new(Watobo::Gui.application, project)
@@ -64,7 +64,7 @@ module Watobo#:nodoc: all
               Dir["#{sub}/#{File.basename(sub)}.rb"].each do |plugin_file|
                 begin
                   puts "* processing plugin file #{plugin_file}" if $DEBUG
-                  require plugin_file
+                  load plugin_file
                   group = File.basename(sub)
                   plugin = File.basename(plugin_file).sub(/\.rb/,'')
                   # load "#{@settings[:module_path]}/#{modules}/#{check}"
@@ -86,7 +86,7 @@ module Watobo#:nodoc: all
               Dir["#{sub}/gui/#{File.basename(sub)}.rb"].each do |plugin_file|
                 begin
                   puts "* processing plugin file #{plugin_file}" if $DEBUG
-                  require plugin_file
+                  load plugin_file
                   group = File.basename(sub)
                   plugin = File.basename(plugin_file).sub(/\.rb/,'')
                   # load "#{@settings[:module_path]}/#{modules}/#{check}"

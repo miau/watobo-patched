@@ -211,12 +211,13 @@ module Watobo#:nodoc: all
       end
 
       def addChat(chat, *prefs)
+        return false if chat.nil?
         if self.getNumRows <= 0 then
           clearConversation()
         # initColumns()
         end
 
-        @current_chat_list.push chat unless chat.nil?
+        @current_chat_list.push chat 
         if prefs.include? :ignore_filter
           add_chat_row(chat)
         return true
@@ -379,6 +380,10 @@ module Watobo#:nodoc: all
 
       def add_chat_row(chat)
         return false unless chat.respond_to? :request
+        return false unless chat.respond_to? :response 
+        return false if chat.request.nil?
+        return false if chat.response.nil?
+        
         lastRowIndex = self.getNumRows
         self.appendRows(1)
 

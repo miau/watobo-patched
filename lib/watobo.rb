@@ -39,6 +39,7 @@ require 'net/ntlm'
 require 'drb'
 require 'nokogiri'
 require 'stringio'
+require 'mechanize'
 
 require 'watobo/constants'
 require 'watobo/utils'
@@ -56,10 +57,13 @@ require 'watobo/parser'
 require 'watobo/interceptor'
 require 'watobo/http_socket'
 
+# WORKAROUND FOR LINUX :(
+dont_know_why_REQUIRE_hangs = Mechanize.new
+
 # @private 
 module Watobo#:nodoc: all #:nodoc: all
 
-  VERSION = "0.9.13"
+  VERSION = "0.9.14"
 
   def self.base_directory
     @base_directory ||= ""

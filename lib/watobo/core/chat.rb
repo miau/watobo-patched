@@ -85,8 +85,6 @@ module Watobo#:nodoc: all
     def initialize(request, response, prefs = {})
 
       begin
-        super(request, response)
-
         @settings = {
           :source => CHAT_SOURCE_UNDEF,
           :id => -1,
@@ -95,6 +93,10 @@ module Watobo#:nodoc: all
           :comment => '',
           :tested => false
         }
+        
+        super(request, response)
+
+       
 
         @settings.update prefs
         #  puts @settings[:id].to_s

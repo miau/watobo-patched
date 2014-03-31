@@ -19,8 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-path = File.expand_path(File.dirname(__FILE__))
+#path = File.expand_path(File.dirname(__FILE__))
 
-require File.join(path, "..", "lib", "check.rb")
-require File.join(path, "cipher_table.rb")
-require File.join(path, "gui.rb")
+require_relative File.join( "..", "lib", "check")
+require_relative "cipher_table"
+require_relative "gui"
