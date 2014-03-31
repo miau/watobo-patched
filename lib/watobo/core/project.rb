@@ -640,7 +640,7 @@ module Watobo
           :save_finding => true
         }
         options.update opts
-        #  puts "* add finding #{finding.details[:fid]}" if $DEBUG
+        puts "[Project] add finding #{finding.details[:fid]}" if $DEBUG
 
         @findings_count ||= Hash.new
         @findings_count[finding.details[:class]] = 0 unless @findings_count.has_key? finding.details[:class]
@@ -814,7 +814,11 @@ module Watobo
       #      @active_checks = @settings[:active_checks]
       @settings[:active_checks].each do |am|
         ac = am.new(self)
-        ac.subscribe(:new_finding){ |nf| addFinding(nf) }
+      #  puts "subscribe to #{ac.class}"
+        ac.subscribe(:new_finding){ |nf| 
+       #   puts "[subscribe] new_finding"
+          addFinding(nf)
+           }
         @active_checks << ac
       end
 

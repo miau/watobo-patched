@@ -27,6 +27,7 @@ module Watobo
     attr :progress
 
     include Watobo::Constants
+    
     def subscribe(event, &callback)
       (@event_dispatcher_listeners[event] ||= []) << callback
     end
@@ -264,11 +265,16 @@ module Watobo
           check.reset()
           if @prefs[:online_check] == false or siteAlive?(chat) then
             @check_list << Thread.new(check, chat, check_prefs){|m, c, p|
+              begin
               m_name = m.class.to_s.gsub(/.*::/,'')
               notify(:module_started, m_name)
               m.run_checks(c,p)
+              rescue => bang
+                puts bang
+                puts bang.backtrace
+              end
               notify(:logger, LOG_INFO, "finished checks: #{m.class} on chat #{c.id}")
-              notify(:module_finished, m_name)
+              notify(:module_finished, m)
             }
           end
         end

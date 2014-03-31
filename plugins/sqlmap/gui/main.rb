@@ -68,15 +68,27 @@ module Watobo
           @change_btn.enable
 
           @change_btn.connect(SEL_COMMAND){
-            @bin_path = nil
-            bin_path = FXFileDialog.getOpenFilename(self, "Select SQLmap Path", @bin_path)
+            open_path = nil
+            unless @binary_path_txt.text.empty?
+              dir_name = File.dirname(@binary_path_txt.text)
+              unless dir_name.empty?
+              open_path = dir_name unless File.exist? dir_name
+              end
+            end
+            bin_path_old = @binary_path_txt.text
+            bin_path = FXFileDialog.getOpenFilename(self, "Select SQLmap Path", open_path)
             unless bin_path.empty?
               @binary_path_txt.text = bin_path
-              Watobo::Plugin::Sqlmap.set_binary_path bin_path
+            else              
+              @binary_path_txt.text = bin_path_old
+              
+            end
+            if File.exist? @binary_path_txt.text
+            Watobo::Plugin::Sqlmap.set_binary_path bin_path
               @accept_btn.enable
             else
-              @accept_btn.disable
-              @binary_path_txt.text = "not defined"
+              Watobo::Plugin::Sqlmap.set_binary_path ''
+              @accept_btn.disable 
             end
           }
 

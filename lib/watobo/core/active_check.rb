@@ -55,10 +55,11 @@ module Watobo
         id_string << new_details[:title]  if new_details[:title]
 
         if id_string == '' then
-        id_string = rand(10000)
+        id_string = (Time.now.to_i + rand(10000)).to_s
         end
         #
         new_details[:fid] = Digest::MD5.hexdigest(id_string)
+        puts new_details[:fid] if $DEBUG
 
         new_details[:module] = self.class.to_s
         # new_details[:module] = Module.nesting[]
@@ -67,7 +68,7 @@ module Watobo
         new_details.delete(:chat)
 
         new_finding = Watobo::Finding.new(request, response, new_details)
-        #  puts new_finding
+      #  puts new_finding
         notify(:new_finding, new_finding)
       }
     end

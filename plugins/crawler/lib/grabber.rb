@@ -32,9 +32,9 @@ module Watobo
           uri = linkbag.link.uri if linkbag.link.respond_to? :uri
 
           unless @opts[:head_request_pattern].empty?
-            pext = uri.path.match(/[^\.]*$/)
+            pext = uri.path.match(/\.[^\.]*$/)
             unless pext.nil?
-              if pext[0] =~ /#{@opts[:head_request_pattern]}/
+              if pext[0] =~ /\.#{@opts[:head_request_pattern]}/i
               page = @agent.head uri
               end
             end

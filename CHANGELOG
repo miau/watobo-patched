@@ -1,3 +1,15 @@
+= Version 0.9.12
+== NEW
+* [Module] Siebel Checks: Enumeration of default apps and files, e.g. base.txt
+* [Module] PassiveCheck filtering Domino DB names
+* [GUI] added De-Select-All buttons to scan policy
+* [GUI] finding details menu available at finding-class level
+
+== Fixes
+* crash when pasting data (Linux)
+* crash on starting full scan dialog
+* minor issue when adding a new db-path to catalog scanner plugin
+
 = Version 0.9.11
 == NEW
 * [FileFinder] pimped the interface, added save-settings

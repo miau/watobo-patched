@@ -276,7 +276,7 @@ module Watobo
                 data = self.getItemData(item)
 
                 
-                if !self.itemLeaf?(item)
+                unless self.itemLeaf?(item)
                   FXMenuCommand.new(menu_pane, "expand tree" ).connect(SEL_COMMAND) {
                     expandFullTree(item)
                   }
@@ -304,6 +304,9 @@ module Watobo
                 @hide_false_positives = ts.checked?
                 refresh_tree
               }
+            
+            
+            
               unless item.nil?
 
                 data = self.getItemData(item)
@@ -319,15 +322,17 @@ module Watobo
                   }
                # 
                 elsif data == :title
-                   fp_submenu = FXMenuPane.new(self) do |sub|
-
-                    target = FXMenuCommand.new(sub, "Set False Positive" )
-                    target.connect(SEL_COMMAND) {
-                      findings = []
+                   findings = []
                       item.each do |ft|                        
                          f = self.getItemData(ft)
                          findings << f if f.is_a? Watobo::Finding
                       end
+                      
+                   fp_submenu = FXMenuPane.new(self) do |sub|
+
+                    target = FXMenuCommand.new(sub, "Set False Positive" )
+                    target.connect(SEL_COMMAND) {
+                     
                      
                      # puts "* False Positive #{findings.length}"
 
@@ -367,14 +372,7 @@ module Watobo
                     }
                     target = FXMenuCommand.new(sub, "Unset False Positive" )
                     target.connect(SEL_COMMAND) {
-                      findings = []
-                      item.each do |ft|
-                        
-                          f = self.getItemData(ft)
-                          findings << f if f.is_a? Watobo::Finding
-                                              end
-
-  fclass = item.parent.text
+                      fclass = item.parent.text
                       fcat = item.parent.parent.text
                       fsite = item.parent.parent.parent.text
                       
@@ -405,27 +403,23 @@ module Watobo
                     FXMenuSeparator.new(sub)
                     
                     FXMenuCommand.new(sub, "Purge - NO UNDO!" ).connect(SEL_COMMAND) {
-                      findings = []
-                      item.each do |ft|                        
-                          f = self.getItemData(ft)
-                          findings << f if f.is_a? Watobo::Finding
-                          end
-                      puts "* purge findings #{findings.length}"
-
                       notify(:purge_findings, findings)
                       reload
                   }
                   end
                    FXMenuCascade.new(menu_pane, "All \"#{item}\"", nil, fp_submenu)
+                   
+                   FXMenuSeparator.new(menu_pane)
+                  info = FXMenuCommand.new(menu_pane, "Details..." )
+                  info.connect(SEL_COMMAND) {
+                  #@interface.showFindingDetails(item.data)}
+                    notify(:show_finding_details, findings.first)
+                  }
 
                 elsif data == :finding_class
-
+                  #puts "FINDING_CLASS"
                   # COPY SUBMENU
-                  fp_submenu = FXMenuPane.new(self) do |sub|
-
-                    target = FXMenuCommand.new(sub, "Set False Positive" )
-                    target.connect(SEL_COMMAND) {
-                      findings = []
+                  findings = []
                       item.each do |c|
                         c.each do |ft|
                           f = self.getItemData(ft)
@@ -433,8 +427,12 @@ module Watobo
                         end
 
                       end
-                     # puts "* False Positive #{findings.length}"
+                      
+                  fp_submenu = FXMenuPane.new(self) do |sub|
 
+                    target = FXMenuCommand.new(sub, "Set False Positive" )
+                    target.connect(SEL_COMMAND) {
+                      
                       fcat = item.parent.text
                       fsite = item.parent.parent.text
                       
@@ -455,16 +453,7 @@ module Watobo
                     }
                     target = FXMenuCommand.new(sub, "Unset False Positive" )
                     target.connect(SEL_COMMAND) {
-                      findings = []
-                      item.each do |c|
-                        c.each do |ft|
-                          f = self.getItemData(ft)
-                          findings << f if f.is_a? Watobo::Finding
-                        end
-
-                      end
-                      
-  fcat = item.parent.text
+                      fcat = item.parent.text
                       fsite = item.parent.parent.text
                       notify(:unset_false_positive, findings)
                       reload
@@ -483,14 +472,7 @@ module Watobo
 
                     FXMenuSeparator.new(sub)
                     FXMenuCommand.new(sub, "Purge - NO UNDO!" ).connect(SEL_COMMAND) {
-                      findings = []
-                      item.each do |c|
-                        c.each do |ft|
-                          f = self.getItemData(ft)
-                          findings << f if f.is_a? Watobo::Finding
-                        end
-
-                      end
+                      
                       puts "* purge findings #{findings.length}"
 
                       notify(:purge_findings, findings)
@@ -499,6 +481,13 @@ module Watobo
 
                   end
                   FXMenuCascade.new(menu_pane, "All \"#{item}\"", nil, fp_submenu)
+                  
+                    FXMenuSeparator.new(menu_pane)
+                  info = FXMenuCommand.new(menu_pane, "Details..." )
+                  info.connect(SEL_COMMAND) {
+                  #@interface.showFindingDetails(item.data)}
+                    notify(:show_finding_details, findings.first)
+                  }
 
                 elsif data.is_a? Watobo::Finding then
                  # FXMenuSeparator.new(menu_pane)

@@ -201,13 +201,22 @@ about_txt.disable
                 end
 
                 status, test_request, test_response = fileExists?(test, :default => true)
-                # puts "[#{status}] - #{test_request.url}"
+               
+                
                 unless test_request.nil? or test_response.nil? then
                   test_result = false
                   response = test_response.join
                   if status == true
+                    if test_request.url =~ /splashAdmin/
+                      puts "splashAdmin.php exists!"
+                      puts "Match: #{match}"
+                      puts "Or-Match: #{or_match}"
+                      puts "Fail: #{fail}"
+                      puts "Or-Fail: #{or_fail}"
+                     
+                    end
 
-                    if ( ( match != "" and response =~ /#{Regexp.quote(match)}/i) or ( or_match != "" and response =~ /#{Regexp.quote(or_match)}/i )) then
+                    if ( (match.empty? and or_match.empty?) or ( match != "" and response =~ /#{Regexp.quote(match)}/i) or ( or_match != "" and response =~ /#{Regexp.quote(or_match)}/i )) then
                       test_result = true
                       if and_match != "" then
                         test_result = false
@@ -221,8 +230,10 @@ about_txt.disable
                     # test_chat = Chat.new(test_request, test_response, chat.id)
 
                     if test_result then
+                      
                       #  path = test_request.url.gsub(/#{uri}/,"")
                       path = test_request.path
+                    #  puts "ADD FINDING!"
                       addFinding(  test_request, test_response,
                       :test_item => uri,
                       :proof_pattern => "#{Regexp.quote(match)}",
@@ -232,6 +243,7 @@ about_txt.disable
                       :title => "[#{uri}] - #{path}"
 
                       )
+                    #  puts "OK"
 
                     end
                   end
@@ -261,7 +273,13 @@ about_txt.disable
 
           if @project then
             @sites_combo.appendItem("no site selected", nil)
-            @project.listSites(:in_scope => Watobo.project.has_scope? ).each do |site|
+            scope_only = Watobo.project.has_scope?
+            sites = @project.listSites(:in_scope => Watobo.project.has_scope? )
+            if sites.empty?
+              scope_only = false
+              @log_viewer.log(LOG_INFO, "Defined scope does not match one site. Using all sites.")
+            end
+            @project.listSites(:in_scope => scope_only ).each do |site|
               #puts "Site: #{site}"
               site_string = site
               if site.length > 60
@@ -661,24 +679,31 @@ about_txt.disable
           end
         end
         
-        def set_db_path(path)
+        def set_db_path(dbpath)
+          path = File.expand_path(dbpath)
           if db_path?(path)
-              puts "New DB Path >> #{path}"
-                @path = path
-          @known_db_paths << @path unless @known_db_paths.include? @path
-          @start_button.enable
-          unless @db_path_combo.findItemByData(@path)
-            item = @db_path_combo.appendItem(dbp)
-                   @db_path_combo.setItemData(item, @path)
-                   @db_path_combo.currentItem = @db_path_combo.numItems - 1
-            
-          end
-              
-              save_config
-            else
-               @catalog_ready = false
-              @start_button.disable
+             puts "New DB Path >> #{path}"
+             @path = path
+            @known_db_paths << @path unless @known_db_paths.include? @path
+            @start_button.enable
+         
+            @db_path_combo.clearItems
+            @known_db_paths.each_with_index do |dbp,i|              
+               if File.exist? dbp               
+                   item = @db_path_combo.appendItem(dbp)
+                   @db_path_combo.setItemData(item, dbp)
+                   path_index = i if dbp == @path
+               end
             end
+            
+            @db_path_combo.currentItem = @db_path_combo.numItems - 1
+            @db_path_combo.numVisible = @db_path_combo.numItems
+              
+            save_config
+          else
+              @catalog_ready = false
+              @start_button.disable
+          end
         end
 
         def enableOptions()
@@ -709,7 +734,7 @@ about_txt.disable
           #  puts "* #{self.class} closed"
           @scanner.cancel() if @scanner
 
-          self.destroy
+         super
 
         end
         
@@ -717,7 +742,9 @@ about_txt.disable
           @db_files.each do |file|
             fname = File.join( path, file)
             unless File.exists?(fname)
-              puts "WARNING: Missing catalog db file: #{fname}"
+              m = "WARNING: Missing catalog db file: #{fname}"
+              puts m
+              @log_viewer.log( LOG_INFO, m)
               return false
             end
             
@@ -758,6 +785,7 @@ about_txt.disable
             @scanner.cancel()
             @start_button.text = "Start"
             @pbar.progress = 0
+             Watobo.log("Scan Canceled By User", :sender => "Catalog")
             return
           end
 
@@ -783,16 +811,16 @@ about_txt.disable
 
           #}
 
-          @check.subscribe(:new_finding) { |f|
-             @project.addFinding(f) 
-          }
 
+        
           @check.path = @path
 
           chatlist = []
           checklist = []
           checklist.push @check
           @check.resetCounters()
+          
+          
 
           @log_viewer.log( LOG_INFO, "Starting ...")
           puts "Site: #{@site}"
@@ -803,7 +831,7 @@ about_txt.disable
           #  progressWindow.newProject(@active_project, project_settings)
 
        #   progressWindow.register(self)
-progressWindow = nil
+          progressWindow = nil
   #        Thread.new(progressWindow){ |pw|
             begin
               c=1
@@ -812,8 +840,9 @@ progressWindow = nil
                 @project.listDirs(@site, :base_dir => @dir, :include_subdirs => @test_all_dirs.checked?) { c += 1 }
                 notify(:update_progress, :total => c, :job => @dir)
                 @project.listDirs(@site, :base_dir => @dir, :include_subdirs => @test_all_dirs.checked?) do |dir|
-                  msg = "running checks on #{dir}"
+                  msg = "running checks in #{@path} on #{@site} for /#{dir}"
                   puts msg
+                  Watobo.log(msg, :sender => "Catalog")
                   @log_viewer.log(LOG_INFO, msg)
                   chat = createChat()
                   chat.request.replaceFileExt('')
@@ -825,8 +854,9 @@ progressWindow = nil
                 end
               else
             #    notify(:update_progress, :total => c, :job => @dir)
-                msg = "running checks on #{@dir}"
+                msg = "running checks in #{@path} on #{@site} for /#{@dir}"
                 puts msg
+                Watobo.log(msg, :sender => "Catalog")
                 @log_viewer.log(LOG_INFO, msg)
                 chat = createChat()
              #   puts chat.request.first
@@ -856,6 +886,7 @@ progressWindow = nil
           
 
           @scanner = Watobo::Scanner2.new(chatlist, checklist, @project.passive_checks, scan_prefs)
+          
           @pbar.total = @check.numChecks * chatlist.length
           @pbar.progress = 0
           @pbar.barColor = 'red'
@@ -873,6 +904,12 @@ progressWindow = nil
             end
             @pbar.increment(1)
           }
+          
+            @scanner.subscribe(:new_finding) { |f|
+          #  puts "Project.addFinding"
+             @project.addFinding(f) 
+          }
+
 
           msg= "Total Requests: #{@check.numChecks}"
           @log_viewer.log(LOG_INFO, msg)
@@ -887,6 +924,7 @@ progressWindow = nil
               
               msg = "scanning finished!"
               @log_viewer.log(LOG_INFO, msg)
+                Watobo.log("Scan finished", :sender => "Catalog")
             rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG

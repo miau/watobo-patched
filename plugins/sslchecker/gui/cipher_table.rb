@@ -210,7 +210,7 @@ module Watobo
           end
 
           def add_cipher_row(cipher)
-            add_cipher = @filter == CTF_ALL ? true : false
+            add_cipher = ( @filter == CTF_ALL ) ? true : false
 
             if cipher[:result] == false
               # @result_viewer.appendStyledText("checked: #{cipher} - #{bits} - #{result}\n",0)

@@ -37,6 +37,7 @@ module Watobo
         end
       end
 
+      # LOG_INFO
       def log(log_level, msg )
 
         t = Time.now
@@ -58,7 +59,8 @@ module Watobo
 
       def initialize(parent, mode = nil, opts)
         opts[:padding]=0
-        @mode = :insert if mode.nil?
+        
+        @mode = mode.nil? ? :inster : mode
 
         super(parent, opts)
 

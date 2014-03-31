@@ -52,10 +52,11 @@ module Watobo
             off = chat.response.body.index(/<form/i, 0)
             until off.nil?
               action = chat.response.body[off..-1] =~ /<form [^<\/form]*action="([^"]*)"/i ? $1 : "undefined" 
+              title = action.strip.empty? ? "[none]" : "#{action}"
             #  puts "!FOUND FORM #{action}"
               addFinding(  
                          :proof_pattern => "<form [^>]*>", 
-              :title => "#{action}",
+              :title => title,
               :chat => chat
               )  
               off = chat.response.body.index(/<form/i, off+1)

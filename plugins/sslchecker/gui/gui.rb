@@ -33,7 +33,12 @@ module Watobo
         
         def createChat(site)
           chat = nil
-          url = "https://#{site}/"
+          u = URI.parse site
+          if u.scheme.nil?
+            url = "https://#{site}/"
+          else
+            url = u.to_s
+          end
           request = []
           request << "GET #{url} HTTP/1.1\r\n"
           request << "Host: #{site}\r\n"
@@ -75,8 +80,8 @@ module Watobo
                 @sites_combo.setCurrentItem(0)
                 @site = @sites_combo.getItemData(0)
                 @sites_combo.numVisible = ( @sites_combo.numItems > 15 ) ? 15 : @sites_combo.numItems
-              else
-                @log_viewer.log(LOG_INFO,"No SSL Sites available - you need to visit a SSL Site first!")
+             # else
+             #   @log_viewer.log(LOG_INFO,"No SSL Sites available - you need to visit a SSL Site first!")
               end
             end
 
@@ -111,10 +116,11 @@ module Watobo
             unless @project.getCurrentProxy().nil?
                @log_viewer.log(LOG_INFO,"!!! WARNING FORWARDING PROXY IS SET !!! - SSL-Check running against proxy may not make sense!")
             end
-             @status_lock.synchronize do 
+             @update_lock.synchronize do 
                   @status = :running
                 end
-             add_update_timer(50)
+           
+           #  add_update_timer(50)
              
             @log_viewer.log LOG_INFO, "Scan started ..."
             @scan_thread = Thread.new(scanner) { |scan|
@@ -122,11 +128,11 @@ module Watobo
 
                 scan.run(:default => true)
                 @log_viewer.log LOG_INFO, "Scan finished."
-                @status_lock.synchronize do 
+                @update_lock.synchronize do 
                   @status = :idle
                 end
-                sleep 1 # to let the update_timer finish its work
-                getApp().removeTimeout(@update_timer) 
+               # sleep 1 # to let the update_timer finish its work
+               # getApp().removeTimeout(@update_timer) 
               rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG
@@ -147,7 +153,7 @@ module Watobo
           
           @results = []
           @results_lock = Mutex.new
-          @status_lock = Mutex.new
+       #   @status_lock = Mutex.new
           @status = :idle
           
            @clipboard_text = ""
@@ -179,9 +185,9 @@ module Watobo
          frame = FXVerticalFrame.new(result_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
          @cipher_table = CipherTable.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-          FXLabel.new(@settings_frame, "Available Sites:")
-          @sites_combo = FXComboBox.new(@settings_frame, 5, nil, 0,
-          COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
+          FXLabel.new(@settings_frame, "Enter or select site to test:")
+          @sites_combo = FXComboBox.new(@settings_frame, 5, nil, 0, COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
+           #@sites_combo = FXTextField.new(@settings_frame, 25, :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN|LAYOUT_RIGHT)
           #@filterCombo.width =200
 
           @sites_combo.numColumns = 35
@@ -238,8 +244,21 @@ module Watobo
         end
         
         private
+        def on_update_timer
+          unless @status == :idle
+          @results_lock.synchronize do             
+               @results.each do |r|
+                 @cipher_table.add_cipher(r)
+               end
+               @results.clear               
+           end
+         else          
+          @pbar.barColor = 'grey' unless @pbar.barColor == 'grey'
+          end
+         
+        end
         
-        def add_update_timer(ms)
+        def add_update_timer_UNUSED(ms)
          @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) do
            @results_lock.synchronize do             
                @results.each do |r|
@@ -248,7 +267,7 @@ module Watobo
                @results.clear               
            end
          
-           @status_lock.synchronize do 
+           @update_lock.synchronize do 
              @pbar.barColor = 'grey' if @status == :idle
            end
          end

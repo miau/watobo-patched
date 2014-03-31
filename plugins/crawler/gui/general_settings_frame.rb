@@ -87,7 +87,7 @@ module Watobo
             @fill_forms_cb.checkState = false
             @fill_forms_cb.disable
             
-            FXLabel.new(iframe, "Don't send forms if they contain following field names:")
+            FXLabel.new(iframe, "Don't send forms if they contain following field names (regex):")
             @excluded_field_patterns = Watobo::Gui::ListBox.new(iframe)
 
             #f = FXVerticalFrame.new(outer_matrix, :opts =>LAYOUT_FILL_X|LAYOUT_FILL_Y)
@@ -97,8 +97,8 @@ module Watobo
             fxtext.backColor = fxtext.parent.backColor
             fxtext.disable
             text = "To speed up the crawl process and to save bandwidth it is recommended to use HEAD requests for specific document extensions."
-            text << "The response to a HEAD request only includes the http headers but no body. The extensions pattern is defined as an regular expression,"
-            text << "e.g. '(pdf|swf|doc|flv|jpg|png|gif)' - without single quotes."
+            text << "The response to a HEAD request only includes the http headers but no body. The extensions pattern is defined as an regular expression (case insesitive),"
+            text << "e.g. '(pdf|swf|doc|flv|jpg|png|gif)' - without quotes."
 
             fxtext.setText(text)
             
@@ -107,7 +107,7 @@ module Watobo
             f = FXHorizontalFrame.new(iframe, :opts => LAYOUT_FILL_X)
             FXLabel.new(f, "Ext. Pattern:", nil, LAYOUT_TOP|JUSTIFY_RIGHT)
             @head_request_pattern_txt = FXTextField.new(f, 10, nil, 0, :opts => TEXTFIELD_NORMAL|LAYOUT_SIDE_RIGHT|LAYOUT_FILL_X)
-            @head_request_pattern_txt.text = '(pdf|swf|doc|flv|jpg|png|gif)'
+            @head_request_pattern_txt.text = '(pdf|swf|doc|flv|jpg|png|gif|zip|tar|gz|bz2|tgz)'
 
           end
 

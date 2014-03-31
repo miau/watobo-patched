@@ -106,7 +106,8 @@ module Watobo
         
         @policyFrame = ChecksPolicyFrame.new(@policyBase, @project.active_checks, @project.getScanPolicy)
         
-        @scannerOptions = ScannerSettingsFrame.new(@switcher, @project.getScanPreferences(),:opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
+      #  @scannerOptions = ScannerSettingsFrame.new(@switcher, @project.getScanPreferences(),:opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
+        @scannerOptions = ScannerSettingsFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         
         #   @advancedFrame = AdvancedSettingsFrame.new(@switcher, @project, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         

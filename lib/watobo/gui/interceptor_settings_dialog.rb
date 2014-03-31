@@ -80,7 +80,7 @@ module Watobo
             @transparent_mode_chk.setCheck true if Watobo::Conf::Interceptor.proxy_mode == Watobo::Interceptor::MODE_TRANSPARENT            
           else
             @transparent_mode_chk.disable
-            note = FXLabel.new(gbox_frame, "Transparent Mode Not Available On This Platform.")
+            note = FXLabel.new(gbox_frame, "Transparent Mode Only Available On Linux Platform!")
             note.textColor = FXColor::Red
             
           end

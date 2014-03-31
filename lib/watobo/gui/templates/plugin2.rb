@@ -73,53 +73,40 @@ module Watobo
       t = Time.now
       now = t.strftime("%m/%d/%Y @ %H:%M:%S")
 
-      @log_lock.synchronize do
+      @update_lock.synchronize do
         text = "\n#{now}: msg"
         @log_messages << text
       end
     end
 
-    def load_icon_UNUSED(file=__FILE__)
-      begin
-        @icon = ICON_PLUGIN
-        path = File.dirname(file)
-        #  puts "... searching for icons in #{path}/icons"
-        file = Dir.glob("#{path}/icons/*.ico").first
-
-        #    puts "* load icon: #{file}"
-        @icon = Watobo::Gui.load_icon(file) unless file.nil?
-
-        self.icon = @icon
-      rescue => bang
-        puts "!!!Error: could not init icon"
-        puts bang
-        puts bang.backtrace if $DEBUG
-      end
-    end
-
     def initialize(owner, title, project, opts)
       super(owner, title, :opts => DECOR_ALL,:width=>800, :height=>600)
-      # Implement Sender
-      # Implement Scanner
+
       @icon = nil
       load_icon()
       @plugin_name = "undefined"
       @event_dispatcher_listeners = Hash.new
-      @log_lock = Mutex.new
+      @update_lock = Mutex.new
 
       @log_messages = []
+
+      add_update_timer(50)
 
     end
 
     private
 
+    def on_update_timer
+
+    end
+
     def add_update_timer(ms)
       @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
-    @update_lock.synchronize do
-
+        @update_lock.synchronize do
+          on_update_timer()
+        end
+      }
     end
-
-  }
-    end
+    
   end
 end

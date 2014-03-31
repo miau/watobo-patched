@@ -1074,20 +1074,16 @@ module Watobo
             @scanner = Watobo::Scanner2.new(in_scope_chats, acc , @project.passive_checks, scan_prefs)
 
             @scanner.subscribe(:progress) { |check|
-                  @dashboard.progress(check)
+                 @dashboard.progress(check)
             
             }
 
-            @scanner.subscribe(:module_finished) { |mod|
-              
-                  @dashboard.module_finished(mod)
-                
+            @scanner.subscribe(:module_finished) { |mod|              
+                 @dashboard.module_finished(mod)                
             }
 
-            @scanner.subscribe(:logger){ |level, message|
-             
-               @log_viewer.log(level, message)
-              
+            @scanner.subscribe(:logger){ |level, message|             
+               @log_viewer.log(level, message)              
             }
 
 
@@ -1804,6 +1800,10 @@ request_splitter.connect(SEL_COMMAND){
         #  puts "! #{Thread.list.length} Threads running"
         response = FXMessageBox.question(self, MBOX_YES_NO, "Finished?", "Are you sure?")
         if response == MBOX_CLICKED_YES
+          puts "Remaining Threads"
+          Thread.list.each do |t|
+            p t
+          end
         return 0
         else
         return 1

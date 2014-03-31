@@ -81,8 +81,9 @@ module Watobo
               next if uri.strip =~ /^#/
               # cleanup dir
               uri.strip!
-              uri.gsub!(/^\/+/,'')
+              uri.gsub!(/^[\/\.]+/,'')
               uri.gsub!(/\/$/,'')
+              next if uri.strip.empty?
              
               checker = proc {
                 test_request = nil
@@ -95,13 +96,16 @@ module Watobo
                   new_uri << ".#{ext}"                 
                   end 
                 new_uri << "/" if @append_slash == true
-                puts ">> #{new_uri}"
+               # puts ">> #{new_uri}"
                 test.replaceFileExt(new_uri)
                # puts test.url
                 status, test_request, test_response = fileExists?(test, @prefs)
                 
                 
                 if status == true
+                  
+                  puts "FileFinder >> #{test.url}"
+                  
                   addFinding(  test_request, test_response,
                              :test_item => new_uri,
                             # :proof_pattern => "#{Regexp.quote(uri)}",
@@ -570,7 +574,7 @@ module Watobo
           #puts "* #{self.class} closed"
           @scanner.cancel() if @scanner
           
-          self.destroy
+        super
           
         end
         
@@ -603,10 +607,7 @@ module Watobo
           
           @check.append_slash = @append_slash_cb.checked?
           
-          @check.subscribe(:new_finding) { |f|
-            Thread.new { @project.addFinding(f) }
-          }
-          
+                  
           @check.path = @path
           
           checklist.push @check
@@ -682,7 +683,9 @@ module Watobo
             @pbar.increment(1)
           }
           
-          
+          @scanner.subscribe(:new_finding) { |f|
+            Thread.new { @project.addFinding(f) }
+          } 
           
           m= "Total Requests: #{@check.numChecks}"
           @log_viewer.log(LOG_INFO,m)

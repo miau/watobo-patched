@@ -20,7 +20,13 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
 module Watobo
-  class DataStore  
+  class DataStore
+    
+    @engine = nil
+    
+    def self.engine
+      @engine
+    end  
       
     def self.acquire(project_name, session_name)
       a = Watobo::Conf::Datastore.adapter
@@ -30,9 +36,16 @@ module Watobo
       else
         nil
       end
+      @engine = store
       store
     end
     
         
+  end
+  
+  def self.log(message, prefs={})
+    if DataStore.engine.respond_to? :logger
+      DataStore.engine.logger message, prefs
+    end
   end
 end

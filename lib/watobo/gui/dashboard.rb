@@ -28,7 +28,27 @@ module Watobo
         def increment(i)
            @lock.synchronize do
              @progress += i
-             @total += i
+             #@total += i
+           end  
+        end
+        
+        def progress(i)
+           @lock.synchronize do
+             @progress = i
+             #@total += i
+           end  
+        end
+        
+        def total(i)
+           @lock.synchronize do
+             #@progress = i
+             @total = i
+           end  
+        end
+        
+        def finished
+           @lock.synchronize do
+             @progress = @total
            end  
         end
         
@@ -36,7 +56,7 @@ module Watobo
           @lock.synchronize do
             @pbar.increment(@progress)
             @progress = 0
-            @pbar.barColor = 'green' if @pbar.progress == @pbar.total
+            @pbar.barColor = 'green' if @pbar.progress >= @pbar.total
             @label.text = "#{@check_name} #{@pbar.progress}/#{@pbar.total}"
           end
         end
@@ -199,8 +219,9 @@ module Watobo
                   name = mod
                   name = mod.info[:check_name] if mod.respond_to? :run_checks
                   pbar = @scan_progress_frame.progress_bars[name]
-                  pbar.progress = pbar.total
-                  pbar.barColor = 'green' # FXRGB(0,255,0)
+                  pbar.finished 
+                   #pbar.progress = pbar.total
+                   # pbar.barColor = 'green' # FXRGB(0,255,0)
                rescue => bang
                   puts bang
                   puts bang.backtrace if $DEBUG

@@ -164,6 +164,7 @@ module Watobo
         # @active_policy = 'Default'
         @selectedModules = []
         @project = project
+        
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
 
         base_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
@@ -171,7 +172,8 @@ module Watobo
 
         @quickScanOptionsFrame = QuickScanOptionsFrame.new(@switcher, @project, prefs)
 
-        @policyFrame = ChecksPolicyFrame.new(@switcher, project.active_checks, project.settings[:policy])
+      #  @policyFrame = ChecksPolicyFrame.new(@switcher, project.active_checks, project.settings[:policy])
+       @policyFrame = ChecksPolicyFrame.new(@switcher, project.active_checks)
 
         # BUTTONS
         buttons_frame = FXHorizontalFrame.new(base_frame, :opts => LAYOUT_FILL_X)
@@ -200,9 +202,7 @@ module Watobo
           setButtons(@switcher.current)
         end
 
-        @cancelButton = FXButton.new(buttons_frame, "Cancel" ,
-        :target => self, :selector => FXDialogBox::ID_CANCEL,
-        :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
+        @cancelButton = FXButton.new(buttons_frame, "Cancel" , :target => self, :selector => FXDialogBox::ID_CANCEL, :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
 
         #@filterCombo.appendItem("ohne Filter", nil)
 
@@ -211,7 +211,7 @@ module Watobo
       private
 
       def onAccept(sender, sel, event)
-        @selectedPolicy = @policyFrame.policy_name
+      #  @selectedPolicy = @policyFrame.policy_name
         @options = @quickScanOptionsFrame.options
         @selectedModules = @policyFrame.getSelectedModules()
         getApp().stopModal(self, 1)

@@ -881,7 +881,7 @@ module Watobo
 
          def hide()
             @scanner.cancel() if @scanner
-            self.destroy
+            super
          end
 
          def listTags()

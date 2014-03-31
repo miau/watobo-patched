@@ -37,6 +37,8 @@ include Watobo::Constants
       @@login_in_progress = false
       def subscribe(event, &callback)
         (@event_dispatcher_listeners[event] ||= []) << callback
+        puts "#{self} : #subscriptions -> #{event} :" + @event_dispatcher_listeners[event].length.to_s
+        puts @event_dispatcher_listeners[event].first
       end
 
       def clearEvents(event)
@@ -46,7 +48,7 @@ include Watobo::Constants
 
       def notify(event, *args)
         if @event_dispatcher_listeners[event]
-           puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
+          # puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
           @event_dispatcher_listeners[event].each do |m|           
             m.call(*args) if m.respond_to? :call
           end

@@ -10,3 +10,4 @@ banking/hbci.do
 hbciTunnel/hbciTransfer.jsp
 pintan/PinTanServlet
 cgi-bin/hbciservlet
+OnlineBankingFinTS/pintan

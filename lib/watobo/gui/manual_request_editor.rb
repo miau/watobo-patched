@@ -537,6 +537,7 @@ module Watobo
             end
 
             if dlg.execute != 0 then
+              puts "* Dialog Finished"
                scan_modules = []
                sender.text = "Cancel"
                quick_scan_options = dlg.options
@@ -558,8 +559,14 @@ module Watobo
               # acc = @project.active_checks.select do |ac|
               #    scan_modules.include? ac.class.to_s
               # end
+               log_message = ["QuickScan Started"]
+               log_message << "Target URL: #{scan_chats.first.request.url}"
                
                acc = dlg.selectedModules
+               
+               acc.each do |ac|
+                 log_message << "Module: #{ac.info[:check_name]}"
+               end
 
                scan_prefs = @project.getScanPreferences
                # we don't want logout detection during a QuickScan
@@ -620,6 +627,8 @@ module Watobo
                }
               
               logger("Scan Started ...")
+              Watobo.log(log_message, :sender => self.class.to_s.gsub(/.*:/,""))
+              
               @scan_status = SCANNER_STARTED
               Thread.new(run_prefs) { |rp|
                   begin
@@ -634,6 +643,7 @@ module Watobo
                     puts bang.backtrace if $DEBUG
                   ensure
                    logger("Scan finished!")
+                   Watobo.log("QuickScan finished", :sender => self.class.to_s.gsub(/.*:/,""))
                    @scan_status_lock.synchronize do
                       @scan_status |= SCANNER_FINISHED
                    end  
@@ -1122,7 +1132,7 @@ end
 
          def hide()
             @scanner.cancel() if @scanner
-            self.destroy
+            super
          end
 
       end

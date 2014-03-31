@@ -68,7 +68,7 @@ module Watobo
                     
                     test_request,test_response = doRequest(test,:default => true)
                     if test_response.status =~ /200/i then
-                      test_chat = Chat.new(test,test_response,chat.id)
+                     # test_chat = Chat.new(test,test_response,chat.id)
                       addFinding( test_request,test_response,
                       :test_item => chat.request.url,
                                  :check_pattern => "#{cmd.dup}",

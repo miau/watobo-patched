@@ -153,12 +153,14 @@ module Watobo
           end
         end
 
-        def add_update_timer(ms=50)
-          @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
-           update_status
-          }
-
-        end
+     #   def add_update_timer(ms=50)
+     #     @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
+     #      update_status
+     #     }
+     # end
+       def on_update_timer
+         update_status
+       end
 
         def update_status
           @status_lock.synchronize do

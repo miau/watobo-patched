@@ -25,7 +25,7 @@ module Watobo
       module Apache
         class Mod_status < Watobo::ActiveCheck
           def reset()
-            #@checked_dirs.clear
+            @checked_sites.clear
           end
 
           def initialize(project, prefs={})
@@ -52,11 +52,12 @@ module Watobo
           end
 
           def generateChecks(chat)
+           
             if not @checked_sites.has_key?(chat.request.site)
               @checked_sites[chat.request.site] = :checked
               @status_checks.each do |status_path|
                 checker = proc {
-
+                 
                   test_request = nil
                   test_response = nil
 
@@ -67,7 +68,7 @@ module Watobo
 
                   status, test_request, test_response = fileExists?(test, :default => true)
 
-                  if test_response.status =~ /200/ and test_response.join =~ /Apache Server Status for/ then
+                  if test_response.status =~ /200/ and test_response.join =~ /Apache Server Status for/i then
 
                     addFinding( test_request, test_response,
                     :check_pattern => "#{status_path}",

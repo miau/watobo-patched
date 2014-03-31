@@ -76,14 +76,16 @@ module Watobo
 
         def setDir(dir)
           dir.strip!
-          dir.gsub!(/^\//,"")
-          dir.gsub!(/\/$/,"")
+          dir.gsub!(/^\/+/,"")
+          dir.gsub!(/\/+$/,"")
           dir += "/" unless dir == ''
           self.first.gsub!(/(^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/)(.*)( HTTP\/.*)/, "\\1#{dir}\\3")
         end
 
         def appendDir(dir)
+          dir.strip!
           dir.gsub!(/^\//,"")
+          dir << "/" unless dir =~ /\/$/
           self.first.gsub!(/(^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}.*\/).*( HTTP\/.*)/, "\\1#{dir}\\2")
 
         end

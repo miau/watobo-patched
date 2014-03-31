@@ -23,27 +23,37 @@ module Watobo
   module Gui
     class ProgressWindow < FXTopWindow
       def increment(x)
-        @increment += x
+        @update_lock.synchronize do
+          @increment += x
+        end
       end
 
       def total=(x)
-        @total = x
+        @update_lock.synchronize do
+          @total = x
+        end
       end
 
-      def progress=(x)
+      def UNUSED_progress=(x)
         @pbar.progress = x
       end
 
       def title=(new_title)
-        @title = new_title
+        @update_lock.synchronize do
+          @title = new_title
+        end
       end
 
       def task=(new_task)
-        @task = new_task
+        @update_lock.synchronize do
+          @task = new_task
+        end
       end
 
       def job=(new_job)
-        @job = new_job
+        @update_lock.synchronize do
+          @job = new_job
+        end
       end
 
       def update_progress(settings={})
