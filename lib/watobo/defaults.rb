@@ -25,7 +25,8 @@ module Watobo
     #   puts "* loading defaults from #{config_path}"
     Dir.glob("#{config_path}/*.yml").each do |cf|
       dummy = File.basename(cf).gsub!(/.yml/,'')
-      cc = dummy.strip.gsub(/[^[a-zA-Z\-_]]/,"").gsub( "-" , "_").split("_").map{ |s| s.downcase.capitalize }.join
+      #cc = dummy.strip.gsub(/[^[a-zA-Z\-_]]/,"").gsub( "-" , "_").split("_").map{ |s| s.downcase.capitalize }.join
+      cc = Watobo::Utils.camelcase dummy
       begin
         settings = YAML.load_file(cf)
         Watobo::Conf.add(cc,  settings )

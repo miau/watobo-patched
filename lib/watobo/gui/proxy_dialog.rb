@@ -52,7 +52,8 @@ module Watobo
       end
 
       def savePasswords?()
-        @save_pws_cbt.checked?
+       return false
+       # @save_pws_cbt.checked?
       end
 
       def onAccept(sender, sel, event)
@@ -91,15 +92,15 @@ module Watobo
         return 0
         end
 
-        @password_policy[:save_passwords] = @save_pws_cbt.checked?
-        puts @password_policy.to_yaml
+      #  @password_policy[:save_passwords] = @save_pws_cbt.checked?
+      #  puts @password_policy.to_yaml
         getApp().stopModal(self, 1)
         self.hide()
         return 1
 
       end
 
-      def initialize(owner, proxy=nil, password_policy={})
+      def initialize(owner, proxy=nil)
 
         super(owner, "Proxy Settings", :opts => DECOR_TITLE|DECOR_BORDER)
 
@@ -133,8 +134,8 @@ module Watobo
 
         end
 
-        @password_policy = Hash.new
-        @password_policy.update password_policy
+       # @password_policy = Hash.new
+       # @password_policy.update password_policy
         main = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
 
         matrix = FXMatrix.new(main, 2, :opts => MATRIX_BY_COLUMNS|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE)
@@ -217,11 +218,11 @@ module Watobo
         :opts => TEXTFIELD_NORMAL|LAYOUT_SIDE_RIGHT)
         domain.handle(self, FXSEL(SEL_UPDATE, 0), nil)
 
-        frame = FXVerticalFrame.new(main, :opts => LAYOUT_FILL_X)
-        @save_pws_cbt = FXCheckButton.new(frame, "save passwords")
-        @save_pws_cbt.checkState = false
-        @save_pws_cbt.checkState = true if password_policy[:save_passwords] == true
-        note_label = FXLabel.new(frame, "This setting affects all passwords!!!")
+      #  frame = FXVerticalFrame.new(main, :opts => LAYOUT_FILL_X)
+      #  @save_pws_cbt = FXCheckButton.new(frame, "save passwords")
+      #  @save_pws_cbt.checkState = false
+      #  @save_pws_cbt.checkState = true if password_policy[:save_passwords] == true
+      #  note_label = FXLabel.new(frame, "This setting affects all passwords!!!")
 
         buttons = FXHorizontalFrame.new(main, :opts => LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,
         :padLeft => 40, :padRight => 40, :padTop => 20, :padBottom => 20)
@@ -313,7 +314,7 @@ module Watobo
           # puts proxy.to_yaml
           @proxy_list[proxy[:name]] = proxy
         end
-        @password_policy[:save_passwords] = @save_passwords
+      #  @password_policy[:save_passwords] = @save_passwords
         getApp().stopModal(self, 1)
         self.hide()
         return 1
@@ -327,7 +328,7 @@ module Watobo
       end
 
       def addProxy(proxy=nil)
-        pdlg = AddProxyDialog.new(self, proxy, @password_policy)
+        pdlg = AddProxyDialog.new(self, proxy)
 
         if pdlg.execute != 0
           @acceptBtn.enable
@@ -449,17 +450,15 @@ module Watobo
         @proxyTable.getItem(lastRowIndex,1).justify = FXTableItem::LEFT
       end
 
-      def initialize(owner, proxy_settings={}, password_policy={})
+      def initialize(owner)
         super(owner, "Use Proxy", :opts => DECOR_ALL, :width => 250, :height => 400)
         @new_proxy = FXDataTarget.new('')
         @save_passwords = false
         
-        puts proxy_settings.to_yaml
-        
         @proxy_settings = Hash.new
-        @proxy_settings.update(proxy_settings)
+        @proxy_settings.update(Watobo::Conf::ForwardingProxy.to_h)
 
-        @password_policy = password_policy
+      #  @password_policy = password_policy
 
         @proxy = nil
         pname = @proxy_settings[:default_proxy]

@@ -99,15 +99,14 @@ module Watobo
       end
 
       def addChat(chat)
-        add_chat = true
-
-        add_chat = @project.siteInScope?(chat.request.site) if @show_scope_only == true
+        if @show_scope_only == true
+           return false unless @project.siteInScope?(chat.request.site)
+        end 
         @tree_filters[:response_status].each do |rf|
         #puts "#{chat.response.status} / #{rf}"
-          add_chat = false if chat.response.status =~ /#{rf}/
+          return false if chat.response.status =~ /#{rf}/
         end
-
-        addChatItem(chat) if add_chat
+        addChatItem(chat)
       end
 
       # end
@@ -204,7 +203,7 @@ module Watobo
           url_parts = []
           #  p = item
           if self.itemLeaf?(item)
-            getApp().beginWaitCursor do
+          
               begin
                 if item.data
                   #if item.data.class.to_s =~ /Qchat/
@@ -221,8 +220,9 @@ module Watobo
               #puts "!!! Error: could not show selected tree item"
               end
             end
+          
           #elsif item.data == :item_type_folder||:item_type_site then
-          end
+          
           # if !p.nil?
           #   while p.parent
           #    url_parts.unshift p.text.sub(/^\//,'')
@@ -235,9 +235,10 @@ module Watobo
           #   puts "===="
           #   puts item
           #   puts "===="
-          notify(:show_conversation, @quick_filter[item.object_id]) if @quick_filter[item.object_id]
+            getApp().beginWaitCursor do
+            notify(:show_conversation, @quick_filter[item.object_id]) if @quick_filter[item.object_id]
         #  notify(:apply_site_filter, filter)
-
+          end
         end
 
         self.connect(SEL_RIGHTBUTTONRELEASE) do |sender, sel, event|

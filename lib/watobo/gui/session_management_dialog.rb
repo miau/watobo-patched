@@ -227,8 +227,8 @@ module Watobo
         @signature_field.handle(self, FXSEL(SEL_UPDATE, 0), nil)
       end
 
-      def initialize(parent, project)
-        @project = project
+      def initialize(parent)
+        @project = Watobo.project
         @signature = FXDataTarget.new('')
 
         super(parent, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
@@ -251,12 +251,12 @@ module Watobo
 
         @signature_list.connect(SEL_COMMAND,method(:onSignatureClick))
 
-        if @project then
-          @project.getLogoutSignatures.each do |p|
+        
+        Watobo::Conf::Scanner.logout_signatures.each do |p|
             item = @signature_list.appendItem("#{p}")
             @signature_list.setItemData(item, p)
           end
-        end
+        
       end
     end
 
@@ -418,8 +418,8 @@ module Watobo
         end
       end
 
-      def initialize(parent, project)
-        @project = project
+      def initialize(parent)
+        @project = Watobo.project
         @pattern = FXDataTarget.new('')
 
         super(parent, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
@@ -466,18 +466,18 @@ module Watobo
         sunken = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN, :padding => 0)
         @response_viewer = SidPreview.new(sunken, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-        if @project then
-          @project.getSidPatterns.each do |p|
+        
+        Watobo::Conf::Scanner.sid_patterns.each do |p|
             item = @pattern_list.appendItem("#{p}")
             @pattern_list.setItemData(item, p)
           end
-        end
+        
       end
     end
 
     class SIDCacheFrame < FXVerticalFrame
-      def initialize(parent, project)
-        @project = project
+      def initialize(parent)
+        @project = Watobo.project
         super(parent, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
       #  button_frame = FXHorizontalFrame.new(self, :opts=> LAYOUT_FILL_X)
       #  refresh_btn = FXButton.new(button_frame, "Refresh")
@@ -566,8 +566,8 @@ module Watobo
         @scriptTable.addChat(chat)
       end
 
-      def initialize(parent, project)
-        @project = project
+      def initialize(parent)
+        @project = Watobo.project
         @table_filter = FXDataTarget.new('')
         @sel_row = -1
         super(parent, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
@@ -609,7 +609,7 @@ module Watobo
         frame = FXVerticalFrame.new(tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
         @response_viewer = Watobo::Gui::SimpleTextView.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN, :padding => 0)
 
-        if @project then
+        if @project.respond_to? :getLoginChatIds then
           @project.getLoginChatIds.each do |id|
             chat = @project.getChat(id)
             addRequest(chat)
@@ -636,8 +636,8 @@ module Watobo
         signatures = @logoutSettings.getLogoutSignatures()
       end
 
-      def initialize(owner, project)
-        @project = project
+      def initialize(owner)
+        #@project = project
         # Invoke base class initialize function first
         #  super(owner, "LoginScript Wizzard", DECOR_TITLE|DECOR_BORDER,:width=>800, :height=>600)
         super(owner, "Session Management", DECOR_ALL, :width=>800, :height=>600)
@@ -645,20 +645,28 @@ module Watobo
         main_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
 
         tabBook = FXTabBook.new(main_frame, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
+        @loginSettings = nil
+        @sidSettings = nil
+        
+        unless Watobo.project.nil?
 
         login_tab = FXTabItem.new(tabBook, "Login Script", nil)
-        @loginSettings = LoginScriptSettings.new(tabBook, @project)
+        @loginSettings = LoginScriptSettings.new(tabBook)
 
-        sid_tab = FXTabItem.new(tabBook, "Sesssion IDs", nil)
+       
+        end
+         sid_tab = FXTabItem.new(tabBook, "Sesssion IDs", nil)
         # @sidFrame = FXVerticalFrame.new(tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-        @sidSettings = SessionIdSettings.new(tabBook, @project)
+        @sidSettings = SessionIdSettings.new(tabBook)
 
         logout_tab = FXTabItem.new(tabBook, "Logout Signatures", nil)
-        @logoutSettings = LogoutSettings.new(tabBook, @project)
+        @logoutSettings = LogoutSettings.new(tabBook)
 
+        unless Watobo.project.nil?
         sidcache_tab = FXTabItem.new(tabBook, "SID-Cache", nil)
-        SIDCacheFrame.new(tabBook, @project)
-
+        SIDCacheFrame.new(tabBook)
+        end
+        
         tabBook.connect(SEL_COMMAND) do |sender, sel, tabItem|
 
           case tabItem.to_i
@@ -666,8 +674,10 @@ module Watobo
             #  puts "Login Script Selected"
           when 1
             # puts "Session IDs Selected"
+            unless Watobo.project.nil?
             ids = getLoginScriptIds()
             @sidSettings.updateRequests(ids)
+            end
           when 2
             #   puts "Logout Selected"
           end

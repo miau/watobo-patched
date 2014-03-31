@@ -111,12 +111,12 @@ module Watobo
 
     def postParmNames(chat)
       pnames = chat.request.post_parm_names
+      return pnames unless @settings.has_key? :excluded_parms
+      return pnames unless @settings[:excluded_parms].is_a? Array
       begin
-        @settings[:excluded_parms].each do |p|
-          pnames.delete(p)
-        end
+      pnames.select!{|p| !@settings[:excluded_parms].include? p }        
       rescue => bang
-      puts "! settings 'excluded_parms' missing !"
+      #puts "! settings 'excluded_parms' missing !"
       #  puts @project.settings.to_yaml
       puts bang
       puts bang.backtrace if $DEBUG
@@ -246,6 +246,10 @@ module Watobo
       rescue => bang
       end
       return false, nil, nil
+    end
+    
+    def log_console(msg)
+      puts "[#{Module.nesting[0].name}] #{msg}"
     end
 
     # +++ run_checks  +++

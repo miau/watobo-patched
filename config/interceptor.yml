@@ -1,6 +1,3 @@
-:cert_file: cert.pem
-:key_file: privkey.pem
-:dh_key_file: watobo_dh.key
 :pass_through: 
   :content_types: 
   - application\/audio
@@ -10,7 +7,6 @@
   - application\/.*flash
   - image\/
   :content_length: 100000
-:certificate_path: certificates
 :port: 8081
-:server: "127.0.0.1"
-  
+:proxy_mode: 1
+:bind_addr: "127.0.0.1"  

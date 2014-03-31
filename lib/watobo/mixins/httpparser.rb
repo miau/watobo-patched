@@ -42,8 +42,8 @@ module Watobo
     module Url
       include Watobo::Constants
       def file
-        @file ||= nil
-        return @file unless @file.nil?
+        #@file ||= nil
+        #return @file unless @file.nil?
         if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/(.*) HTTP.*/
           tmp = $1
           end_of_file_index = tmp.index(/\?/)
@@ -62,8 +62,8 @@ module Watobo
       end
 
       def file_ext
-        @file_ext ||= nil
-        return @file_ext unless @file_ext.nil?
+        #@file_ext ||= nil
+        #return @file_ext unless @file_ext.nil?
         if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/(.*) HTTP.*/
           @file_ext = $1
         else
@@ -178,8 +178,8 @@ module Watobo
       end
 
       def proto
-        @proto ||= nil
-        return @proto unless @proto.nil?
+       # @proto ||= nil
+       # return @proto unless @proto.nil?
         @proto = "http" if self.first =~ /^[^[:space:]]{1,} http:\/\//i
         #  puts dummy
         @proto = "https" if self.first =~ /^[^[:space:]]{1,} https:\/\//i
@@ -200,8 +200,8 @@ module Watobo
       end
 
       def url
-        @url ||= nil
-        return @url unless @url.nil?
+        #@url ||= nil
+        #return @url unless @url.nil?
         if self.first =~ /^[^[:space:]]{1,} (https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}.*) HTTP\//i then
           @url = $1
         else
@@ -211,8 +211,8 @@ module Watobo
       end
 
       def site
-        @site ||= nil
-        return @site unless @site.nil?
+        #@site ||= nil
+        #return @site unless @site.nil?
         if self.first =~ /^[^[:space:]]{1,} (https?):\/\/([\-0-9a-zA-Z.]*)([:0-9]{0,6})/i then
           host = $2
           port_extension = $3
@@ -230,8 +230,8 @@ module Watobo
       end
 
       def host
-        @host ||= nil
-        return @host unless @host.nil?
+        #@host ||= nil
+        #return @host unless @host.nil?
         if self.first =~ /^[^[:space:]]{1,} https?:\/\/([\-0-9a-zA-Z.]*)[:0-9]{0,6}/i then
           @host = $1
         else
@@ -349,6 +349,7 @@ module Watobo
       include Watobo::Constants
       def post_parms
         parmlist=[]
+        return parmlist unless has_body?
         begin
         if self.last =~ /\=.*\&?/i
           parmlist = self.last.split(/\&/)
@@ -464,13 +465,40 @@ module Watobo
         return ct
       end
 
+def content_encoding
+        te = TE_NONE
+        self.each do |line|
+          break if line.strip.empty?
+          if line =~ /^Content-Encoding: (.*)/i then
+            dummy = $1.strip
+            puts "Content-Encoding => #{dummy}"
+            te = case dummy
+            when /chunked/i
+              TE_CHUNKED
+            when /compress/i
+              TE_COMPRESS
+            when /zip/i
+              TE_GZIP
+            when /deflate/i
+              TE_DEFLATE
+            when /identity/i
+              TE_IDENTITY
+            else
+              TE_NONE
+            end
+            break
+          end
+        end
+        return te
+      end
+      
       def transferEncoding
         te = TE_NONE
         self.each do |line|
           break if line.strip.empty?
           if line =~ /^Transfer-Encoding: (.*)/i then
             dummy = $1.strip
-            puts dummy
+           # puts dummy
             te = case dummy
             when 'chunked'
               TE_CHUNKED
@@ -490,6 +518,8 @@ module Watobo
         end
         return te
       end
+      
+      alias :transfer_encoding :transferEncoding
 
       def contentMD5
         b = self.body.nil? ? "" : self.body
@@ -577,9 +607,11 @@ end
           return ''
         end
         rescue => bang
+          if $DEBUG
           puts "! No Status Available !".upcase
           puts bang
-          puts bang.backtrace if $DEBUG
+          puts bang.backtrace
+          end 
           return nil
         end
       end
@@ -634,31 +666,7 @@ end
 
     end
 
-    ############################################################
-    # R E S P O N S E   P A R S E R   M I X I N
-    ###############################################################
-    module ResponseParser
-      def status
-        dummy = self.first
-
-        if dummy =~ /HTTP\/1.. (.*)/i then
-          return $1.chomp
-        else
-          return nil
-        end
-      end
-
-
-      def headers(&b)
-        header=[]
-        self.each do |line|
-          return header if line.strip.empty?
-          yield line if block_given?
-          header.push line
-        end
-        return nil
-      end
-end
+   
     end
   end
 end

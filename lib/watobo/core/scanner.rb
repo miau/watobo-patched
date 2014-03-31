@@ -197,75 +197,80 @@ module Watobo
       notify(:logger, LOG_INFO, msg )
       puts msg
       #scan_session = Time.now.to_i
-      
-      
-      @active_checks.uniq.each do |mod|
-         check = mod
-         #check = mod.new(@prefs[:scan_session], @prefs ) if mod.respond_to? :new
-         puts "* subscribe for logout" if $DEBUG
-         check.subscribe(:logout) { |m|
-           next if @login_count > @max_login_count or @prefs[:auto_login] == false
-           if @login_mutex.try_lock
-              begin
-                m.waitLogin(true)
-                Watobo.print_debug("LOGOUT DETECTED") if $DEBUG
-                @login_count += 1
-                m.runLogin(@prefs[:login_chats])
 
-                m.waitLogin(false) if m
-              rescue => bang
-                  Watobo.print_debug("Could not relogin") if $DEBUG
-                  puts bang
-                  puts bang.backtrace if $DEBUG
-              ensure
-            
-              end
-              @login_mutex.unlock
-              end
+      @active_checks.uniq.each do |mod|
+        check = mod
+        #check = mod.new(@prefs[:scan_session], @prefs ) if mod.respond_to? :new
+        puts "* subscribe for logout" if $DEBUG
+        check.subscribe(:logout) { |m|
+          next if @login_count > @max_login_count or @prefs[:auto_login] == false
+          if @login_mutex.try_lock
+            begin
+              m.waitLogin(true)
+              Watobo.print_debug("LOGOUT DETECTED") if $DEBUG
+              @login_count += 1
+              m.runLogin(@prefs[:login_chats])
+
+              m.waitLogin(false) if m
+            rescue => bang
+              Watobo.print_debug("Could not relogin") if $DEBUG
+              puts bang
+              puts bang.backtrace if $DEBUG
+            ensure
+
+            end
+          @login_mutex.unlock
+          end
 
         }
 
         puts "* subscribe for :check_finished" if $DEBUG
         check.clearEvents(:check_finished)
+
         check.subscribe(:check_finished) do |m, request, response|
         # update progress
-            @check_count ||= 0
-            @check_count += 1
-            puts "CheckCount: #{@check_count}" if $DEBUG
-              notify( :progress, m )
-              unless @prefs[:scanlog_name].nil?
-                if @prefs[:session_store].respond_to? :add_scan_log
-                  chat = Chat.new(request, response, :id => 0, :chat_source => @prefs[:chat_source])
-                  @prefs[:session_store].add_scan_log(chat, @prefs[:scanlog_name])
-                end
-              end
+          @check_count ||= 0
+          @check_count += 1
+          puts "CheckCount: #{@check_count}" if $DEBUG
+          notify( :progress, m )
+          unless @prefs[:scanlog_name].nil?
+            if @prefs[:session_store].respond_to? :add_scan_log
+              chat = Chat.new(request, response, :id => 0, :chat_source => @prefs[:chat_source])
+              @prefs[:session_store].add_scan_log(chat, @prefs[:scanlog_name])
             end
-
-        puts "* subscribe for :new_finding" if $DEBUG  
-        check.clearEvents(:new_finding)          
-        check.subscribe(:new_finding) do |f|
-            #    p "* NEW FINDING"
-            #   p f.details[:module]
-              notify(:new_finding, f)
+          end
         end
-      
-      end      
-      
+
+        puts "* subscribe for :new_finding" if $DEBUG
+        check.clearEvents(:new_finding)
+        check.subscribe(:new_finding) do |f|
+        #    p "* NEW FINDING"
+        #   p f.details[:module]
+          notify(:new_finding, f)
+        end
+
+      end
+
       tlist = []
       @filtered_chat_list.uniq.each do |chat|
-         @active_checks.uniq.each do |mod|
-            print "---> #{mod.class}"
-            # accept Class- and Check-Types
-            check = mod
-           
-            # reset check counters and variables
-            check.reset()
-            if @prefs[:online_check] == false or siteAlive?(chat) then
-              @check_list << Thread.new(check, chat, check_prefs){|m, c, p|
-                 m.run_checks(c,p)
-                 notify(:logger, LOG_INFO, "finished checks: #{m.class} on chat #{c.id}")
-               }
-            end
+       # puts "CHAT --> #{chat.id}"
+        @active_checks.uniq.each do |mod|
+        #  puts "MOD"
+          print "---> #{mod.class}"
+          # accept Class- and Check-Types
+          check = mod
+
+          # reset check counters and variables
+          check.reset()
+          if @prefs[:online_check] == false or siteAlive?(chat) then
+            @check_list << Thread.new(check, chat, check_prefs){|m, c, p|
+              m_name = m.class.to_s.gsub(/.*::/,'')
+              notify(:module_started, m_name)
+              m.run_checks(c,p)
+              notify(:logger, LOG_INFO, "finished checks: #{m.class} on chat #{c.id}")
+              notify(:module_finished, m_name)
+            }
+          end
         end
       end
 
@@ -300,9 +305,9 @@ module Watobo
       @status = :stopped
 
       # @onlineCheck = OnlineCheck.new(@project)
-      m = "Initializing Scanner ..."
-      notify(:logger, LOG_INFO, m)
-      puts m
+      msg = "Initializing Scanner ..."
+      notify(:logger, LOG_INFO, msg)
+      puts msg
 
       @prefs = {
         #:root_path => [],
@@ -330,6 +335,7 @@ module Watobo
       puts @prefs.to_yaml if $DEBUG
 
       @filtered_chat_list = filteredChats(@chat_list, @prefs)
+      puts "#ActiveChecks: #{@active_checks.length}"
 
       @active_checks.uniq.each do |m|
         puts m.class

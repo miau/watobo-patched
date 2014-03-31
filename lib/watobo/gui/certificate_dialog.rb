@@ -26,7 +26,7 @@ module Watobo
       def createCertificate(sender, sel, ptr)
         @createButton.disable
 
-        cadir = File.join(File.dirname($0), "CA")
+        cadir = File.join(Watobo.working_directory, "CA")
         crl_dir= File.join(cadir, "crl")
         hostname = "watobo"
         domainname = "watobo.local"

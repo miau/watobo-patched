@@ -22,8 +22,6 @@
 module Watobo
   module Modules
     module Passive
-      
-      
       class Redirectionz < Watobo::PassiveCheck
         
         def initialize(project)
@@ -67,10 +65,11 @@ module Watobo
                   end
                 end
               end
+            end 
               #puts ""
-              chat.request.post_parm_names.each do |parm|              
-                parm_value=chat.request.post_parm_value(parm)
-                if parm_value.length > 5 then # check for minimum parameter length (False Positive Reduction)
+            chat.request.post_parm_names.each do |parm|              
+               parm_value=chat.request.post_parm_value(parm)
+               if parm_value.length > 5 then # check for minimum parameter length (False Positive Reduction)
                   chat.response.headers.each do |header|                
                     if header =~ /Location.*#{parm_value}.*/i  then
                       addFinding(
@@ -83,7 +82,7 @@ module Watobo
                   end
                 end
               end
-            end       
+               
           rescue => bang
             # raise
             showError(chat.id, bang)

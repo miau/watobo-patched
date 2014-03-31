@@ -34,31 +34,34 @@ module Watobo
       # end
       copy = Utils.copyObject(@request)
       # now extend the new request with the Watobo mixins
-      copy.extend Watobo::Mixin::Parser::Url
-      copy.extend Watobo::Mixin::Parser::Web10
-      copy.extend Watobo::Mixin::Shaper::Web10
+      #copy.extend Watobo::Mixin::Parser::Url
+      #copy.extend Watobo::Mixin::Parser::Web10
+      #copy.extend Watobo::Mixin::Shaper::Web10
+      Watobo::Request.create copy
       return copy
     end
 
     private
 
-    def extendRequest
-      @request.extend Watobo::Mixin::Shaper::Web10
-      @request.extend Watobo::Mixin::Parser::Web10
-      @request.extend Watobo::Mixin::Parser::Url
-    end
+    # def extendRequest
+    #   @request.extend Watobo::Mixin::Shaper::Web10
+    #   @request.extend Watobo::Mixin::Parser::Web10
+    #   @request.extend Watobo::Mixin::Parser::Url
+    # end
 
-    def extendResponse
-      @response.extend Watobo::Mixin::Parser::Web10
-    end
+    # def extendResponse
+    #   @response.extend Watobo::Mixin::Parser::Web10
+    # end
 
     def initialize(request, response)
       @request = request
       @response = response
       @file = nil
 
-      extendRequest()
-      extendResponse()
+      #  extendRequest()
+      #  extendResponse()
+      Watobo::Request.create @request
+      Watobo::Response.create @response
 
     end
 
@@ -176,15 +179,15 @@ module Watobo
     def id()
       @details[:id]
     end
-    
+
     def false_positive?
       @details[:false_positive]
     end
-    
+
     def set_false_positive
       @details[:false_positive] = true
     end
-    
+
     def unset_false_positive
       @details[:false_positive] = false
     end
@@ -210,15 +213,15 @@ module Watobo
         @@numFindings += 1
 
       }
-      extendRequest()
-      extendResponse()
+    #  extendRequest()
+    #  extendResponse()
 
     end
 
   end
 
   class Project
-    
+
     attr :chats
     attr_accessor :findings
     attr :scan_settings
@@ -253,6 +256,15 @@ module Watobo
 
     def projectSettingsFile
       @project_file
+    end
+
+    def session_settings()
+      s = YAML.load(YAML.dump(scan_settings))
+      sf =  [:logout_signatures, :non_unique_parms, :login_chat_ids, :excluded_chats, :csrf_request_ids, :scope ]
+      s.each_key do |k|
+        s.delete k unless sf.include? k
+      end
+      s
     end
 
     def getLoginChats()
@@ -426,8 +438,10 @@ module Watobo
 
     def uniqueRequestHash(request)
       begin
+        extend_request(request) unless request.respond_to? :site
         hashbase = request.site + request.method + request.path
         request.get_parm_names.sort.each do |p|
+        # puts "URL-Parm: #{p}"
           if @scan_settings[:non_unique_parms].include?(p) then
           hashbase += p + request.get_parm_value(p)
           else
@@ -436,6 +450,7 @@ module Watobo
 
         end
         request.post_parm_names.sort.each do |p|
+        # puts "POST-Parm: #{p}"
           if @scan_settings[:non_unique_parms].include?(p) then
           hashbase += p + request.post_parm_value(p)
           else
@@ -443,6 +458,7 @@ module Watobo
           end
 
         end
+        # puts hashbase
         return Digest::MD5.hexdigest(hashbase)
       rescue => bang
         puts bang
@@ -479,7 +495,6 @@ module Watobo
       @scan_settings.update new_settings
     end
 
-    
     def findChats(site, opts={})
       o = {
         :dir => "",
@@ -536,33 +551,34 @@ module Watobo
     end
 
     def addChat(chat, prefs={})
-      @chats_lock.synchronize do 
-      begin
-        if chat.request.host then
-          chats.push chat
+      @chats_lock.synchronize do
+        begin
+          if chat.request.host then
+            chats.push chat
 
-          options = {
-            :run_passive_checks => true,
-            :notify => true
-          }
-          options.update prefs
+            options = {
+              :run_passive_checks => true,
+              :notify => true
+            }
+            options.update prefs
 
-          runPassiveChecks(chat) if options[:run_passive_checks] == true
+            runPassiveChecks(chat) if options[:run_passive_checks] == true
 
-          #@interface.addChat(self, chat) if @interface
-          notify(:new_chat, chat) if options[:notify] == true
+            #@interface.addChat(self, chat) if @interface
+            notify(:new_chat, chat) if options[:notify] == true
 
-          if chat.id != 0 then
-          @session_store.add_chat(chat)
-          else
-            puts "!!! Could not add chat #{chat.id}"
+            if chat.id != 0 then
+            @session_store.add_chat(chat)
+            else
+              puts "!!! Could not add chat #{chat.id}"
+            end
           end
+
+          # p "!P!"
+        rescue => bang
+          puts bang
+          puts bang.backtrace if $DEBUG
         end
-        # p "!P!"
-      rescue => bang
-        puts bang
-        puts bang.backtrace if $DEBUG
-      end
       end
     end
 
@@ -570,8 +586,8 @@ module Watobo
       @sessionMgr.runLogin(loginChats)
     end
 
-   def has_scope?()
-      return false if @scan_settings[:scope].nil?
+    def has_scope?()
+      return false if @scan_settings[:scope].empty?
       @scan_settings[:scope].each_key do |k|
         return true if @scan_settings[:scope][k][:enabled] == true
       end
@@ -619,75 +635,72 @@ module Watobo
 
     def addFinding(finding, opts={})
       @findings_lock.synchronize do
-      options = {
-        :notify => true,
-        :save_finding => true
-      }
-      options.update opts
-      #  puts "* add finding #{finding.details[:fid]}" if $DEBUG
+        options = {
+          :notify => true,
+          :save_finding => true
+        }
+        options.update opts
+        #  puts "* add finding #{finding.details[:fid]}" if $DEBUG
 
-      unless @findings.has_key?(finding.details[:fid])
-        begin
-          @findings[finding.details[:fid]] = finding
-          #@interface.addFinding(new_finding)
-          #   puts "* new finding"
-          notify(:new_finding, finding) if options[:notify] == true
+        @findings_count ||= Hash.new
+        @findings_count[finding.details[:class]] = 0 unless @findings_count.has_key? finding.details[:class]
 
-          @session_store.add_finding(finding) if options[:save_finding] == true
-        rescue => bang
-          puts "!!!ERROR: #{Module.nesting[0].name}"
-          puts bang
-          puts bang.backtrace if $DEBUG
+        unless @findings.has_key?(finding.details[:fid]) or @findings_count[finding.details[:class]] > 100
+          begin
+            @findings[finding.details[:fid]] = finding
+            @findings_count[finding.details[:class]] += 1
+            #@interface.addFinding(new_finding)
+            #   puts "* new finding"
+            notify(:new_finding, finding) if options[:notify] == true
+
+            @session_store.add_finding(finding) if options[:save_finding] == true
+          rescue => bang
+            puts "!!!ERROR: #{Module.nesting[0].name}"
+            puts bang
+            puts bang.backtrace if $DEBUG
+          end
+        else
+        # puts "Skip finding <#{finding.details[:class]}>"
         end
-      end
       end
 
     end
-    
+
     def delete_finding(f)
       @findings_lock.synchronize do
         @session_store.delete_finding(f)
         @findings.delete f.details[:fid]
       end
     end
-    
+
     def set_false_positive(finding)
       @findings_lock.synchronize do
         puts "Set Finding #{finding.id} / #{finding.details[:fid]} False-Positive" if $DEBUG
         if @findings.has_key? finding.details[:fid]
           @findings[finding.details[:fid]].set_false_positive
-          @session_store.update_finding(finding)
-          return true
-        end
-        return false
-      end
-    end
-    
-    def unset_false_positive(finding)
-      @findings_lock.synchronize do
-        if @findings.has_key? finding.id
-          @findings[finding.id].unset_false_positive
-          @session_store.update_finding(finding)
-          return true
+        @session_store.update_finding(finding)
+        return true
         end
         return false
       end
     end
 
+    def unset_false_positive(finding)
+      @findings_lock.synchronize do
+        if @findings.has_key? finding.id
+        @findings[finding.id].unset_false_positive
+        @session_store.update_finding(finding)
+        return true
+        end
+        return false
+      end
+    end
 
     def setupProject(progress_window=nil)
       begin
         puts "DEBUG: Setup Project" if $DEBUG and $debug_project
         importSession()
-=begin
-        importSession(progress_window)
 
-        init_active_modules(progress_window)
-
-        init_passive_modules(progress_window)
-
-        initPlugins(progress_window)
-=end
       rescue => bang
         puts bang
         puts bang.backtrace if $DEBUG
@@ -894,55 +907,7 @@ module Watobo
         notify(:update_progress, :increment =>1, :job => "finding #{f.id}" )
         addFinding(f, :notify => true, :save_finding => false ) if f
       end
-=begin
-    puts "* Import Session:"
-    puts "+ Conversation Path:\n>> #{File.expand_path(@conversations_path)}"
 
-    puts
-    chatIds = listChatIds(@conversations_path, "chat")
-    findingIds = listChatIds(@findings_path, "finding")
-
-    numChats = chatIds.length
-    numFindings = findingIds.length
-    numImports = numChats + numFindings
-    pc = 0
-
-    notify(:update_progress, :total => numImports, :task => "Import Conversation")
-
-    begin
-    chatIds.each_with_index do |id, index|
-
-    notify(:update_progress, :increment =>1, :job => "chat #{index}/#{numChats}" )
-
-    fname = File.join(@conversations_path, "#{id}-chat")
-    chat = Watobo::Utils.loadChatYAML(fname)
-    addChat(chat, :run_passive_checks => false, :notify => false ) if chat
-    end
-    rescue => bang
-    puts "!!!ERROR: Could not import conversations"
-    puts bang
-    puts bang.backtrace if $DEBUG
-    end
-
-    puts "+ Findings Path:\n>> #{File.expand_path(@findings_path)}"
-
-    notify(:update_progress, :task => "Import Findings")
-    begin
-    findingIds.each_with_index do |id, index|
-    notify(:update_progress, :increment => 1, :job => "Finding #{index}/#{numFindings}")
-
-    fname = File.join(@findings_path, "#{id}-finding")
-    finding = Watobo::Utils.loadFindingYAML(fname)
-
-    addFinding(finding, :notify => false) if finding
-
-    end
-    rescue => bang
-    puts "!!!ERROR: Could not import finding [#{id}]"
-    puts bang
-
-    end
-=end
     end
 
     def setDefaults_UNUSED()

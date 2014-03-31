@@ -169,6 +169,7 @@ module Watobo
       
       
       def normalizeData(data)
+        raise ArgumentError, "Bad data type. Need Request/Response." unless data.respond_to? :headers 
         dummy = []
         begin
           unless data.headers.nil?
@@ -178,8 +179,13 @@ module Watobo
             
             dummy.push ""
           end
+          
+          
           unless data.body.nil?
-            data.body.split("\n").each do |l|
+            puts "> clean up body #{data.body.length}"
+            body =  data.body.unpack("C*").pack("C*")
+            body.split("\n").each do |l|
+             # puts "[#{i}] #{l}"
               dummy.concat adjustLine(l)
             end
           end
@@ -188,7 +194,7 @@ module Watobo
           dummy = data
         end
         #  puts dummy.join("\n")
-        #return dummy.join("\n")
+       # return dummy.join("\n")
         return dummy
       end
       
@@ -258,6 +264,10 @@ module Watobo
         context_lines = 3
         raw_chunks = []
         collections = []
+        puts "[#{self}]"
+        puts "#{data_old.length} #{data_old.class}"
+        puts "#{data_new.length} #{data_new.class}"
+                
         return collections if diffs.empty?
         oldhunk = hunk = nil
         file_length_difference = 0
@@ -393,6 +403,13 @@ module Watobo
         
         @normRequestNew = normalizeData(chat_new.request)
         @normResponseNew = normalizeData(chat_new.response)
+        
+        puts "= normalized response (new)"
+        puts "#{@normResponseNew.length} #{@normResponseNew.class}"
+        
+        puts "= normalized response (new)"
+        puts "#{@normResponseOrig.length} #{@normResponseOrig.class}"
+        
         
         # diff normalized data
         @requestDiffs = Diff::LCS.diff( @normRequestOrig, @normRequestNew )

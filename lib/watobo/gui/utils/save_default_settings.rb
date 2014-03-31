@@ -22,26 +22,60 @@
 module Watobo
 
   module Gui
-    def self.save_default_settings(project)
+    def self.save_settings()
+      begin
+
+        mp = ''
+        save_pws = false
+
+        #   puts "= Master Password Settings ="
+        #   puts Watobo::Gui::MasterPW.settings.to_yaml
+
+        if Watobo::Gui::MasterPW.save_passwords?
+          save_pws = true
+          unless Watobo::Gui::MasterPW.set?
+            save_pws = false unless Watobo::Gui::MasterPW.save_without_master?
+          end
+        end
+
+        Watobo.save_proxy_settings( :save_passwords => save_pws, :key => mp )
+
+        Watobo::Gui.save_scanner_settings()
+        unless Watobo.project.nil?
+          Watobo::Conf::General.save_project(Watobo.project.session_store)
+          Watobo::Conf::Interceptor.save_project(Watobo.project.session_store)
+        end
+        # also save global settings here
+        Watobo::Conf::General.save
+        Watobo::Conf::Interceptor.save
+
+        return true
+      rescue => bang
+        puts bang
+        puts bang.backtrace if $DEBUG
+      end
+      return false
+    end
+
+    def self.save_default_settings_UNUSED(project)
       mp = ''
       save_pws = false
 
-      puts "= Master Password Settings ="
-      puts Watobo::Gui::MasterPW.settings.to_yaml
+      #  puts "= Master Password Settings ="
+      #  puts Watobo::Gui::MasterPW.settings.to_yaml
 
       if Watobo::Gui::MasterPW.save_passwords?
         save_pws = true
         unless Watobo::Gui::MasterPW.set?
-        save_pws = false unless Watobo::Gui::MasterPW.save_without_master?
+          save_pws = false unless Watobo::Gui::MasterPW.save_without_master?
         end
       end
 
       Watobo.save_proxy_settings( :save_passwords => save_pws, :key => mp )
-      
-      
+
       Watobo::Conf::General.save
       Watobo::Conf::Interceptor.save
-      
+
       return true
 =begin
     proxy_has_credentials = false

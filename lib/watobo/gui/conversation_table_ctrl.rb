@@ -21,22 +21,20 @@
 # .
 module Watobo
   module Gui
-    
     class ConversationTableCtrl < FXVerticalFrame
-      
+
       include Watobo::Constants
       include Watobo::Gui::Icons
-      
       def table=(table)
         @table = table
         @table.subscribe(:table_changed) { update_info }
       end
-      
+
       def initialize(owner, opts)
         super(owner, opts )
         @table = nil
         @tabBook = FXTabBook.new(self, nil, 0, :opts => LAYOUT_FILL_X|LAYOUT_RIGHT, :padding => 0)
-        
+
         docfilter_tab = FXTabItem.new(@tabBook, "Doc Filter", nil)
 
         docfilter_frame = FXHorizontalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
@@ -79,19 +77,19 @@ module Watobo
 
         @table_option_hidetested_cb = FXCheckButton.new(options_frame, "hide tested", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
         @table_option_hidetested_cb.setCheck(false)
-        
-          @table_option_autoscroll.connect(SEL_COMMAND) {
-            @table.autoscroll = @table_option_autoscroll.checked? unless @table.nil?        
+
+        @table_option_autoscroll.connect(SEL_COMMAND) {
+          @table.autoscroll = @table_option_autoscroll.checked? unless @table.nil?
         }
-       
+
         #applyFilterButton = FXButton.new(conversation_frame, "Apply", nil, nil, 0, FRAME_RAISED|FRAME_THICK)
         button_frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X, :padding => 0)
         FXButton.new(button_frame, "Apply", nil, nil, 0, FRAME_RAISED|FRAME_THICK).connect(SEL_COMMAND) { apply_filter }
         #FXButton.new(docfilter_button_frame, "Clear", nil, nil, 0, FRAME_RAISED|FRAME_THICK).connect(SEL_COMMAND, method(:onClear))
 
-        @text_filter.connect(SEL_COMMAND){ 
+        @text_filter.connect(SEL_COMMAND){
           apply_filter
-          }
+        }
 
         FXButton.new(button_frame, "", ICON_BTN_UP, nil, 0, FRAME_RAISED|FRAME_THICK).connect(SEL_COMMAND) {
           @table.scrollUp() unless @table.nil?
@@ -100,16 +98,38 @@ module Watobo
         FXButton.new(button_frame, "", ICON_BTN_DOWN, nil, 0, FRAME_RAISED|FRAME_THICK).connect(SEL_COMMAND) {
           @table.scrollDown() unless @table.nil?
         }
-        
-         @info_txt = FXLabel.new( button_frame, "0/0", :opts => LAYOUT_RIGHT)
+
+        @info_txt = FXLabel.new( button_frame, "0/0", :opts => LAYOUT_RIGHT)
       end
 
       def subscribe(event, &callback)
         (@event_dispatcher_listeners[event] ||= []) << callback
       end
 
+      def filter_settings
+        doctype_filter = []
+        doctype_filter.concat(Watobo::Conf::Gui.fext_img) if @foption_nopix.checked?
+        doctype_filter.concat(Watobo::Conf::Gui.fext_docs) if @foption_nodocs.checked?
+        doctype_filter.concat(Watobo::Conf::Gui.fext_javascript) if @foption_nojs.checked?
+        doctype_filter.concat(Watobo::Conf::Gui.fext_style) if @foption_nocss.checked?
+
+        text = @text_filter.enabled? ? @text_filter.text : ""
+
+        fs = {
+          :show_scope_only => @table_option_scope.checked?,
+          :text => text,
+          :url => @foption_url.checked?,
+          :request => @foption_req.checked?,
+          :response => @foption_res.checked?,
+          :hide_tested => @table_option_hidetested_cb.checked?,
+          :doc_filter => doctype_filter,
+          :unique => @table_option_unique.checked?
+        }
+        fs
+      end
+
       private
-      
+
       def update_info
         if @table.respond_to? :num_total
           @info_txt.text = "#{@table.num_visible}/#{@table.num_total}"
@@ -129,34 +149,36 @@ module Watobo
       end
 
       def clear_text_filter
-         @text_filter.text = ''
-         apply_filter         
+        @text_filter.text = ''
+        apply_filter
       end
 
       def apply_filter
-          unless @table.nil?
+        unless @table.nil?
+          getApp().beginWaitCursor do
             @table.apply_filter(filter_settings)
             update_info
           end
+        end
       end
-      
+
       def update_text_filter
         if @foption_url.checked? or @foption_req.checked? or @foption_res.checked?
         @text_filter.enable
         else
-          @text_filter.disable
+        @text_filter.disable
         end
       end
-      
+
       def filter_settings
         doctype_filter = []
-        doctype_filter.concat(Watobo::Conf::Gui.fext_img) if @foption_nopix.checked?  
-        doctype_filter.concat(Watobo::Conf::Gui.fext_docs) if @foption_nodocs.checked? 
+        doctype_filter.concat(Watobo::Conf::Gui.fext_img) if @foption_nopix.checked?
+        doctype_filter.concat(Watobo::Conf::Gui.fext_docs) if @foption_nodocs.checked?
         doctype_filter.concat(Watobo::Conf::Gui.fext_javascript) if @foption_nojs.checked?
         doctype_filter.concat(Watobo::Conf::Gui.fext_style) if @foption_nocss.checked?
-        
+
         text = @text_filter.enabled? ? @text_filter.text : ""
-        
+
         fs = {
           :show_scope_only => @table_option_scope.checked?,
           :text => text,
@@ -166,8 +188,8 @@ module Watobo
           :hide_tested => @table_option_hidetested_cb.checked?,
           :doc_filter => doctype_filter,
           :unique => @table_option_unique.checked?
-          }  
-        fs   
+        }
+        fs
       end
 
     end

@@ -40,17 +40,12 @@ module Watobo
       return false
     end
     
-    def Utils.loadSettings(file)
-      
+    def Utils.load_settings(file)
+      settings = nil
       if File.exists?(file) then
-        # exp = File.open(file).read
-        # settings = secure_eval(exp)
-        settings = nil
-        File.open(file,"r") { |fh|
-          settings = YAML.load(fh)
-        }
-        return settings
+        settings = YAML.load_file(file)
       end
+      return settings
     end 
     
     def Utils.saveChat(chat, filename)

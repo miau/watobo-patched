@@ -996,12 +996,10 @@ module Watobo
             scan_prefs[:check_online] = false
             # check if logging all scan chat
 
-            if @logScanChats.checked? and File.exist?(@log_dir_dt.value)
-               new_dir = File.join(@log_dir_dt.value, "fuzzer-" + Time.now.to_f.to_s )
-               Dir.mkdir(new_dir)
-               scan_prefs[:scanlog_dir] = new_dir
-            end
-
+             if @logScanChats.checked?
+               scan_prefs[:scanlog_name] = @log_dir_dt.value unless @log_dir_dt.value.empty?
+          end
+          
             @scanner = Watobo::Scanner2.new(chat_list, check_list, @project.passive_checks, scan_prefs)
             @pbar.total = @scanner.numTotalChecks
             @pbar.progress = 0
@@ -1136,29 +1134,29 @@ puts "run scanner"
                if @logScanChats.checked? then
                   @log_dir_text.enabled = true
                   @log_dir_label.enabled = true
-                  @log_dir_btn.enable
+                 # @log_dir_btn.enable
                else
                   @log_dir_text.enabled = false
                   @log_dir_label.enabled = false
-                  @log_dir_btn.disable
+                 # @log_dir_btn.disable
                end
             end
 
 
             @log_dir_dt = FXDataTarget.new('')
             #   @log_dir_dt.value = @project.scanLogDirectory() if File.exist?(@project.scanLogDirectory())
-            @log_dir_label = FXLabel.new(opt, "Scan-Log Directory:" )
+            @log_dir_label = FXLabel.new(opt, "Scan Name:" )
             scanlog_frame = FXHorizontalFrame.new(opt,:opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)
             @log_dir_text = FXTextField.new(scanlog_frame, 20,
             :target => @log_dir_dt, :selector => FXDataTarget::ID_VALUE,
             :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN)
             @log_dir_text.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-            @log_dir_btn = FXButton.new(scanlog_frame, "Change")
+           # @log_dir_btn = FXButton.new(scanlog_frame, "Change")
             # @log_dir_btn.connect(SEL_COMMAND, method(:selectLogDirectory))
 
             @log_dir_text.enabled = false
             @log_dir_label.enabled = false
-            @log_dir_btn.disable
+            #@log_dir_btn.disable
 
 
 

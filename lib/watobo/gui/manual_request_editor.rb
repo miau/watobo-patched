@@ -400,10 +400,10 @@ module Watobo
                   second_request = Watobo::Utils.copyObject(@second_selection.request)
                   second_response = Watobo::Utils.copyObject(@second_selection.response)
 
-                  orig = Watobo::Chat.new(first_request, first_response, :id => 0)
-                  new = Watobo::Chat.new(second_request, second_response, :id => 0)
+                  chat_one = Watobo::Chat.new(first_request, first_response, :id => 0)
+                  chat_two = Watobo::Chat.new(second_request, second_response, :id => 0)
                   project = nil
-                  diffViewer = ChatDiffViewer.new(FXApp.instance, orig, new)
+                  diffViewer = ChatDiffViewer.new(FXApp.instance, chat_one, chat_two)
                   diffViewer.create
                   diffViewer.show(Fox::PLACEMENT_SCREEN)
                end
@@ -553,10 +553,13 @@ module Watobo
 
             unless scan_chats.empty? then
                # we only need array of selected class names
-               scan_modules = dlg.selectedModules().map{ |m| m.class.to_s }
-               acc = @project.active_checks.select do |ac|
-                  scan_modules.include? ac.class.to_s
-               end
+              # scan_modules = dlg.selectedModules().map{ |m| m.class.to_s }
+               
+              # acc = @project.active_checks.select do |ac|
+              #    scan_modules.include? ac.class.to_s
+              # end
+               
+               acc = dlg.selectedModules
 
                scan_prefs = @project.getScanPreferences
                # we don't want logout detection during a QuickScan
@@ -593,6 +596,9 @@ module Watobo
                @scanner.subscribe(:new_finding) { |f|
                   @project.addFinding(f)
                }
+               
+               @scanner.subscribe(:module_started){ |m| logger("Module #{m} started")}
+               @scanner.subscribe(:module_finished){ |m| logger("Module #{m} finished")}
 
                csrf_requests = []
 
@@ -684,6 +690,10 @@ module Watobo
                @responseFilter = FXDataTarget.new("")
 
                @chat = chat
+               
+               if chat.respond_to? :request
+                 self.title = "#{chat.request.method} #{chat.request.url}"
+               end
 
                @original_request = chat.copyRequest
 
@@ -985,7 +995,7 @@ end
             @request_viewer.setText('')
             @response_viewer.setText('')
             new_request = @req_builder.parseRequest
-
+            
             if new_request.nil?
                logger("Could not send request!")
                return false

@@ -135,9 +135,7 @@ module Watobo
           #   end
 
           #end
-          # save settings
-          #  saveProjectSettings(@active_project)
-          #  saveSessionSettings(@active_project)
+        
         end
       end
 

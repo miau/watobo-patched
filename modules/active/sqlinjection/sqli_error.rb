@@ -1,5 +1,5 @@
 # .
-# sqli_simple.rb
+# sqli_error.rb
 # 
 # Copyright 2012 by siberas, http://www.siberas.de
 # 
@@ -25,14 +25,14 @@ module Watobo
       module Sqlinjection
         
         
-        class Sqli_simple < Watobo::ActiveCheck
+        class Sqli_error < Watobo::ActiveCheck
           
           def initialize(project, prefs={})
             super(project, prefs)
             @info.update(
-                         :check_name => 'Simple SQL-Injection',    # name of check which briefly describes functionality, will be used for tree and progress views
+                         :check_name => 'Error-based SQL-Injection',    # name of check which briefly describes functionality, will be used for tree and progress views
             :check_group => AC_GROUP_SQL,
-            :description => "Check every parameter for SQL-Injection flaws.",   # description of checkfunction
+            :description => "Check every parameter for SQL-Injection flaws. The detection is based on error messages of the database.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
             :version => "0.9"   # check version
             )
@@ -55,7 +55,7 @@ EOF
             
             @finding.update(
                             :threat => threat,        # threat of vulnerability, e.g. loss of information
-                            :class => "SQL-Injection",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+                            :class => "Error-based SQL-Injection",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
             :rating => VULN_RATING_CRITICAL,
             :measure => measure 
@@ -140,7 +140,7 @@ EOF
               #  Check POST-Parameters
               #           
               
-              chat.request.post_parm_names.each do |parm|
+              postParmNames(chat).each do |parm|
                 #puts "#{chat.id}: run check on post parm #{parm}"
                 test_values = []
                 @sql_checks.each do |check|
@@ -148,7 +148,7 @@ EOF
                   test_values << "#{chat.request.post_parm_value(parm)}#{check}"
                   test_values << "#{check}#{chat.request.post_parm_value(parm)}"
                 end
-                test_values.each do |check,pattern|
+                test_values.each do |check|
                   checker = proc {
                     test_request = nil
                     test_response = nil

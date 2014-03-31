@@ -25,4 +25,4 @@ require 'watobo/external/diff/lcs/callbacks'
 require 'watobo/external/diff/lcs/block'
 require 'watobo/external/diff/lcs/change'
 
-require 'watobo/external/ntlm/ntlm'
+#require 'watobo/external/ntlm/ntlm'

@@ -1,5 +1,5 @@
 # .
-# save_session_settings.rb
+# response.rb
 # 
 # Copyright 2012 by siberas, http://www.siberas.de
 # 
@@ -20,10 +20,11 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
 module Watobo
-  module Gui
-    def self.save_session_settings()
-      puts "TODO: SAVE_SESSION_SETTINGS"
-      puts __FILE__
+  module Response
+    def self.create( response )
+      response.extend Watobo::Mixin::Parser::Web10
+      response.extend Watobo::Mixin::Shaper::Web10
+      response.extend Watobo::Mixin::Shaper::HttpResponse
     end
   end
 end

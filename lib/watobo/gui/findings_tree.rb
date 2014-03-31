@@ -317,21 +317,52 @@ module Watobo
 
                     notify(:add_site_to_scope, item.to_s)
                   }
+               # 
                 elsif data == :title
                    fp_submenu = FXMenuPane.new(self) do |sub|
 
                     target = FXMenuCommand.new(sub, "Set False Positive" )
                     target.connect(SEL_COMMAND) {
                       findings = []
-                      item.each do |ft|
-                        
-                          f = self.getItemData(ft)
-                          findings << f if f.is_a? Watobo::Finding
-                                              end
-                      puts "* False Positive #{findings.length}"
+                      item.each do |ft|                        
+                         f = self.getItemData(ft)
+                         findings << f if f.is_a? Watobo::Finding
+                      end
+                     
+                     # puts "* False Positive #{findings.length}"
 
+                      # remember parent node to expand it later
+                      fclass = item.parent.text
+                      fcat = item.parent.parent.text
+                      fsite = item.parent.parent.parent.text
+                      
+                      puts ">> #{fsite} - #{fcat} - #{fclass} (#{fclass.object_id})"
+                   
                       notify(:set_false_positive, findings)
+                      
                       reload
+                      
+                      site_item = cat_item = class_item = nil
+                       site_item = self.findItem(fsite, nil,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       
+                       unless site_item.nil?
+                         self.expandTree(site_item)
+                         cat_item = self.findItem(fcat, site_item,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       end
+                        
+                        unless cat_item.nil?
+                          self.expandTree(cat_item)
+                          class_item = self.findItem(fclass, cat_item,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       end
+                       
+                          
+                       unless class_item.nil?
+                         puts "Expanding #{class_item} (#{class_item.object_id})-> #{cat_item} -> #{site_item}"
+                         self.expandTree(class_item)
+                      else
+                        puts "Could not find tree item for #{class_item} (#{class_item.object_id})-> #{cat_item} -> #{site_item}"
+                      end
+                         
 
                     }
                     target = FXMenuCommand.new(sub, "Unset False Positive" )
@@ -342,10 +373,33 @@ module Watobo
                           f = self.getItemData(ft)
                           findings << f if f.is_a? Watobo::Finding
                                               end
-                      puts "* False Positive #{findings.length}"
 
+  fclass = item.parent.text
+                      fcat = item.parent.parent.text
+                      fsite = item.parent.parent.parent.text
+                      
                       notify(:unset_false_positive, findings)
                       reload
+                       site_item = cat_item = class_item = nil
+                       site_item = self.findItem(fsite, nil,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       
+                       unless site_item.nil?
+                         self.expandTree(site_item)
+                         cat_item = self.findItem(fcat, site_item,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       end
+                        
+                        unless cat_item.nil?
+                          self.expandTree(cat_item)
+                          class_item = self.findItem(fclass, cat_item,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       end
+                       
+                          
+                       unless class_item.nil?
+                         puts "Expanding #{class_item} (#{class_item.object_id})-> #{cat_item} -> #{site_item}"
+                         self.expandTree(class_item)
+                      else
+                        puts "Could not find tree item for #{class_item} (#{class_item.object_id})-> #{cat_item} -> #{site_item}"
+                      end
                     }
 
                     FXMenuSeparator.new(sub)
@@ -379,10 +433,24 @@ module Watobo
                         end
 
                       end
-                      puts "* False Positive #{findings.length}"
+                     # puts "* False Positive #{findings.length}"
 
+                      fcat = item.parent.text
+                      fsite = item.parent.parent.text
+                      
                       notify(:set_false_positive, findings)
                       reload
+                       site_item = cat_item = class_item = nil
+                       site_item = self.findItem(fsite, nil,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       
+                       unless site_item.nil?
+                         self.expandTree(site_item)
+                         cat_item = self.findItem(fcat, site_item,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       end
+                        
+                        unless cat_item.nil?
+                          self.expandTree(cat_item)
+                       end
 
                     }
                     target = FXMenuCommand.new(sub, "Unset False Positive" )
@@ -395,10 +463,22 @@ module Watobo
                         end
 
                       end
-                      puts "* False Positive #{findings.length}"
-
+                      
+  fcat = item.parent.text
+                      fsite = item.parent.parent.text
                       notify(:unset_false_positive, findings)
                       reload
+                      site_item = cat_item = class_item = nil
+                       site_item = self.findItem(fsite, nil,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       
+                       unless site_item.nil?
+                         self.expandTree(site_item)
+                         cat_item = self.findItem(fcat, site_item,SEARCH_FORWARD|SEARCH_IGNORECASE)
+                       end
+                        
+                        unless cat_item.nil?
+                          self.expandTree(cat_item)
+                       end
                     }
 
                     FXMenuSeparator.new(sub)

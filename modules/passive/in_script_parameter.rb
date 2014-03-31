@@ -68,7 +68,7 @@ module Watobo
             
             parm_values.each do |parm_value|
               
-              pattern = Regexp.quote(CGI::unescape(parm_value))
+              pattern = Regexp.quote(CGI.unescape(parm_value))
               if chat.response.body =~ /<script[^<\/]*#{pattern}/i then
                # puts "* Found: Parameter within script"
                 addFinding(

@@ -62,7 +62,7 @@ module Watobo
             begin 
               @updirs.each do |up|
                 @include_checks.each do |file, pattern|
-                  chat.request.get_parm_names.each do |parm|
+                  urlParmNames(chat).each do |parm|
                     checker = proc{
                       test_request = nil
                       test_response = nil
@@ -84,13 +84,13 @@ module Watobo
                         :rating => VULN_RATING_HIGH,
                         :title => "[#{parm}] - #{test_request.file}"
                         )
-                        [ test_request, test_response ]
                       end
+                      [ test_request, test_response ]
                     }
                     yield checker
                   end
                   
-                  chat.request.post_parm_names.each do |parm|
+                  postParmNames(chat).each do |parm|
                     checker = proc{
                       test_request = nil
                       test_response = nil
@@ -109,9 +109,9 @@ module Watobo
                         :chat => chat,
                         :rating => VULN_RATING_HIGH,
                         :title => "[#{parm}] - #{file}"
-                        )
-                        [ test_request, test_response ]
+                        )                        
                       end
+                      [ test_request, test_response ]
                     }
                     yield checker
                   end

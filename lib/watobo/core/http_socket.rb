@@ -21,6 +21,24 @@
 # .
 module Watobo
     module HTTP
+      
+      def self.get_peer_subject(socket)
+        begin
+        ctx = OpenSSL::SSL::SSLContext.new()
+        ctx.tmp_dh_callback = proc { |*args|
+          OpenSSL::PKey::DH.new(128)
+          }
+        ssl_sock = OpenSSL::SSL::SSLSocket.new(socket, ctx)
+        subject = ssl_sock.peer_cert.subject
+        return subject
+        rescue => bang
+          puts bang
+          puts bang.backtrace
+        end
+        return nil
+      end
+      
+      
       def HTTP.read_body(socket, prefs=nil)
         buf = nil
         max_bytes = -1
@@ -32,11 +50,11 @@ module Watobo
         bytes_read = 0
         while max_bytes < 0 or bytes_to_read > 0 
           begin
-            timeout(5) do
+         #   timeout(5) do
              # puts "<#{bytes_to_read} / #{bytes_read} / #{max_bytes}"
               buf = socket.readpartial(bytes_to_read)
               bytes_read += buf.length
-            end
+         #   end
           rescue EOFError
             return
           rescue Timeout::Error
@@ -63,19 +81,19 @@ module Watobo
         while (chunk_size = socket.gets)
           next if chunk_size.strip.empty?
           yield "#{chunk_size}" if block_given?
-          num_bytes = chunk_size.strip.hex
+          bytes_to_read = num_bytes = chunk_size.strip.hex
           # puts "> chunk-length: 0x#{chunk_size.strip}(#{num_bytes})"
           return if num_bytes == 0
           bytes_read = 0
           while bytes_read < num_bytes
             begin
-              timeout(5) do
+             # timeout(5) do
                 bytes_to_read = num_bytes - bytes_read
                 # puts bytes_to_read.to_s
                 buf = socket.readpartial(bytes_to_read)
                 bytes_read += buf.length
                 # puts bytes_read.to_s
-              end
+             # end
             rescue EOFError
               # yield buf if buf
               return

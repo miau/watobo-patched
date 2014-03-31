@@ -22,10 +22,33 @@
 module Watobo
   class Plugin2 < FXDialogBox
     attr :plugin_name
-    attr :icon
+    # attr :icon
 
     include Watobo::Gui
     include Watobo::Gui::Icons
+
+    @icon_file = nil
+    def self.get_icon
+      @icon_file
+    end
+
+    def self.icon_file(icon_file)
+      # puts "Caller >> #{caller.class}"
+      # puts caller.to_yaml
+
+      dummy = caller.first.split(":")
+      dummy.pop
+      file = dummy.join(":")
+
+      @icon_file = File.join(File.dirname(file), "..","icons", icon_file)
+    end
+
+    def load_icon
+      icon = self.class.get_icon
+      puts "* loading icon > #{icon}"
+      self.icon = Watobo::Gui.load_icon(icon) unless icon.nil?
+    end
+
     def subscribe(event, &callback)
       (@event_dispatcher_listeners[event] ||= []) << callback
     end
@@ -48,15 +71,15 @@ module Watobo
 
     def logger(msg)
       t = Time.now
-       now = t.strftime("%m/%d/%Y @ %H:%M:%S")
-       
+      now = t.strftime("%m/%d/%Y @ %H:%M:%S")
+
       @log_lock.synchronize do
         text = "\n#{now}: msg"
         @log_messages << text
       end
     end
-    
-    def load_icon(file=__FILE__)
+
+    def load_icon_UNUSED(file=__FILE__)
       begin
         @icon = ICON_PLUGIN
         path = File.dirname(file)
@@ -79,25 +102,24 @@ module Watobo
       # Implement Sender
       # Implement Scanner
       @icon = nil
-      #        load_icon()
+      load_icon()
       @plugin_name = "undefined"
       @event_dispatcher_listeners = Hash.new
       @log_lock = Mutex.new
-      
+
       @log_messages = []
 
     end
-    
+
     private
-    
+
     def add_update_timer(ms)
-  @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
+      @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
     @update_lock.synchronize do
-     
-      
+
     end
-    
+
   }
-end
+    end
   end
 end

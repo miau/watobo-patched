@@ -1,3 +1,4 @@
+#!/usr/bin/ruby
 # .
 # watobo.rb
 # 
@@ -19,6 +20,7 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
+#Encoding: UTF-8
 require 'rubygems'
 require 'yaml'
 require 'thread'
@@ -30,7 +32,10 @@ require 'digest/md5'
 require 'zlib'
 require 'base64'
 require 'cgi'
+require 'uri'
 require 'pathname'
+require 'net/ntlm'
+require 'drb'
 
 require 'watobo/constants'
 require 'watobo/utils'
@@ -44,7 +49,7 @@ require 'watobo/framework'
 
 module Watobo
 
-  VERSION = "0.9.8-724"
+  VERSION = "0.9.9"
 
   def self.base_directory
     @base_directory ||= ""
@@ -83,3 +88,4 @@ end
 
 Watobo.init_framework
 
+require 'watobo/ca'

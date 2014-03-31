@@ -21,7 +21,7 @@
 # .
 module Watobo
   module Gui
-    class PreferencesDialog < FXDialogBox
+    class PreferencesDialog_UNUSED < FXDialogBox
       
       attr :settings
       

@@ -157,22 +157,23 @@ module Watobo
 
       NO_SELECTION = "no site selected"
       def savePasswords?()
-        @save_pws_cbt.checked?
+        return false
+        #@save_pws_cbt.checked?
       end
 
       include Responder
 
-      def initialize(owner, project, prefs={})
+      def initialize(owner)
 
         super(owner, "NTLM Authentication", :opts => DECOR_ALL)
-        @project = project
+        @project = Watobo.project
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
 
-        @password_policy = {
-          :save_passwords => false
-        }
+     #   @password_policy = {
+     #     :save_passwords => false
+     #   }
 
-        @password_policy.update prefs[:password_policy] if prefs.has_key? :password_policy
+      #  @password_policy.update prefs[:password_policy] if prefs.has_key? :password_policy
 
         @site_dt = FXDataTarget.new('')
         @username_dt = FXDataTarget.new('')
@@ -185,13 +186,13 @@ module Watobo
 
         top_frame = FXHorizontalFrame.new(main_frame, :opts => LAYOUT_FILL_X)
 
-        @scope_only_cb = FXCheckButton.new(top_frame, "scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
-        @scope_only_cb.setCheck(false)
+      #  @scope_only_cb = FXCheckButton.new(top_frame, "scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+      #  @scope_only_cb.setCheck(false)
 
-        if project.has_scope?
-        puts "project has scope defined"
-        end
-        @scope_only_cb.connect(SEL_COMMAND) { updateSitesCombo() }
+      #  if project.has_scope?
+      #  puts "project has scope defined"
+      #  end
+       # @scope_only_cb.connect(SEL_COMMAND) { updateSitesCombo() }
 
         @sites_combo = FXComboBox.new(top_frame, 5,  @site_dt, FXDataTarget::ID_VALUE,
         COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
@@ -242,7 +243,8 @@ module Watobo
           end
         }
 
-        pas = @project.getWwwAuthentication()
+        #pas = @project.getWwwAuthentication()
+        pas = Watobo::Conf::Scanner.www_auth
         #   puts pas.to_yaml
         pas.each_key do |k|
           auth_settings = {
@@ -265,11 +267,11 @@ module Watobo
         @rem_auth_btn.connect(SEL_COMMAND){ remAuthenticationItem() }
         @rem_auth_btn.disable
 
-        frame = FXVerticalFrame.new(main_frame, :opts => LAYOUT_FILL_X)
-        @save_pws_cbt = FXCheckButton.new(frame, "save passwords")
-        @save_pws_cbt.checkState = false
-        @save_pws_cbt.checkState = true if @password_policy[:save_passwords] == true
-        note_label = FXLabel.new(frame, "This setting affects all passwords!!!")
+      #  frame = FXVerticalFrame.new(main_frame, :opts => LAYOUT_FILL_X)
+      #  @save_pws_cbt = FXCheckButton.new(frame, "save passwords")
+      #  @save_pws_cbt.checkState = false
+      #  @save_pws_cbt.checkState = true if @password_policy[:save_passwords] == true
+      #  note_label = FXLabel.new(frame, "This setting affects all passwords!!!")
 
         buttons = FXHorizontalFrame.new(main_frame, :opts => LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,
         :padLeft => 40, :padRight => 40, :padTop => 20, :padBottom => 20)
@@ -291,10 +293,12 @@ module Watobo
       def updateSitesCombo()
         @sites_combo.clearItems
         @sites_combo.appendItem(NO_SELECTION, nil)
-        @project.listSites(:in_scope => @scope_only_cb.checked? ){ |site|
+        unless Watobo.project.nil?
+        Watobo.project.listSites(:in_scope => Watobo.project.has_scope? ){ |site|
         #puts "Site: #{site}"
           @sites_combo.appendItem(site, site)
         }
+        end
         @sites_combo.numVisible = @sites_combo.numItems >= 20 ? 20 : @sites_combo.numItems
         @sites_combo.setCurrentItem(0) if @sites_combo.numItems > 0
       end
@@ -332,7 +336,7 @@ module Watobo
           empty_passwords = true if settings[w3a][:password] == ''
         end
         unless empty_passwords == true then
-        @project.setWwwAuthentication(@auth_table.settings)
+        Watobo::Conf::Scanner.www_auth = @auth_table.settings
         #  puts @auth_table.settings.to_yaml
         getApp().stopModal(self, 1)
         self.hide()

@@ -32,10 +32,10 @@ module Watobo
     class ConversationTable < FXTable
 
       attr_accessor :autoscroll
-      
+      attr_accessor :url_decode
+
       include Watobo::Gui::Icons
-      
-       def subscribe(event, &callback)
+      def subscribe(event, &callback)
         (@event_dispatcher_listeners[event] ||= []) << callback
       end
 
@@ -46,21 +46,21 @@ module Watobo
 
       def notify(event, *args)
         if @event_dispatcher_listeners[event]
-           puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
-          @event_dispatcher_listeners[event].each do |m|           
+          puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
+          @event_dispatcher_listeners[event].each do |m|
             m.call(*args) if m.respond_to? :call
           end
         end
       end
-      
+
       def num_total
         @current_chat_list.length
       end
-      
+
       def num_visible
         self.numRows
       end
-      
+
       def reset_filter
         @filter = {
           :show_scope_only => false,
@@ -72,30 +72,30 @@ module Watobo
           :doc_filter => []
         }
       end
-      
+
       # :show_scope_only => false,
       # :text => '',
       # :url => false,
       # :request => false,
       # :response => false,
       # :hide_tested => false
-      def apply_filter(filter={})  
-              
+      def apply_filter(filter={})
+
         @filter.update filter
         @uniq_chats.clear
         puts @filter.to_yaml if $DEBUG
         update_table
       end
-      
+
       def chat_visible?(chat)
-         begin
+        begin
         #if @active_project and @active_project.settings[:site_filter]
         #  #puts chat.request.url
         #puts @active_project.settings[:site_filter]
         #  return false if @active_project.settings[:site_filter] != '' and chat.request.url =~ /^http(s)?:\/\/#{Regexp.quote(@active_project.settings[:site_filter])}/
         #  return true
         # end
-        
+
           if @filter[:unique]
             unless Watobo::Gui.project.nil?
               uniq_hash = Watobo::Gui.project.uniqueRequestHash chat.request
@@ -103,42 +103,42 @@ module Watobo
               @uniq_chats[uniq_hash] = nil
             end
           end
-          
-          if @filter[:show_scope_only]           
+
+          if @filter[:show_scope_only]
             unless Watobo::Gui.project.nil?
               return false unless Watobo::Gui.project.siteInScope?(chat.request.site)
             end
           end
           # puts "* passed scope"
           if @filter[:hide_tested]
-             return false if chat.tested?
+          return false if chat.tested?
           end
           # puts "* passed hide tested"
           unless @filter[:doc_filter].include?(chat.request.doctype)
             return true if @filter[:text].empty?
-            
+
             return true if @filter[:url] and chat.request.first =~ /#{@filter[:text]}/i
-            
+
             return true if @filter[:request] and chat.request.join =~ /#{@filter[:text]}/i
-            
-            if chat.response.content_type =~ /(text|javascript)/
-            return true if @filter[:response] and chat.response.join.unpack("C*").pack("C*") =~ /#{@filter[:text]}/i             
+
+            if chat.response.content_type =~ /(text|javascript|xml)/
+              return true if @filter[:response] and chat.response.join.unpack("C*").pack("C*") =~ /#{@filter[:text]}/i
             end
-            
+
           end
         rescue => bang
-        puts "! could not add chat to table !".upcase
-        #  puts chat.id
-        puts bang
-        puts bang.backtrace if $DEBUG
+          puts "! could not add chat to table !".upcase
+          #  puts chat.id
+          puts bang
+          puts bang.backtrace if $DEBUG
         end
         false
       end
-      
-      def showConversation( chat_list = [] )
+
+      def showConversation( chat_list = [], prefs = {} )
         clearConversation()
         chat_list.each do |chat|
-          addChat(chat)
+          addChat(chat, prefs)
         end
         adjustCellWidth()
       end
@@ -174,8 +174,13 @@ module Watobo
         end
 
         @current_chat_list.push chat unless chat.nil?
+        if prefs.include? :ignore_filter
+          add_chat_row(chat)
+          return true
+        end
         add_chat_row(chat) if chat_visible?(chat)
-        
+        return true
+
       end
 
       def initColumns()
@@ -193,8 +198,10 @@ module Watobo
 
       def initialize( owner, unused = nil )
         @event_dispatcher_listeners = Hash.new
-        
+
         super(owner, :opts => TABLE_COL_SIZABLE|TABLE_ROW_SIZABLE|LAYOUT_FILL_X|LAYOUT_FILL_Y|TABLE_READONLY|LAYOUT_SIDE_TOP, :padding => 2)
+
+        @url_decode = true
 
         self.setBackColor(FXRGB(255, 255, 255))
         self.setCellColor(0, 0, FXRGB(255, 255, 255))
@@ -270,10 +277,11 @@ module Watobo
           end
           self.setColumnWidth(index, new_width)
           @cell_width[type] = new_width
+          self.rowHeaderMode = 0
 
           adjustCellWidth()
         end
-        
+
         adjustCellWidth()
       end
 
@@ -319,17 +327,31 @@ module Watobo
 
         index = @col_order.index(TABLE_COL_PARMS)
         ps = ""
-        if chat.request.method =~ /POST/ then
-          ps = chat.request.post_parms.join("&")
-        else
-        ps = chat.request.urlparms
+        rup = chat.request.urlparms
+        unless rup.nil?
+        ps << rup
+        end     
+       
+        post_parms_string = ''
+        post_parms_string << chat.request.post_parms.join("&")   
+        
+        if chat.request.method =~ /POST/ and !post_parms_string.empty? then
+          ps << "&&" unless ps.empty?
+          ps << post_parms_string         
         end
+        
+        
         parms = ""
         unless ps.nil?
           #   parms = ps[0..50]
           #   parms += "..." if ps.length > 50
+          if @url_decode == true
+            parms = CGI.unescape(ps).unpack('C*').pack('U*')
+          else
           parms = ps
+          end
           parms.gsub!(/[^[:print:]]/,'.')
+
         end
 
         self.setItemText(lastRowIndex, index, parms)
@@ -356,7 +378,7 @@ module Watobo
 
         self.makePositionVisible(self.numRows-1, 0) if @autoscroll == true
       end
-      
+
       def update_table()
         self.clearItems
         initColumns()
@@ -368,7 +390,8 @@ module Watobo
 
       def adjustCellWidth()
         begin
-          self.rowHeader.width = 35
+          self.rowHeader.width = 40
+          #self.fitColumnsToContents(0)
           @cell_width.each do |col, width|
             pos = @col_order.index(col)
             self.setColumnWidth(pos, width)

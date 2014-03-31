@@ -81,10 +81,11 @@ module Watobo
         end
       end
       
-      def initialize(owner, scan_settings, opts)        
+    #  def initialize(owner, scan_settings, opts)        
+      def initialize(owner, opts)
         super(owner, opts)
         
-        @settings = scan_settings
+        @settings = Watobo::Conf::Scanner.to_h
        # puts @settings[:scanlog_dir]
         scroller = FXScrollWindow.new(self, :opts => SCROLLERS_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y)
         scroll_area = FXVerticalFrame.new(scroller, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
@@ -312,7 +313,9 @@ module Watobo
       
       def onAccept(sender, sel, event)
         
-        @scanner_settings = @scannerSettingsFrame.getSettings()
+        new_settings = Watobo::Conf::Scanner.to_h
+        new_settings.update @scannerSettingsFrame.getSettings()
+        Watobo::Conf::Scanner.set new_settings
         
         getApp().stopModal(self, 1)
         self.hide()
@@ -321,9 +324,9 @@ module Watobo
       
      
       
-      def initialize(owner, scanner_settings, prefs)
+      def initialize(owner, prefs)
         super(owner, "Scanner Settings", DECOR_TITLE|DECOR_BORDER, :width => 400, :height => 500)
-        @scanner_settings = scanner_settings
+       # @scanner_settings = scanner_settings
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
         
         
@@ -332,7 +335,7 @@ module Watobo
         #  puts "create scopeframe with scope:"
         # @project.scope
         # @defineScopeFrame = DefineScopeFrame.new(base_frame, @project.listSites(), YAML.load(YAML.dump(@project.scope)), prefs)
-        @scannerSettingsFrame = ScannerSettingsFrame.new(base_frame, @scanner_settings, :opts => SCROLLERS_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        @scannerSettingsFrame = ScannerSettingsFrame.new(base_frame, :opts => SCROLLERS_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y)
         
         buttons_frame = FXHorizontalFrame.new(base_frame,
                                               :opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)

@@ -22,7 +22,7 @@
 module Watobo
   class DataStore  
       
-    def self.aquire(project_name, session_name)
+    def self.acquire(project_name, session_name)
       a = Watobo::Conf::Datastore.adapter
       store = case
       when 'file'

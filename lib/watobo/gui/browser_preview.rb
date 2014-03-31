@@ -201,6 +201,7 @@ module Watobo
             url = request.url
             url += request.query != '' ? '&' : '?'
             url += "WATOBOPreview=#{hashid}"
+            puts "PreviewURL: #{url}"
             @browser.navigate(url) if hashid
             return url
           else
@@ -232,7 +233,7 @@ module Watobo
 
       def watoboProxy?
 
-        aquireBrowser()
+        acquireBrowser()
 
         begin
           #@browser.visible = false
@@ -253,7 +254,7 @@ module Watobo
           puts "!!! Could not connect to proxy."
           puts bang
           puts bang.backtrace if $DEBUG
-          aquireBrowser(true)
+          acquireBrowser(true)
           retry
         end
       #  @browser.close
@@ -262,7 +263,7 @@ module Watobo
 
       end
 
-      def aquireBrowser( force = false )
+      def acquireBrowser( force = false )
         if @browser.nil? or force == true then
 # TODO: initialize a global GUI function on startup to check if necessary gems are installed
           case RUBY_PLATFORM
@@ -283,7 +284,7 @@ module Watobo
             end
 
           else # cygwin|java
-            puts "!!! Could not aquire browser control for preview (unsupported OS) !!!"
+            puts "!!! Could not acquire browser control for preview (unsupported OS) !!!"
           end
         elsif not @browser.ready?
           puts

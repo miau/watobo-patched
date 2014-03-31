@@ -23,6 +23,7 @@ module Watobo
   module Gui
     
     def self.load_gui_icon(name)
+      return nil if @icon_path.nil?
       icon = load_icon(File.join(@icon_path, name)) 
     end
     

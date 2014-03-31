@@ -136,7 +136,7 @@ module Watobo
               FXMenuSeparator.new(menu_pane)
               send2transcoder = FXMenuCommand.new(menu_pane,"send to transcoder")
               send2transcoder.connect(SEL_COMMAND) {
-                t = FXTranscoder.new(FXApp.instance, selection)
+                t = TranscoderWindow.new(FXApp.instance, selection)
                 t.create
                 t.show(Fox::PLACEMENT_SCREEN)
               }

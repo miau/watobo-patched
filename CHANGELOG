@@ -1,3 +1,31 @@
+= Version 0.9.9
+== NEW
+* [Module] Time-based SQL injection module
+* [Module] Rated XSS which gives a more accurate exploitability result
+* [GUI] ConversationTable: values in coloumn Parameters are url-decoded
+* [Plugin] WebCrawler - based on Mechanize
+* [GUI] Manual Request Editor: Url is displayed in the window title
+* [GUI] Menubar items are disabled if no project is defined
+* [CORE] Create SSL certificates for each target on-the-fly, now you only have to trust the internal CA once
+* [Interceptor] Rewrite/Inject Feature to Interceptor
+* [CORE] added .yml file extension for chats, findings, logs, ...
+* [Plugin] SQLmap - easy to use sqlmap interface
+* [Interceptor] Transparent Proxy Feature - only available on Linux (depends on netfilter_queue)
+* [CatalogScanner] added predefined database paths
+* [CORE] general unzipping and unchunking of server responses
+
+== Fixes
+* CA Directory is now created in WATOBO working directory '.watobo'
+* Fixed Crash on opening client-certificate dialog
+* Improved Socket communication
+* ConversationTable: GET and POST parameters are shown in the parameters coloumn 
+* TreeView-Pane: Show full conversation list when Findings tab is selected
+* Fixed a bug in parsing post parameters
+* QuickScan: double scanning each module
+* the disclaimer.chk file now is written to .watobo
+* some minor bugs
+
+
 = Version 0.9.8
 == NEW
 * Ruby 1.9 Support - no more 1.8 don't even try it ;)
@@ -13,6 +41,8 @@
 * GUI: purge (multiple) findings is possibel via FindingsTree
 
 == Fixes
+* interceptor reset-button
+* Constant declarations
 * lib/mixin/request_parser.rb: fixed file handling
 * fixed pattern for detecting file upload fields
 * optimized "tagless" view

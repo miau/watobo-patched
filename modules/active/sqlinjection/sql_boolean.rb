@@ -82,7 +82,7 @@ EOF
             #  Check GET-Parameters
             #
             begin
-              chat.request.get_parm_names.each do |get_parm|
+              urlParmNames(chat).each do |get_parm|
                 
                 @boolean_checks.each do |check_true, check_false|
                   
@@ -155,7 +155,7 @@ EOF
                 
               end
               
-              chat.request.post_parm_names.each do |post_parm|
+              postParmNames(chat).each do |post_parm|
                 
                 @boolean_checks.each do |check_true, check_false|
                   

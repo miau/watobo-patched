@@ -85,7 +85,7 @@ EOF
             begin
               
               
-              chat.request.get_parm_names.each do |parm|
+              urlParmNames(chat).each do |parm|
                # puts parm
                 # puts "#{Module.nesting[0].name}: run check on chat-id (#{chat.id}) with parm (#{parm})"
                 @xss_checks.each do |check, pattern|
@@ -127,7 +127,7 @@ EOF
               #  Check POST-Parameters
               #
               
-              chat.request.post_parm_names.each do |parm|
+              postParmNames(chat).each do |parm|
                 #puts "#{chat.id}: run check on post parm #{parm}"
                 @xss_checks.each do |check, pattern|
                   

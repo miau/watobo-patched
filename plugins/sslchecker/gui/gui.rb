@@ -29,6 +29,8 @@ module Watobo
 
         include Watobo::Constants
         
+        icon_file "sslchecker.ico"
+        
         def createChat(site)
           chat = nil
           url = "https://#{site}/"
@@ -57,25 +59,28 @@ module Watobo
          
         end
 
-        def updateView()
-          #@project = project
-          @site = nil
-          @sites_combo.clearItems()
-          #@dir_combo.clearItems()
-          unless @project.nil? then
-            @project.listSites(:ssl => true).each do |site|
-            #puts "Site: #{site}"
-              @sites_combo.appendItem(site.slice(0..35), site)
+         def updateView()
+            #@project = project
+            @site = nil
+            @sites_combo.clearItems()
+            #@dir_combo.clearItems()
+            unless Watobo.project.nil? then
+              count = 0
+              Watobo.project.listSites(:ssl => true, :in_scope => Watobo.project.has_scope? ).each do |site|
+              #puts "Site: #{site}"
+                count += 1
+                @sites_combo.appendItem(site, site)
+              end
+              if @sites_combo.numItems > 0
+                @sites_combo.setCurrentItem(0)
+                @site = @sites_combo.getItemData(0)
+                @sites_combo.numVisible = ( @sites_combo.numItems > 15 ) ? 15 : @sites_combo.numItems
+              else
+                @log_viewer.log(LOG_INFO,"No SSL Sites available - you need to visit a SSL Site first!")
+              end
             end
-            if @sites_combo.numItems > 0
-            @sites_combo.setCurrentItem(0)
-            @site = @sites_combo.getItemData(0)
-            else
-            @log_viewer.log(LOG_INFO,"No SSL Sites available - you need to visit a SSL Site first!")
-            end
-          end
 
-        end
+          end
 
         def start(sender, sel, item)
           unless @site.nil?
@@ -106,12 +111,22 @@ module Watobo
             unless @project.getCurrentProxy().nil?
                @log_viewer.log(LOG_INFO,"!!! WARNING FORWARDING PROXY IS SET !!! - SSL-Check running against proxy may not make sense!")
             end
+             @status_lock.synchronize do 
+                  @status = :running
+                end
+             add_update_timer(50)
+             
             @log_viewer.log LOG_INFO, "Scan started ..."
             @scan_thread = Thread.new(scanner) { |scan|
               begin
 
                 scan.run(:default => true)
                 @log_viewer.log LOG_INFO, "Scan finished."
+                @status_lock.synchronize do 
+                  @status = :idle
+                end
+                sleep 1 # to let the update_timer finish its work
+                getApp().removeTimeout(@update_timer) 
               rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG
@@ -132,6 +147,8 @@ module Watobo
           
           @results = []
           @results_lock = Mutex.new
+          @status_lock = Mutex.new
+          @status = :idle
           
            @clipboard_text = ""
         self.connect(SEL_CLIPBOARD_REQUEST) do
@@ -139,8 +156,6 @@ module Watobo
           setDNDData(FROM_CLIPBOARD, FXWindow.stringType, @clipboard_text + "\x00" )
         end
           
-          load_icon(__FILE__)
-
           mr_splitter = FXSplitter.new(self, LAYOUT_FILL_X|LAYOUT_FILL_Y|SPLITTER_VERTICAL|SPLITTER_REVERSED|SPLITTER_TRACKING)
           # top = FXHorizontalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_BOTTOM)
           top_frame = FXVerticalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FIX_HEIGHT|LAYOUT_BOTTOM,:height => 500)
@@ -169,8 +184,6 @@ module Watobo
           COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
           #@filterCombo.width =200
 
-          num_ssl_sites = @project.listSites(:ssl => true).length
-          @sites_combo.numVisible = num_ssl_sites > 15 ? 15 : num_ssl_sites
           @sites_combo.numColumns = 35
           @sites_combo.editable = true
           @sites_combo.connect(SEL_COMMAND, method(:onSiteSelect))
@@ -216,7 +229,7 @@ module Watobo
             @log_viewer = LogViewer.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
             updateView()
-            add_update_timer(50)
+           
           rescue => bang
           puts bang
           puts bang.backtrace if $DEBUG
@@ -228,17 +241,19 @@ module Watobo
         
         def add_update_timer(ms)
          @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) do
-          @results_lock.synchronize do
-          unless @results.empty?
-            @results.each do |r|
-            @cipher_table.add_cipher(r)
-          end
-        @results.clear
+           @results_lock.synchronize do             
+               @results.each do |r|
+                 @cipher_table.add_cipher(r)
+               end
+               @results.clear               
+           end
+         
+           @status_lock.synchronize do 
+             @pbar.barColor = 'grey' if @status == :idle
+           end
+         end
         end
-    end
-    
-  end
-end
+        
       end
       end
       end

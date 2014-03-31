@@ -30,6 +30,7 @@ module Watobo
       # Possible prefs:
       #
       # :code_dlmtr [String] - set ruby code delimiter
+      
       def parse_code(prefs={})
         cprefs = { :code_dlmtr => '%%' } # default delimiter for ruby code
         cprefs.update(prefs)
@@ -41,25 +42,20 @@ module Watobo
           # puts new_request
           expr = ''
           new_request = ''
-          request.split(/\n/).each do |line|
-            #puts line.unpack("H*")
-            new_line = line
-            parsed_line = ''
-            pos = 0
-            off = 0
-            while pos >= 0 and pos < line.length
-              /#{pattern}/.match(line[pos..-1])
-              match = $1
-              break if match.nil?
-              #new_line = parsed_line
-              expr = match.gsub(/%%/,"")
+          pos = 0
+          off = 0
+          while pos >= 0 and pos < request.length
+             code_offset = request.index(/#{pattern}/, pos)
+          unless code_offset.nil?
+            expression = request.match(/#{pattern}/, code_offset)[0]
+              new_request << request[pos..code_offset-1]
+              expr = expression.gsub(/%%/,"")
               puts "DEBUG: executing: #{expr}" if $DEBUG
               result = eval(expr)
               puts "DEBUG: got #{result.class}" if $DEBUG
               if result.is_a? File
                 data = result.read
                 result.close
-
               elsif result.is_a? String
                 data = result
               elsif result.is_a? Array
@@ -67,42 +63,22 @@ module Watobo
               else
                 log("!!!WATOBO - expression must return String or File !!!",'')
               end
-              start = line.index(match)
-
-              parsed_line += line[off..start-1] if start > 0
-              parsed_line += data
-              pos = start + match.length
-              off = pos
-            end
-
-            unless parsed_line.empty?
-              parsed_line += line[off..-1]
-              new_request += "#{parsed_line}\n"
+              new_request << data
+              pos = code_offset + expression.length
             else
-              new_request += "#{new_line}\n"
+              new_request << request[pos..-1]
+              pos = request.length
             end
-            #puts new_request
           end
-
           return new_request
 
         rescue SyntaxError, LocalJumpError, NameError => e
           raise SyntaxError, "SyntaxError in '#{expr}'"
-          #rescue LocalJumpError => e
-          #  raise LocalJumpError, "(#{expr}) LocalJumpError!"
-          #rescue NameError => e
-          #  raise NameError, "(#{expr}) NameError!"
-          #rescue => e
-          #  puts e
-          #  raise e, "(#{expr}) Not a valid expression!"
         end
-
-        #   puts new_request
         return nil
-
       end
 
-      def unchunked( opts = {} )
+      def unchunked_UNUSED( opts = {} )
         options = { :update_content_length => false }
         options.update opts
         begin
@@ -149,9 +125,88 @@ module Watobo
             result.push "#{h}\r\n"
           end
 
-          result.extend Watobo::Mixin::Parser::Url
-          result.extend Watobo::Mixin::Parser::Web10
-          result.extend Watobo::Mixin::Shaper::Web10
+         # result.extend Watobo::Mixin::Parser::Url
+         # result.extend Watobo::Mixin::Parser::Web10
+         # result.extend Watobo::Mixin::Shaper::Web10
+         Watobo::Request.create result
+
+          ct = result.content_type
+          # last line is without "\r\n" if text has a body
+          if ct =~ /multipart\/form/ and body then
+            #Content-Type: multipart/form-data; boundary=---------------------------3035221901842
+            if ct =~ /boundary=([\-\w]+)/
+              boundary = $1.strip
+              chunks = body.split(boundary)
+              e = chunks.pop # remove "--"
+              new_body = []
+              chunks.each do |c|
+                new_chunk = ''
+                c.gsub!(/[\-]+$/,'')
+                next if c.nil?
+                next if c.strip.empty?
+                c.strip!
+                if c =~ /\n\n/
+                  ctmp = c.split(/\n\n/)
+                  cheader = ctmp.shift.split(/\n/)
+                  cbody = ctmp.join("\n\n")
+                else
+                  cheader = c.split(/\n/)
+                  cbody = nil
+                end
+                new_chunk = cheader.join("\r\n")
+                new_chunk +=  "\r\n\r\n"
+                new_chunk += cbody.strip + "\r\n" if cbody
+
+                # puts cbody
+                new_body.push new_chunk
+
+              end
+              body = "--#{boundary}\r\n"
+              body += new_body.join("--#{boundary}\r\n")
+              body += "--#{boundary}--"
+            end
+            #  body.gsub!(/\n/, "\r\n") if body
+
+          end
+
+          if body then
+            result.push "\r\n"
+            result.push body.strip
+          end
+
+          result.fixupContentLength() if options[:update_content_length] == true
+          return result
+        rescue
+          raise
+        end
+        #return nil
+      end
+
+
+      def to_request_UNUSED(opts={})
+        options = { :update_content_length => false }
+        options.update opts
+        begin
+          text = parse_code
+          result = []
+
+          if text =~ /\n\n/
+            dummy = text.split(/\n\n/)
+            header = dummy.shift.split(/\n/)
+            body = dummy.join("\n\n")
+          else
+            header = text.split(/\n/)
+            body = nil
+          end
+
+          header.each do |h|
+            result.push "#{h}\r\n"
+          end
+
+         # result.extend Watobo::Mixin::Parser::Url
+         # result.extend Watobo::Mixin::Parser::Web10
+         # result.extend Watobo::Mixin::Shaper::Web10
+         Watobo::Request.create result
 
           ct = result.content_type
           # last line is without "\r\n" if text has a body
@@ -207,4 +262,34 @@ module Watobo
 
     end
   end
+end
+
+if $0 == __FILE__
+  inc_path = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "..","lib"))
+  $: << inc_path
+
+  require 'watobo'
+  
+text =<<'EOF'
+%%"GET"%% http://www.siberas.de/ HTTP/1.1
+Content-Type: text/html
+%%"x"*10%%Vary: Accept-Encoding
+Expires: Thu, 19 Jul 2012 06:57:20 GMT
+Cache-Control: max-age=0, no-cache, no-store
+Pragma: no-cache
+Date: Thu, 19 Jul 2012 06:57:20 GMT
+Content-Length: 203
+Connection: close%%"XXXX"%%
+
+<html></html>
+EOF
+
+text.strip!
+puts text
+puts 
+puts "==="
+puts 
+text.extend Watobo::Mixins::RequestParser
+puts text.to_request
+Watobo::Utils.hexprint text
 end

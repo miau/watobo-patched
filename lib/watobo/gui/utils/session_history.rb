@@ -80,7 +80,7 @@ module Watobo
         @history_entries.delete history_id(project_name, session_name)
       end
 
-      def update_usage(project_name, session_name)
+      def update_usage(prefs)
         t_now = Time.now.to_i
         return false unless prefs.has_key? :session_name or prefs.has_key? :project_name
         hid = history_id(prefs[:project_name], prefs[:session_name])

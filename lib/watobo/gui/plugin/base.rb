@@ -22,7 +22,7 @@
 module Watobo
   module Gui
     module Plugin
-      class Plugin < FXDialogBox
+      class Plugin_UNUSED < FXDialogBox
         attr :plugin_name
         attr :icon
 

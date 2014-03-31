@@ -27,7 +27,8 @@ module Watobo
 
       attr :client_certificates
       def savePasswords?()
-        @save_pws_cbt.checked?
+        return false
+        #@save_pws_cbt.checked?
       end
 
       include Responder
@@ -43,7 +44,7 @@ module Watobo
 
         @cert_path = nil
         @client_certificates = {}
-        @client_certificates = project.getClientCertificates unless project.getClientCertificates.nil?
+       #  @client_certificates = project.getClientCertificates unless project.getClientCertificates.nil?
       #  puts client_certificates.to_yaml
 
         @password_policy.update prefs[:password_policy] if prefs.has_key? :password_policy
@@ -87,21 +88,25 @@ module Watobo
         :opts => TEXTFIELD_NORMAL|LAYOUT_SIDE_RIGHT)
         FXButton.new(matrix, "Select").connect(SEL_COMMAND){ select_key_file }
 
-        matrix = FXMatrix.new(main_frame, 2, :opts => MATRIX_BY_COLUMNS|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+      #  matrix = FXMatrix.new(main_frame, 2, :opts => MATRIX_BY_COLUMNS|LAYOUT_FILL_X|LAYOUT_FILL_Y)
         FXLabel.new(matrix, "Password:", nil, LAYOUT_TOP|JUSTIFY_RIGHT)
         @password_txt = FXTextField.new(matrix, 25,
         :target => @password_dt, :selector => FXDataTarget::ID_VALUE,
         :opts => TEXTFIELD_NORMAL|LAYOUT_SIDE_RIGHT|TEXTFIELD_PASSWD)
+        
+         FXButton.new(matrix, "", :opts=>FRAME_NONE).disable
 
         FXLabel.new(matrix, "Retype:", nil, LAYOUT_TOP|JUSTIFY_RIGHT)
         @retype_txt = FXTextField.new(matrix, 25,
         :target => @retype_dt, :selector => FXDataTarget::ID_VALUE,
         :opts => TEXTFIELD_NORMAL|LAYOUT_SIDE_RIGHT|TEXTFIELD_PASSWD)
+        
+        FXButton.new(matrix, "", :opts=>FRAME_NONE).disable
 
-        @save_pws_cbt = FXCheckButton.new(matrix, "save passwords")
-        @save_pws_cbt.checkState = false
-        @save_pws_cbt.checkState = true if @password_policy[:save_passwords] == true
-        note_label = FXLabel.new(matrix, "This setting affects all passwords!!!")
+      # @save_pws_cbt = FXCheckButton.new(matrix, "save passwords")
+      #  @save_pws_cbt.checkState = false
+      #  @save_pws_cbt.checkState = true if @password_policy[:save_passwords] == true
+      #  note_label = FXLabel.new(matrix, "This setting affects all passwords!!!")
 
         buttons = FXHorizontalFrame.new(main_frame, :opts => LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,
         :padLeft => 40, :padRight => 40, :padTop => 20, :padBottom => 20)

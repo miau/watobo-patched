@@ -23,10 +23,15 @@ module Watobo
   module Gui
     
     class InterceptorSettingsFrame < FXVerticalFrame
+        
       
       def getSettings()
         settings = Hash.new
         settings[:port] = @port_dt.value
+        settings[:bind_addr] = @bind_addr_dt.value
+        mode = Watobo::Interceptor::MODE_REGULAR
+        mode = Watobo::Interceptor::MODE_TRANSPARENT if @transparent_mode_chk.checked?
+        settings[:proxy_mode] = mode
        
         
         
@@ -40,6 +45,10 @@ module Watobo
         }
         
         return settings
+      end
+      
+      def transparent_mode?
+        @transparent_mode_chk.checked?
       end
       
       def addItem(list_box, item)   
@@ -63,12 +72,34 @@ module Watobo
         #@settings = interceptor_settings
         scroller = FXScrollWindow.new(self, :opts => SCROLLERS_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y)
         scroll_area = FXVerticalFrame.new(scroller, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-        
-        gbox = FXGroupBox.new(scroll_area, "Listening Port", LAYOUT_SIDE_RIGHT|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
-        gbox_frame = FXVerticalFrame.new(gbox, :opts => LAYOUT_SIDE_TOP|PACK_UNIFORM_WIDTH)
+         gbox = FXGroupBox.new(scroll_area, "Transparent Mode", LAYOUT_SIDE_RIGHT|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
+         gbox_frame = FXVerticalFrame.new(gbox, :opts => LAYOUT_SIDE_TOP)
+          @transparent_mode_chk = FXCheckButton.new(gbox_frame, "enable", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP|LAYOUT_LEFT)
+          @transparent_mode_chk.setCheck false
+          if RUBY_PLATFORM =~ /linux|bsd|solaris|hpux|darwin/i
+            @transparent_mode_chk.setCheck true if Watobo::Conf::Interceptor.proxy_mode == Watobo::Interceptor::MODE_TRANSPARENT            
+          else
+            @transparent_mode_chk.disable
+            note = FXLabel.new(gbox_frame, "Transparent Mode Not Available On This Platform.")
+            note.textColor = FXColor::Red
+            
+          end
+         
+        gbox = FXGroupBox.new(scroll_area, "Listener", LAYOUT_SIDE_RIGHT|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
+        #gbox_frame = FXVerticalFrame.new(gbox, :opts => LAYOUT_SIDE_TOP|PACK_UNIFORM_WIDTH)
+       frame = FXMatrix.new(gbox, 2, :opts => MATRIX_BY_COLUMNS|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+
+      # frame = FXHorizontalFrame.new(gbox_frame, :opts => LAYOUT_FILL_X)
+        FXLabel.new(frame, "Bind Address:")
+        @bind_addr_dt = FXDataTarget.new(0)
+        #@port_dt.value = @settings[:port]
+        @bind_addr_dt.value = Watobo::Conf::Interceptor.bind_addr
+        bind_addr_txt = FXTextField.new(frame, 15, @bind_addr_dt, FXDataTarget::ID_VALUE, :opts => JUSTIFY_RIGHT|FRAME_GROOVE|FRAME_SUNKEN)
+        bind_addr_txt .handle(self, FXSEL(SEL_UPDATE, 0), nil)
        
-        frame = FXHorizontalFrame.new(gbox_frame, :opts => LAYOUT_FILL_X)
-        FXLabel.new(frame, "Listen Port:")
+       
+       # frame = FXHorizontalFrame.new(gbox_frame, :opts => LAYOUT_FILL_X)
+        FXLabel.new(frame, "Port:")
         @port_dt = FXDataTarget.new(0)
         #@port_dt.value = @settings[:port]
         @port_dt.value = Watobo::Conf::Interceptor.port
@@ -151,6 +182,9 @@ module Watobo
       include Responder
       attr :interceptor_settings
       
+      def transparent?
+        @interceptorSettingsFrame.transparent_mode?
+      end
       
       def onAccept(sender, sel, event)
         

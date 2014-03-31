@@ -165,94 +165,115 @@ module Watobo
         Watobo::Utils.save_settings(@default_settings_file, settings )
 =end
       end
+      
+       
 
-      def saveSessionSettings(project=nil)
-        return
-        puts "- saveSessionSettings -"
-        ss = YAML.load(YAML.dump(project.settings))
-        unless project.nil?
-          puts "* saving session settings to #{project.sessionSettingsFile}"
-          settings = Hash.new
-          [:logout_signatures, :non_unique_parms, :login_chat_ids, :excluded_chats, :project_name, :session_name, :csrf_request_ids ].each do |k|
-            settings[k] = Hash.new
-            settings[k] = ss[k] if ss.has_key?(k)
-          end
-
-        Watobo::Utils.save_settings(project.sessionSettingsFile, settings)
+      def saveSessionSettings_UNUSED(project=nil)
+        begin
+        #project.session_store.save_session_settings(project.session_settings)
+       # Watobo::Conf::Scanner.save_session(project.session_store)
+       Watobo::Gui.save_scanner_settings(project)
+        return true
+        rescue => bang
+          puts bang
+          puts bang.backtrace if $DEBUG
         end
+        return false
+#        puts "- saveSessionSettings -"
+#        ss = YAML.load(YAML.dump(project.settings))
+#        unless project.nil?
+#          puts "* saving session settings to #{project.sessionSettingsFile}"
+#          settings = Hash.new
+#          [:logout_signatures, :non_unique_parms, :login_chat_ids, :excluded_chats, :project_name, :session_name, :csrf_request_ids ].each do |k|
+#            settings[k] = Hash.new
+#            settings[k] = ss[k] if ss.has_key?(k)
+#          end#
+#
+#        Watobo::Utils.save_settings(project.sessionSettingsFile, settings)
+#        end
       end
 
-      def saveProjectSettings(project=nil)
-        return
-        unless project.nil?
-          ps = YAML.load(YAML.dump(project.scan_settings))
-          settings = { :scanner => Hash.new }
-          [:policy, :scope, :www_auth ].each do |k|
-            settings[:scanner][k] = Hash.new
-            settings[:scanner][k].update ps[k] if ps.has_key?(k)
-          end
-
-          settings[:scanner][:custom_error_patterns] = ps[:custom_error_patterns]
-          settings[:scanner][:csrf_patterns] = ps[:csrf_patterns] unless ps[:csrf_patterns].nil?
+      def saveProjectSettings_UNUSED(project=nil)
+        begin
+       # project.session_store.save_project_settings(project.scan_settings)
+        return true
+        rescue => bang
+          puts bang
+          puts bang.backtrace if $DEBUG
+        end
+        return false
+        
+#        unless project.nil?
+#          ps = YAML.load(YAML.dump(project.scan_settings))
+#          settings = { :scanner => Hash.new }
+#          [:policy, :scope, :www_auth ].each do |k|
+#            settings[:scanner][k] = Hash.new
+#            settings[:scanner][k].update ps[k] if ps.has_key?(k)
+#          end
+#
+#          settings[:scanner][:custom_error_patterns] = ps[:custom_error_patterns]
+#          settings[:scanner][:csrf_patterns] = ps[:csrf_patterns] unless ps[:csrf_patterns].nil?#
 
           # remove proxy list because they are stored in the default settings
-          settings[:forwarding_proxy] = project.forward_proxy_settings
+#          settings[:forwarding_proxy] = project.forward_proxy_settings
 
-          settings[:project_name] = project.project_name
+#          settings[:project_name] = project.project_name
           #   puts "==== WWW AUTH ==="
           #   puts YAML.dump( settings[:www_auth] )
 
           #     puts "=== PASSWORD POLICY ==="
           #     puts YAML.dump(@settings[:password_policy])
           #if master_password_required?
-          password_set = false
-          settings[:www_auth].each_key do |p|
-            if settings[:www_auth][p].has_key? :password
-            password_set = true unless settings[:www_auth][p][:password] == ''
-            end
-          end
-          if @settings[:password_policy][:save_passwords] == true
-            unless settings[:www_auth].empty?
-              if @settings[:password_policy][:save_without_master] == false
-                if password_set and @settings[:master_password].empty?
-                  puts "* need master password for server auth encryption"
-                  dlg = MasterPWDialog.new(self)
-                  if dlg.execute != 0
-                  @settings[:master_password] = dlg.masterPassword
-                  end
-                end
-                unless @settings[:master_password].empty?
-                  settings[:www_auth].each_key do |p|
-                    creds = settings[:www_auth][p]
-                    #pass = "$$WPE$$" + creds[:password]
-                    pass = creds[:password]
-                    if pass != ''
-                    creds[:password] = Crypto.encryptPassword(pass, @settings[:master_password])
-                    creds[:encrypted] = true
-                    end
-                  end
-                else
-                cleanCredentials(settings)
-                FXMessageBox.information(self,MBOX_OK,"No MasterPassword", "Could not encrypt www_auth passwords. No Passwords have been saved!")
-                end
+#          password_set = false
+#          settings[:www_auth].each_key do |p|
+#            if settings[:www_auth][p].has_key? :password
+#            password_set = true unless settings[:www_auth][p][:password] == ''
+#            end
+#          end
+#          if @settings[:password_policy][:save_passwords] == true
+#            unless settings[:www_auth].empty?
+#              if @settings[:password_policy][:save_without_master] == false
+#                if password_set and @settings[:master_password].empty?
+#                  puts "* need master password for server auth encryption"
+#                  dlg = MasterPWDialog.new(self)
+#                  if dlg.execute != 0
+#                  @settings[:master_password] = dlg.masterPassword
+#                  end
+#                end
+#                unless @settings[:master_password].empty?
+#                  settings[:www_auth].each_key do |p|
+#                    creds = settings[:www_auth][p]
+#                    #pass = "$$WPE$$" + creds[:password]
+#                    pass = creds[:password]
+#                    if pass != ''
+#                    creds[:password] = Crypto.encryptPassword(pass, @settings[:master_password])
+#                    creds[:encrypted] = true
+#                    end
+#                  end
+#                else
+#                cleanCredentials(settings)
+#                FXMessageBox.information(self,MBOX_OK,"No MasterPassword", "Could not encrypt www_auth passwords. No Passwords have been saved!")
+#                end#
 
-              else
-              puts "* saving passwords without protection!!!!"
-              end
-            end
-          else
-          cleanCredentials(settings)
-          end
+#              else
+#              puts "* saving passwords without protection!!!!"
+#              end
+#            end
+#          else
+#          cleanCredentials(settings)
+#          end
 
         #   puts "* saving www_auth settings ..."
         #   puts YAML.dump( settings[:www_auth])
-        Watobo::Utils.save_settings(project.projectSettingsFile, settings)
-        end
+#        Watobo::Utils.save_settings(project.projectSettingsFile, settings)
+#        end
       end
 
       def update_conversation_table(project)
+        return false if project.nil?
          @chatTable.showConversation(project.chats)
          @chatTable.apply_filter()  
+         return true
       end
       
       #
@@ -325,19 +346,23 @@ module Watobo
       end
 
       def openSessionManagement(sender, sel, item)
-        smdlg = SessionManagementDialog.new(self, @project)
+        smdlg = SessionManagementDialog.new(self)
         if smdlg.execute != 0 then
-          ids = smdlg.getLoginScriptIds()
+         
           sidpatterns = smdlg.getSidPatterns()
           logout_signatures = smdlg.getLogoutSignatures()
-          if @project
-          @project.setLoginChatIds(ids)
-          @project.setSidPatterns(sidpatterns)
-          @project.setLogoutSignatures(logout_signatures)
+          unless Watobo.project.nil?
+             ids = smdlg.getLoginScriptIds()
+          Watobo.project.setLoginChatIds(ids)
+          Watobo.project.setSidPatterns(sidpatterns)
+          Watobo.project.setLogoutSignatures(logout_signatures)
           end
         # save settings
-        saveProjectSettings(@project)
-        saveSessionSettings(@project)
+        #saveProjectSettings(@project)
+        #saveSessionSettings(@project)
+        Watobo::Conf::Scanner.logout_signatures = logout_signatures
+        Watobo::Conf::Scanner.sid_patterns = sidpatterns
+        Watobo::Gui.save_settings()
         end
       end
 
@@ -370,22 +395,24 @@ module Watobo
       end
 
       def openWwwAuthDialog()
-        if @project.nil?
-        FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
-        else
+       # if @project.nil?
+       # FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
+       # else
           auth_settings = {}
-          w3adlg = Watobo::Gui::WwwAuthDialog.new(self, @project, Watobo::Conf::General.dump )
+          w3adlg = Watobo::Gui::WwwAuthDialog.new(self )
           if w3adlg.execute != 0
           #puts "* New WWW-Authentication"
           #puts @project.getWwwAuthentication().to_yaml
           Watobo::Conf::General.save_passwords = w3adlg.savePasswords?
-          saveProjectSettings(@project)
-          Watobo::Gui.save_default_settings(@project)
-          @iproxy.www_auth = @project.getWwwAuthentication()
+         # saveProjectSettings(@project)
+         # Watobo::Gui.save_default_settings(@project)
+         Watobo::Gui.save_settings()
+          #@iproxy.www_auth = @project.getWwwAuthentication()
+          Watobo::Interceptor.proxy.refresh_www_auth
           end
-        puts "* new www_auth settings"
+        #puts "* new www_auth settings"
         # puts YAML.dump(@project.settings[:www_auth])
-        end
+        #end
 
       end
 
@@ -401,8 +428,9 @@ module Watobo
           puts "* got client certificate settings"
           puts ccdlg.client_certificates.to_yaml
           @project.client_certificates = ccdlg.client_certificates
-          @iproxy.client_certificates = ccdlg.client_certificates
-          saveProjectSettings(@project)
+          Watobo::Interceptor.proxy.client_certificates = ccdlg.client_certificates
+         # saveProjectSettings(@project)
+          Watobo::Gui.save_settings()
           # Watobo::Gui.save_default_settings(@project)
 
           end
@@ -419,11 +447,12 @@ module Watobo
           dlg = Watobo::Gui::PasswordPolicyDialog.new(self, @settings[:password_policy] )
           if dlg.execute != 0
           @settings[:password_policy] = dlg.passwordPolicy
-          Watobo::Gui.save_default_settings(@project)
+         #Watobo::Gui.save_default_settings(@project)
           #puts "* New WWW-Authentication"
           #puts @project.getWwwAuthentication().to_yaml
           #@settings[:password_policy][:save_passwords] = w3adlg.savePasswords?
-          saveProjectSettings(@project)
+          #saveProjectSettings(@project)
+          Watobo::Gui.save_settings()
           #@iproxy.www_auth = @project.settings[:www_auth]
           end
         end
@@ -435,6 +464,17 @@ module Watobo
           fuzzer = FuzzerGui.new(FXApp.instance, @project, chat)
           fuzzer.create
           fuzzer.show(Fox::PLACEMENT_SCREEN)
+        rescue => bang
+        puts "!!! could not open fuzzer"
+        puts bang
+        end
+      end
+      
+      def open_plugin_sqlmap(chat)
+        begin
+          sqlmap = Watobo::Plugin::Sqlmap::Gui.new(FXApp.instance, @project, chat)
+          sqlmap.create
+          sqlmap.show(Fox::PLACEMENT_SCREEN)
         rescue => bang
         puts "!!! could not open fuzzer"
         puts bang
@@ -484,7 +524,7 @@ module Watobo
           when /JSSH_CONNECT_ERROR/i
             FXMessageBox.information(self, MBOX_OK, "JSSH Missing", "It seem that the Firefox JSSH extension is not installed,\nwhich is required in order to use the BrowserPreview.\nPlease read the installation instruction in the README\n or online at http://watobo.sourceforge.net.")
           else
-          FXMessageBox.information(self, MBOX_OK, "Proxy Settings", "Your Browser does not use WATOBO (127.0.0.1:#{@iproxy.port}) as its proxy.\nSo you can't use the Browser-View feature.\nPlease change your proxy settings and try it again!")
+          FXMessageBox.information(self, MBOX_OK, "Proxy Settings", "Your Browser does not use WATOBO (127.0.0.1:#{Watobo::Interceptor.proxy.port}) as its proxy.\nSo you can't use the Browser-View feature.\nPlease change your proxy settings and try it again!")
           end
         end
       end
@@ -558,9 +598,9 @@ module Watobo
       end
 
       def onOpenInterceptor(sender, sel, ptr)
-        if @project then
-        interceptor = Watobo::Gui::InterceptorUI.new(self, @iproxy, :opts => DECOR_ALL)
-        iproxy.target = interceptor
+        unless Watobo.project.nil?
+        interceptor = Watobo::Gui::InterceptorUI.new(self, :opts => DECOR_ALL)
+        Watobo::Interceptor.proxy.target = interceptor
         puts "* Interceptor created"
         #@project.interceptor = interceptor
         interceptor.create
@@ -568,7 +608,7 @@ module Watobo
         getApp().runModalWhileShown(interceptor)
         interceptor.releaseAll()
         puts "* Interceptor closed"
-        iproxy.target = nil
+        #iproxy.target = nil
         #if interceptor.execute != 0 then
         #  puts "interceptor finished"
         #end
@@ -578,18 +618,26 @@ module Watobo
         end
       end
 
-      def update_status_bar(project)
-        @statusBar.projectName = project.projectName
-        @statusBar.sessionName = project.sessionName
+      def update_status_bar(project=nil)
+        unless Watobo.project.nil?          
+         @statusBar.projectName = Watobo.project_name
+         @statusBar.sessionName = Watobo.session_name
+         @dashboard.updateProjectInfo(Watobo.project)
+         @scan_button.enable
+         @statusBar.statusInfoText = "Ready"
+        end
+        @statusBar.bindAddress= Watobo::Conf::Interceptor.bind_addr.to_s
         @statusBar.portNumber = Watobo::Conf::Interceptor.port.to_s
         @statusBar.forwardingProxy = "-"
-        proxy = project.getCurrentProxy()
-        unless proxy.nil?
-        @statusBar.forwardingProxy = "#{proxy[:name]} (#{proxy[:host]}:#{proxy[:port]})"
+      #  puts Watobo::Conf::ForwardingProxy.default_proxy
+        unless Watobo::Conf::ForwardingProxy.default_proxy.empty?
+          default_proxy = Watobo::Conf::ForwardingProxy.default_proxy
+          ps = Watobo::Conf::ForwardingProxy.to_h
+          proxy = ps[default_proxy]
+          @statusBar.forwardingProxy = "#{proxy[:name]} (#{proxy[:host]}:#{proxy[:port]})"
         end
-        @statusBar.statusInfoText = "Ready"
-        @scan_button.enable
-        @dashboard.updateProjectInfo(project)
+        
+        @statusBar.update_proxy_mode
       end
 
       def setupProgressWindow(title, numTotal)
@@ -625,7 +673,9 @@ module Watobo
         @lastViewed = nil
         @last_request = nil
         @last_response = nil
-        @iproxy.stop if @iproxy
+        #@iproxy.stop if @iproxy
+        Watobo::Interceptor.stop
+        #disable_menu
 
       end
 
@@ -660,8 +710,9 @@ module Watobo
         startProject(project)
                
         Watobo::Gui.history.add_entry(:project_name => new_project_settings[:project_name], :session_name => new_project_settings[:session_name])
-        Watobo::Gui.save_default_settings project
-        puts @project.class
+        #Watobo::Gui.save_default_settings project
+        Watobo::Gui.save_settings()
+        #puts @project.class
         end
 
       end
@@ -669,6 +720,7 @@ module Watobo
       def startProject(project)
 
         return false unless project.is_a? Project
+        update_menu
 
         puts "DEBUG: starting project" if $DEBUG
         @project = project
@@ -698,20 +750,8 @@ module Watobo
 
             #puts "= SETTINGS ="
             #puts @settings.to_yaml
-            @iproxy = Watobo::InterceptProxy.new()
-            @iproxy.subscribe(:new_interception) { |chat|
-              Thread.new(chat) { |c|
-                @project.addChat(c)
-              }
-            }
-            @iproxy.run()
-            puts "DEBUG: Proxy running" if $DEBUG
-            #   puts "* set www_auth for interceptor"
-            #   puts YAML.dump(@project.settings[:www_auth])
-            @iproxy.www_auth = @project.settings[:www_auth]
-
-            @browserView = BrowserPreview.new(@iproxy)
-
+            
+          
            
             Watobo::Gui.clear_plugins
             Watobo::Gui::Utils.load_plugins(@project)
@@ -740,10 +780,19 @@ module Watobo
        update_conversation_table(@project)
 
             update_status_bar(@project)
+            
+            
+            Watobo::Interceptor.start
+
+            @browserView = BrowserPreview.new(Watobo::Interceptor.proxy)
+
+
         @progress_window.hide
         @chatTable.show
         @sites_tree.show
+        @sites_tree.reload
         @findings_tree.show
+        @findings_tree.reload
       end
 
       def decryptPassword(enc_pw=nil, dlg_titel="Encrypted Password")
@@ -867,7 +916,7 @@ module Watobo
         session_settings = {}
 
 #        if File.exists?(session_file) then
-#        session_settings = Watobo::Utils.loadSettings(session_file)
+#        session_settings = Watobo::Utils.load_settings(session_file)
         #updateistory(session_file)
 
 #        else
@@ -888,7 +937,7 @@ module Watobo
 =begin
       project_file = File.expand_path(File.join(File.dirname(session_file), "..", session_settings[:project_name] + ".wps"))
       if File.exists?(project_file) then
-      project_settings = Watobo::Utils.loadSettings(project_file)
+      project_settings = Watobo::Utils.load_settings(project_file)
       if not project_settings.is_a? Hash then
       project_settings = Hash.new
       end
@@ -924,19 +973,21 @@ module Watobo
       end
 
       def openScannerSettingsDialog(sender,sel,ptr)
-        if @project then
-          settings = @project.getScanPreferences()
+      #  if @project then
+         # settings = @project.getScanPreferences()
           # puts settings.to_yaml
-          dlg = Watobo::Gui::ScannerSettingsDialog.new(self, settings, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+         # dlg = Watobo::Gui::ScannerSettingsDialog.new(self, settings, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+          dlg = Watobo::Gui::ScannerSettingsDialog.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
           if dlg.execute != 0 then
           # puts dlg.scanner_settings.to_yaml
-          @project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
-          saveProjectSettings(@project)
+         # @project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
+         # saveProjectSettings(@project)
+          Watobo::Gui.save_settings()
 
           end
-        else
-        FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First!")
-        end
+      #  else
+      #  FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First!")
+      #  end
       end
 
       def openInterceptorSettingsDialog(sender,sel,ptr)
@@ -944,20 +995,27 @@ module Watobo
         if dlg.execute != 0 then
         puts dlg.interceptor_settings.to_yaml if $DEBUG
         Watobo::Conf::Interceptor.set dlg.interceptor_settings 
+        @statusBar.update_proxy_mode              
         #@settings[:interceptor].update YAML.load(YAML.dump(dlg.interceptor_settings))
         #@project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
         FXMessageBox.information(self, MBOX_OK, "Restart required!", "You must restart WATOBO in order your changes take effect.")
         Watobo::Conf::Interceptor.save
+        Watobo::Gui.save_settings()
         #Watobo::Gui.save_default_settings(@settings[:interceptor])
         end
       end
 
       def openScopeDialog(sender,sel,ptr)
+        unless Watobo.project.nil?
         dlg = Watobo::Gui::EditScopeDialog.new(self, @project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
         if dlg.execute != 0 then
         @project.scope = YAML.load(YAML.dump(dlg.scope))
-        saveProjectSettings(@project)
+       # saveProjectSettings(@project)
+        Watobo::Gui.save_settings()
         refreshViewers()
+        end
+        else
+          FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First!")
         end
       end
 
@@ -1094,7 +1152,7 @@ module Watobo
         @project = nil
 
         @scanner = nil
-        @iproxy = nil
+      #  @iproxy = nil
         @browserView = nil
 
         @scan_running = false
@@ -1132,7 +1190,9 @@ module Watobo
 
         menu_bar = FXMenuBar.new(self, :opts => LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
 
+@menu_items = []
         file_menu_pane = FXMenuPane.new(self)
+       
         FXMenuTitle.new(menu_bar, "File" , :popupMenu => file_menu_pane)
         @file_new_menu = FXMenuCommand.new(file_menu_pane, "New/Open" )
         @file_new_menu.connect(SEL_COMMAND, method(:onNewProject))
@@ -1165,46 +1225,49 @@ module Watobo
         #  file_save_as_command = FXMenuCommand.new(file_menu_pane, "Save As..." )
 
         settings_menu_pane = FXMenuPane.new(self)
+       #  @menu_items << settings_menu_pane
         FXMenuTitle.new(menu_bar, "Settings" , :popupMenu => settings_menu_pane)
-        menu_proxy = FXMenuCommand.new(settings_menu_pane, "Forwarding Proxy..." )
-        menu_session = FXMenuCommand.new(settings_menu_pane, "Session Management..." )
+        @proxy_menu = FXMenuCommand.new(settings_menu_pane, "Forwarding Proxy..." )
+        @session_mgmt_menu = FXMenuCommand.new(settings_menu_pane, "Session Management..." )
         # @project ? menu_session.enable : menu_session.disable
 
-        menu_ca = FXMenuCommand.new(settings_menu_pane, "Create Certificate..." )
-        menu_ca.connect(SEL_COMMAND, method(:openCADialog))
+      #  menu_ca = FXMenuCommand.new(settings_menu_pane, "Create Certificate..." )
+      #  menu_ca.connect(SEL_COMMAND, method(:openCADialog))
 
-        menu_preferences = FXMenuCommand.new(settings_menu_pane, "Target Scope..." )
-        menu_preferences.connect(SEL_COMMAND, method(:openScopeDialog))
+        @target_scope_menu = FXMenuCommand.new(settings_menu_pane, "Target Scope..." )
+        @target_scope_menu.connect(SEL_COMMAND, method(:openScopeDialog))
 
-        menu_preferences = FXMenuCommand.new(settings_menu_pane, "Scanner..." )
-        menu_preferences.connect(SEL_COMMAND, method(:openScannerSettingsDialog))
+        @scanner_menu = FXMenuCommand.new(settings_menu_pane, "Scanner..." )
+        @scanner_menu.connect(SEL_COMMAND, method(:openScannerSettingsDialog))
 
-        menu_preferences = FXMenuCommand.new(settings_menu_pane, "Interceptor..." )
-        menu_preferences.connect(SEL_COMMAND, method(:openInterceptorSettingsDialog))
+        @interceptor_menu = FXMenuCommand.new(settings_menu_pane, "Interceptor..." )
+        @interceptor_menu.connect(SEL_COMMAND, method(:openInterceptorSettingsDialog))
 
-        www_auth_prefs = FXMenuCommand.new(settings_menu_pane, "WWW-Auth..." )
-        www_auth_prefs.connect(SEL_COMMAND) { openWwwAuthDialog() }
+        @www_auth_menu = FXMenuCommand.new(settings_menu_pane, "WWW-Auth..." )
+        @www_auth_menu .connect(SEL_COMMAND) { openWwwAuthDialog() }
 
-        client_cert_prefs = FXMenuCommand.new(settings_menu_pane, "Client Certificates..." )
-        client_cert_prefs.connect(SEL_COMMAND) { open_client_cert_dialog() }
+        @client_cert_menu = FXMenuCommand.new(settings_menu_pane, "Client Certificates..." )
+        @client_cert_menu.connect(SEL_COMMAND) { open_client_cert_dialog() }
 
-        pp_prefs = FXMenuCommand.new(settings_menu_pane, "Password Policy..." )
-        pp_prefs.connect(SEL_COMMAND) { openPWPolicyDialog() }
+      #  pp_prefs = FXMenuCommand.new(settings_menu_pane, "Password Policy..." )
+      #  pp_prefs.connect(SEL_COMMAND) { openPWPolicyDialog() }
         # intercept_enable = FXMenuCheck.new(settings_menu_pane, "Enable Interception")
 
         # file_menu_title = FXMenuTitle.new(menu_bar, "Settings" , :popupMenu => settings_menu_pane)
 
-        menu_proxy.connect(SEL_COMMAND, method(:onMenuProxy))
-        menu_session.connect(SEL_COMMAND, method(:openSessionManagement))
+        @proxy_menu.connect(SEL_COMMAND, method(:onMenuProxy))
+        @session_mgmt_menu.connect(SEL_COMMAND, method(:openSessionManagement))
 
         tools_menu_pane = FXMenuPane.new(self)
         FXMenuTitle.new(menu_bar, "Tools" , :popupMenu => tools_menu_pane)
-        transcoder = FXMenuCommand.new(tools_menu_pane, "Transcoder")
-        interceptor = FXMenuCommand.new(tools_menu_pane, "Interceptor")
-        transcoder.connect(SEL_COMMAND, method(:onOpenTranscoder))
-        interceptor.connect(SEL_COMMAND, method(:onOpenInterceptor))
+        @transcoder_menu = FXMenuCommand.new(tools_menu_pane, "Transcoder")
+        @interceptor_menu = FXMenuCommand.new(tools_menu_pane, "Interceptor")
+        
+        @transcoder_menu.connect(SEL_COMMAND, method(:onOpenTranscoder))
+        @interceptor_menu.connect(SEL_COMMAND, method(:onOpenInterceptor))
 
         view_menu_pane = FXMenuPane.new(self)
+        
         FXMenuTitle.new(menu_bar, "View" , :popupMenu => view_menu_pane)
         view_logs_command = FXMenuCommand.new(view_menu_pane, "Logs" )
         view_dashboard_command = FXMenuCommand.new(view_menu_pane, "Dashboard" )
@@ -1215,6 +1278,7 @@ module Watobo
         view_findings_command.connect(SEL_COMMAND, method(:showConversation))
 
         window_menu_pane = FXMenuPane.new(self)
+        
         FXMenuTitle.new(menu_bar, "Window" , :popupMenu => window_menu_pane)
         use_small_icons = FXMenuCheck.new(window_menu_pane, "Small Icons/Text" )
         use_small_icons.connect(SEL_COMMAND) {
@@ -1303,15 +1367,23 @@ module Watobo
         frame = FXVerticalFrame.new(tab_frame, :opts => LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN, :padding => 0)
         @sites_tree = Watobo::Gui::SitesTree.new(frame, self, nil)
 
-        #   @treeTabbook.connect(SEL_COMMAND) { |sender, sel, item|
-        #     case item
-        #       when 0
-        # if @project
-        #   @project.settings.delete(:site_filter)
-        #       updateRequestTable(@project)
-        #end
-        #     end
-        #   }
+         @treeTabbook.connect(SEL_COMMAND) { |sender, sel, item|
+            case item
+              when 0
+    #  @chatTable.apply_filter @conversation_table_ctrl.filter_settings
+                begin
+                  getApp().beginWaitCursor()
+                  update_conversation_table(@project)
+                ensure
+                  getApp().endWaitCursor()
+                end
+  # if @project
+  #   @project.settings.delete(:site_filter)
+  #       updateRequestTable(@project)
+  #end
+            end
+          }
+        
         subscribeFindingsTree()
         subscribeSitesTree()
         
@@ -1379,6 +1451,10 @@ module Watobo
                   target.connect(SEL_COMMAND) {
                     open_manual_request_editor(chat)
                   }
+                  target = FXMenuCommand.new(sendto_menu, "SQLmap..." )
+                  target.connect(SEL_COMMAND) {
+                    open_plugin_sqlmap(chat)
+                  }
 
                 end
                 FXMenuCascade.new(menu_pane, "Send to", nil, submenu)
@@ -1440,10 +1516,11 @@ module Watobo
                 addToLogin = FXMenuCommand.new(menu_pane, "Add to Login-Script" )
                 addToLogin.connect(SEL_COMMAND) {
                   @project.add_login_chat_id(chatid)
-                  saveSessionSettings(@project)
+                  puts "Add to Login-Script ... saveSessionSettings (#{@project.class})"
+                  Watobo::Gui.save_settings()
                 }
 
-                target = FXMenuCheck.new(menu_pane, "Mark as tested" )
+                target = FXMenuCheck.new(menu_pane, "Tested" )
                 target.check = chat.tested?
                 target.connect(SEL_COMMAND) {
                   chat.tested = target.checked?()
@@ -1549,7 +1626,8 @@ module Watobo
         #===================================================================
         logFrame = FXVerticalFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
         FXLabel.new(logFrame, "Eventlist:", :opts => LAYOUT_FILL_X)
-        @log_viewer = LogViewer.new(logFrame, :opts => FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+       
+        @log_viewer = Watobo::Gui::LogViewer.new(logFrame, :opts => FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
         # DASHBOARD#
         @dashboard = Dashboard.new(@switcher)
@@ -1567,6 +1645,8 @@ module Watobo
     #    if @foption_nocss.checked? then @doctype_TableFilter.concat(@fext_style);end
         
         add_queue_timer(50)
+        #disable_menu
+        update_menu
       end
 
       def create
@@ -1622,19 +1702,22 @@ module Watobo
         }
 
         project.subscribe(:settings_changed){
-          saveProjectSettings(project)
-          saveSessionSettings(project)
+        #  saveProjectSettings(project)
+         # saveSessionSettings(project)
+          Watobo::Gui.save_settings()
         }
       end
 
       def subscribeSitesTree()
         @sites_tree.subscribe(:add_site_to_scope){ |site|
           @project.addToScope(site)
+          Watobo::Gui.save_settings()
         }
 
         @sites_tree.subscribe(:show_conversation){ |chat_list|
           showConversation()
-          @chatTable.showConversation(chat_list)
+          puts "SHOW_CONVERSATION: #{chat_list.length} chats"
+          @chatTable.showConversation(chat_list, :ignore_filter)
         }
 
         @sites_tree.subscribe(:show_chat){ |chat|
@@ -1645,6 +1728,7 @@ module Watobo
       def subscribeFindingsTree()
         @findings_tree.subscribe(:add_site_to_scope){ |site|
           @project.addToScope(site)
+          Watobo::Gui.save_settings()
         }
 
         @findings_tree.subscribe(:delete_domain_filter){ |df|
@@ -1684,12 +1768,12 @@ module Watobo
         end
       end
 
-      def loadProjectSettings(filename=nil)
+      def loadProjectSettings_UNUSED(filename=nil)
         settings = nil
         if filename then
           begin
             settings = Hash.new
-            settings = Watobo::Utils.loadSettings(filename)
+            settings = Watobo::Utils.load_settings(filename)
             #            puts settings.to_yaml
           rescue => bang
           puts "!!!ERROR: could not update project settings"
@@ -1700,12 +1784,12 @@ module Watobo
         return settings
       end
 
-      def loadSessionSettings(filename=nil)
+      def loadSessionSettings_UNUSED(filename=nil)
         settings = {}
         return settings if filename.nil?
         if File.exist?(filename) then
           begin
-            settings = Watobo::Utils.loadSettings(filename)
+            settings = Watobo::Utils.load_settings(filename)
           rescue => bang
           puts "!!!ERROR: could not load session settings"
           puts bang
@@ -1724,10 +1808,9 @@ module Watobo
         end
       end
 
-      def onApplyFilterClick(sender,sel,item)
-        applyFilter()
-
-      end
+     # def onApplyFilterClick(sender,sel,item)
+    #    applyFilter()
+     # end
 
       def onClear(sender, sel, item)
         @table_filter.value =""
@@ -1760,29 +1843,58 @@ module Watobo
       end
 
       def onMenuProxy(sender,sel,item)
-        if @project
-          # puts @project.settings.to_yaml
-          # puts @settings[:password_policy].to_yaml
-          proxy_dialog = Watobo::Gui::ProxyDialog.new(self, @project.forward_proxy_settings, Watobo::Conf::Gui.dump )
+          proxy_dialog = Watobo::Gui::ProxyDialog.new(self)
           if proxy_dialog.execute != 0 then
           proxy_prefs = proxy_dialog.getProxyPrefs
           Watobo::Conf::ForwardingProxy.set proxy_prefs
-          @project.setProxyOptions(YAML.load(YAML.dump(proxy_prefs)))
+          #@project.setProxyOptions(YAML.load(YAML.dump(proxy_prefs)))
           puts "* current proxy:\n> #{@project.getCurrentProxy()}" if $DEBUG
           
-          Watobo::Gui.save_default_settings(@project)
-          
-          saveProjectSettings(@project)
+        # Watobo::Gui.save_settings()
+         #Watobo::Conf::ForwardingProxy.save
          
+         Watobo.save_proxy_settings
           update_status_bar(@project)
-          #puts "* current proxy:\n> #{@project.getCurrentProxy().to_yaml}"
-          #puts @settings[:password_policy].to_yaml
           end
-        else
-        FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
-        end
+       
+        #FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
+       
       end
+      
+      def update_menu
+        [@client_cert_menu, @www_auth_menu, @target_scope_menu ].each do |m|
+        Watobo.project.nil? ? m.disable : m.enable
+        end 
 
+       # @scanner_menu
+       # @interceptor_menu 
+       # @transcoder_menu
+        
+      end
+      
+      def disable_menu_UNUSED
+         @menu_items.each do |e|
+           e.disable if e.respond_to? :disable
+           if e.respond_to? :each_child
+             e.each_child do |c|
+               c.disable if c.respond_to? :disable
+             end
+           end
+         end
+      end
+      
+      def enable_menu_UNUSED
+         @menu_items.each do |e|
+           e.enable if e.respond_to? :enable
+           if e.respond_to? :each_child
+             e.each_child do |c|
+               c.enable if c.respond_to? :enable
+             end
+           end
+         end
+        
+      end
+      
       def purge_findings(findings)
         return false if @project.nil?
         findings.each do |f|

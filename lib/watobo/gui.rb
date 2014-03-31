@@ -97,7 +97,8 @@ module Watobo
     end
     
     def self.check_first_run
-       file = File.join(File.expand_path(File.dirname(__FILE__)), "..", "..", "disclaimer.chk")
+       # file = File.join(File.expand_path(File.dirname(__FILE__)), "..", "..", "disclaimer.chk")
+       file = File.join(Watobo.working_directory, "disclaimer.chk")
        unless File.exists?(file)
           first_start_info = Watobo::Gui::AboutWatobo.new(@main_window)
          if first_start_info.execute != 0 then
@@ -110,13 +111,14 @@ module Watobo
   end
 end
 
-%w( load_icons gui_utils load_plugins session_history save_default_settings master_password session_history save_project_settings save_proxy_settings ).each do |l|
+%w( load_icons gui_utils load_plugins session_history save_default_settings master_password session_history save_project_settings save_proxy_settings save_scanner_settings ).each do |l|
   require File.join("watobo","gui","utils", l)
 end
 
 Watobo::Gui.create_application
 
 require 'watobo/gui/utils/init_icons'
+require 'watobo/gui/mixins/subscriber'
 
 gui_path = File.expand_path(File.join(File.dirname(__FILE__), "gui"))
 

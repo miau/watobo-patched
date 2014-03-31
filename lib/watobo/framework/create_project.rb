@@ -20,21 +20,44 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
 module Watobo
+  @project_name = ''
+  @session_name = ''
+  @project = nil
+  
+  def self.project_name
+    @project_name
+  end 
+  
+  def self.session_name
+    @session_name
+  end
+ 
+  def self.project
+    @project
+  end
+
   # create_project is a wrapper function to create a new project
   # you can either create a project by giving a URL (:url),
   # or by giving a :project_name AND a :session_name
   def self.create_project(prefs={})
     project_settings = Hash.new
-   # project_settings.update @settings
+    # project_settings.update @settings
 
     if prefs.has_key? :url
-    #TODO: create project_settings from url
-    else
-    project_settings[:project_name] = prefs[:project_name]
-    project_settings[:session_name] = prefs[:session_name]
+      #TODO: create project_settings from url
+      else
+      project_settings[:project_name] = prefs[:project_name]
+      project_settings[:session_name] = prefs[:session_name]
     end
 
-    ds = Watobo::DataStore.aquire(project_settings[:project_name], project_settings[:session_name])
+    ds = Watobo::DataStore.acquire(project_settings[:project_name], project_settings[:session_name])
+    @project_name = project_settings[:project_name]
+    @session_name = project_settings[:session_name]
+
+    # updating settings
+    Watobo::Conf.load_project_settings(ds)
+    Watobo::Conf.load_session_settings(ds)
+
     project_settings[:session_store] = ds
 
     puts "= initialize passive checks ="
@@ -49,9 +72,9 @@ module Watobo
     puts "Total: " + project_settings[:active_checks].length.to_s
 
     project = Project.new(project_settings)
-    @running_projects << project
-    project
-    
+    #@running_projects << project
+    @project = project
+
   end
-  
+
 end

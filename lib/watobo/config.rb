@@ -25,21 +25,35 @@ module Watobo
     @@settings = Hash.new
     @count = 0
     @@modules = []
+    
     def self.each(&b)
       @@modules.each do |m|
         yield m if block_given?
       end
       @@modules.length
     end
+    
+    def self.load_project_settings(data_store)
+      @@modules.each do |m|
+        m.load_project(data_store)
+      end
+    end
+    
+    def self.load_session_settings(data_store)
+      @@modules.each do |m|
+        m.load_session(data_store)
+      end
+    end
 
     def self.add(group, settings)
       #   puts "* create new configuration for #{group}"
 
-      module_eval("module #{group}; @settings = #{settings} end")
+      module_eval("module #{group}; @settings = #{settings}; end")
       m = const_get(group)
       m.module_eval do
         def self.to_file
-          n = self.to_s.gsub(/(Watobo)?::/, "/").gsub(/([A-Z])([A-Z][a-z])/, '\1_\2').gsub(/([a-z\d])([A-Z])/, '\1_\2').tr("-","_").downcase
+       #   n = self.to_s.gsub(/(Watobo)?::/, "/").gsub(/([A-Z])([A-Z][a-z])/, '\1_\2').gsub(/([a-z\d])([A-Z])/, '\1_\2').tr("-","_").downcase
+          n = Watobo::Utils.snakecase self.to_s.gsub(/(Watobo)?::/, "/")
           n << ".yml"
         end
 
@@ -54,32 +68,96 @@ module Watobo
             puts "! [#{self}] could not update settings from file #{file}" if $DEBUG
           end
         end
+        
+        # returns the group name of the module
+        # e.g. the group name of Watobo::Conf::Interceptor would be Interceptor
+        def self.group_name
+          self.to_s.gsub(/.*::/,"")
+        end
 
         def self.set(settings)
           return false unless settings.is_a? Hash
           @settings = YAML.load(YAML.dump(settings))
         end
 
-        def self.save(path=nil, &b)
+        def self.save_session(data_store, *filter, &b)
+          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
+          s = filter_settings filter
+          yield s if block_given?
+         # puts group_name
+          data_store.save_session_settings( group_name, s )
+        end
+
+        def self.save_project(data_store, *filter, &b)
+          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
+          s = filter_settings filter
+         # puts @settings.to_yaml
+         # puts s.to_yaml
+          data_store.save_project_settings(group_name, s)
+        end
+        
+        def self.load_session(data_store, prefs={}, &b)
+          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :load_project_settings
+          
+          p = { :update => true }
+          p.update prefs
+          
+          s = data_store.load_session_settings(group_name)
+          return false if s.nil?
+          
+          if p[:update] == true
+            @settings.update s
+          else
+            @settings = s
+          end
+        end
+        
+        def self.load_project(data_store, prefs={}, &b)
+          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :load_project_settings
+          
+          p = { :update => true }
+          p.update prefs
+          
+          s = data_store.load_project_settings(group_name)
+          return false if s.nil?
+          
+          if p[:update] == true
+            @settings.update s
+          else
+            @settings = s
+          end
+        end
+
+        def self.filter_settings(f)
+          s = YAML.load(YAML.dump(@settings))
+
+          if f.length > 0
+            s.each_key do |k|
+              s.delete k unless f.include? k
+            end
+          end
+          s
+        end
+
+        def self.save(path=nil, *filter, &b)
 
           n = self.to_file
           p = Conf::General.working_directory
           unless path.nil?
             if File.exist? path
-              p = path
+            p = path
             end
-          end 
+          end
 
           file = File.join( p, n )
 
-          s = YAML.load(YAML.dump(@settings))
-          s.each_pair do |k,v|
-            yield k,v if block_given?
-          end
+          s = filter_settings filter
+
+          yield s if block_given?
 
           if File.exist?(File.dirname(file))
-            puts "* save config #{self} to: #{file}"
-            puts s.to_yaml
+           # puts "* save config #{self} to: #{file}"
+           # puts s.to_yaml
             File.open(file, "w") { |fh|
               YAML.dump(s, fh)
             }
@@ -99,6 +177,10 @@ module Watobo
         def self.dump
           @settings
         end
+        
+        def self.to_h
+          @settings
+        end
 
         #@@settings = settings
         def self.method_missing(name, *args, &block)
@@ -113,7 +195,9 @@ module Watobo
           end
         end
 
-        def self.included(clazz)
+        # TODO: create a class-instance of the module itself, so it can be referenced like @scanner.scope
+        # before creating the reference also check if there's another class-instance variable with the same name
+        def self.included_UNUSED(clazz)
           puts "* #{self} gets included into #{clazz}"
           @settings.each_key do |k|
             puts "* add method for #{k}"

@@ -25,6 +25,8 @@ module Watobo
   @passive_checks = []
   @running_projects = []
   
+  @tmp_dir
+  
   def self.running_projects
     @running_projects
   end
@@ -49,6 +51,10 @@ module Watobo
     init_passive_modules
   end
 
+  def self.temp_directory
+    @tmp_dir
+  end
+  
   def self.working_directory
     # puts "Method Obsolet! use Watobo::Conf::General.working_directory instead."
     Watobo::Conf::General.working_directory
@@ -141,6 +147,13 @@ module Watobo
       unless File.exist? cfg_dir
         puts "* create configuration directory '#{cfg_dir}' ..."
         Dir.mkdir(cfg_dir)
+        print "OK\n"
+      end
+      
+      @tmp_dir = File.join(Conf::General.working_directory, "tmp")
+      unless File.exist? @tmp_dir
+        puts "* create temp directory '#{@tmp_dir}' ..."
+        Dir.mkdir(@tmp_dir)
         print "OK\n"
       end
     end

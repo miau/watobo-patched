@@ -27,6 +27,7 @@ module Watobo
         
         class Http_methods < Watobo::ActiveCheck
            @@tested_directories = []
+           
           def initialize(project, prefs={})
             @project = project
             super(project, prefs)
@@ -73,6 +74,7 @@ module Watobo
                   #sleep(1)
                   checker = proc{
                   begin
+                    result = nil
                     test_request = nil
                     test_response = nil
                     test_method = "#{method}"
@@ -85,8 +87,7 @@ module Watobo
                    
                     result_request, result_response = doRequest(test_request, :default => true)
                     is_vuln = true
-                    if result_response.status then
-                      
+                    if result_response.status then                      
                       @not_allowed_response.each do |nar|
                         if result_response.status =~ /#{nar}/i then 
                           is_vuln = false                        
@@ -104,12 +105,13 @@ module Watobo
                         )
                       end
                     end
-                    [ result_request, result_response ] 
+                    result = [ result_request, result_response ] 
                   rescue => bang
                     puts bang
                     puts bang.backtrace if $DEBUG
-                    [ nil, nil ]
+                    result = [ nil, nil ]
                     end
+                    result
                   }
                   yield checker
                 end    

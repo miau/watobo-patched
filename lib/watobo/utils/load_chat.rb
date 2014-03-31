@@ -26,7 +26,7 @@ module Watobo
     def Utils.loadChatYAML(file)
       begin
         if File.exists?(file) then
-          # p file
+          puts "LoadChatYAML: #{file}" if $DEBUG 
           cdata  = YAML.load(File.open(file,"rb").read)
           return nil unless cdata
           # need to restore CRLF
@@ -68,6 +68,8 @@ module Watobo
           puts "* file #{file} not found"
           return nil
         end
+      rescue Psych::SyntaxError
+        puts "!!! Malformed File #{file}"
       rescue => bang
         puts "! could not load chat from file #{file}"
         puts cdata
@@ -78,7 +80,7 @@ module Watobo
     
     
     def Utils.loadFindingYAML(file)
-     # puts file
+      puts "LoadFindingYAML: #{file}" if $DEBUG 
       if File.exists?(file) then
         begin
         fdata  = YAML.load(File.open(file,"rb").read)

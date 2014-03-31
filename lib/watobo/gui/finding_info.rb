@@ -80,6 +80,7 @@ module Watobo
         @finding_rating.text = rating
         @finding_threat.text = finding.details[:threat]
         @finding_measure.text = finding.details[:measure]
+        @finding_details.text = (finding.details.has_key? :output) ? finding.details[:output] : "" 
         
         @finding_date.text = finding.details[:tstamp]
         @finding_module.text = finding.details[:module]

@@ -56,7 +56,8 @@ module Watobo
         
         if File.exists?(workspace_dt) then
           Dir.foreach(workspace_dt) do |file|
-            if not file =~ /^\.{1,2}$/ and File.ftype(File.join(workspace_dt,file)) == 'directory' then
+            #puts file
+            if not file =~ /^\.{1,2}/ and File.ftype(File.join(workspace_dt,file)) == 'directory' then
               @projectList.appendItem(file)
             end
           end
@@ -67,9 +68,8 @@ module Watobo
       
       def updateSessionList(project_dir)
         @sessionList.clearItems
-        
         Dir.foreach(project_dir) do |file|
-          if not file =~ /^\.{1,2}$/ and File.ftype(File.join(project_dir,file)) == 'directory' then
+          if not file =~ /^\.{1,2}/ and File.ftype(File.join(project_dir,file)) == 'directory' then
             @sessionList.appendItem(file)
           end
         end

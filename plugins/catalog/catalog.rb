@@ -23,6 +23,30 @@ module Watobo
   module Plugin
     module Catalog
       
+      class About < FXDialogBox
+      def initialize(owner, text)
+        super(owner, "About Catalog-Scanner", :opts => DECOR_TITLE|DECOR_BORDER|DECOR_CLOSE|DECOR_RESIZE,:width=>400, :height=>300)
+        self.icon = Watobo::Gui::Icons::ICON_WATOBO
+        
+        main = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE, :padding => 0)
+        main.backColor = FXColor::White
+        
+        about_txt = FXText.new(main, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
+        about_txt.editable = false
+                                    
+about_txt.disable                                    
+        about_txt.setText text
+        about_txt.font = FXFont.new(getApp(), "courier", 12, FONTWEIGHT_BOLD) 
+        about_txt.backColor = FXColor::White
+        
+        bottom = FXHorizontalFrame.new(main, :opts => LAYOUT_FILL_X)
+        FXButton.new(bottom, "OK" ,
+        :target => self, :selector => FXDialogBox::ID_ACCEPT,
+        :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
+        
+      end 
+    end
+      
       class Check < Watobo::ActiveCheck
         attr_writer :db_files
         attr_writer :var_files
@@ -237,9 +261,15 @@ module Watobo
 
           if @project then
             @sites_combo.appendItem("no site selected", nil)
-            @project.listSites(:in_scope => @scope_only_cb.checked? ).each do |site|
+            @project.listSites(:in_scope => Watobo.project.has_scope? ).each do |site|
               #puts "Site: #{site}"
-              @sites_combo.appendItem(site.slice(0..35), site)
+              site_string = site
+              if site.length > 60
+                site_string = site.slice(0..55)
+                site_string << "...:"
+                site_string << site.gsub(/.*:/,'')
+              end
+              @sites_combo.appendItem(site_string, site)
             end
             @sites_combo.numVisible = @sites_combo.numItems >= 20 ? 20 : @sites_combo.numItems
             @sites_combo.setCurrentItem(0) if @sites_combo.numItems > 0
@@ -263,25 +293,33 @@ module Watobo
         end
 
         def initialize(owner, project)
+          
           super(owner, "Catalog Scanner", project, :opts => DECOR_ALL, :width=>800, :height=>400)
-load_icon(__FILE__)
+          menu_bar = FXMenuBar.new(self, :opts => LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_GROOVE)
+          menu_pane = FXMenuPane.new(self)
+          
+          text = "Catalog-Scanner will test the web application for known directories and/or files.\nYou need two files (db_tests and db_variables) in the DB folder. "
+          text << "These files must have the same format as nikto DB files (http://cirt.net/nikto2).\nSo, if you have your own DB files, you"
+          text << " can use them with this plugin."
+            
+        load_icon(__FILE__)
+       
+        FXMenuTitle.new(menu_bar, "Help" , :popupMenu => menu_pane)
+        menu = FXMenuCommand.new(menu_pane, "About" )
+        menu.connect(SEL_COMMAND) { 
+          dlg = Watobo::Plugin::Catalog::About.new(self, text)
+          dlg.execute
+          }
+        
           self.connect(SEL_CLOSE, method(:onClose))
 
           @event_dispatcher_listeners = Hash.new
           @scanner = nil
           @plugin_name = "Catalog-Scan"
           @project = project
-          @path = File.expand_path(File.dirname(__FILE__))
-          catalog_ready = true
-          db_files = %w( db_tests db_variables )
-          db_files.each do |file|
-            fname = File.join( @path, file)
-            if not File.exists?(fname)
-              catalog_ready = false
-              puts "WARNING: Missing catalog db file: #{fname}"
-            end
-          end
-
+          
+          
+         
           @site = nil
           @dir = nil
 
@@ -300,13 +338,20 @@ load_icon(__FILE__)
 
             mr_splitter = FXSplitter.new(self, LAYOUT_FILL_X|LAYOUT_FILL_Y|SPLITTER_VERTICAL|SPLITTER_REVERSED|SPLITTER_TRACKING)
             # top = FXHorizontalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_BOTTOM)
-            top_frame = FXVerticalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y||LAYOUT_FIX_HEIGHT|LAYOUT_BOTTOM,:height => 500)
+            top_frame = FXVerticalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FIX_HEIGHT|LAYOUT_BOTTOM, :height => 500)
+          #   info_frame = FXGroupBox.new(top_frame, "Info", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 0)
+         #   info = FXText.new(info_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
+         #   info.setText text
+         #   info.backColor = info.parent.backColor
+         #   info.disable
             top_splitter = FXSplitter.new(top_frame, LAYOUT_FILL_X|SPLITTER_HORIZONTAL|LAYOUT_FILL_Y|SPLITTER_TRACKING)
             log_frame = FXVerticalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM,:height => 100)
 
-            @settings_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_Y)
-            result_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-            @requestCombo = FXComboBox.new(result_frame, 5, nil, 0,
+            @settings_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_Y, :padding => 0)
+            #request_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+              request_frame = FXGroupBox.new(top_splitter, "Request Template", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
+              FXLabel.new(request_frame, "Select a request template from drop-down list or enter manually.")
+            @requestCombo = FXComboBox.new(request_frame, 5, nil, 0,
             COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
             #@filterCombo.width =200
 
@@ -315,21 +360,22 @@ load_icon(__FILE__)
             @requestCombo.editable = false
             @requestCombo.connect(SEL_COMMAND, method(:onSelectRequest))
 
-            log_text_frame = FXVerticalFrame.new(result_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
+            #log_text_frame = FXVerticalFrame.new(request_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
             # @request_box = FXText.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
             #   @request_box.styled = true
             # Set the styles
             #  @request_box.hiliteStyles = [ hs_green, hs_red]
 
-            @request_editor = RequestEditor.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+            @request_editor = RequestEditor.new(request_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
 
-            FXLabel.new(@settings_frame, "Select Site:")
+          #  FXLabel.new(@settings_frame, "Select Site:")
+            ts_frame = FXGroupBox.new(@settings_frame, "Scan Settings", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
 
-            @scope_only_cb = FXCheckButton.new(@settings_frame, "target scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
-            @scope_only_cb.setCheck(false)
-            @scope_only_cb.connect(SEL_COMMAND) { updateView() }
+           # @scope_only_cb = FXCheckButton.new(@settings_frame, "target scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+           # @scope_only_cb.setCheck(false)
+           # @scope_only_cb.connect(SEL_COMMAND) { updateView() }
 
-            @sites_combo = FXComboBox.new(@settings_frame, 5, nil, 0,
+            @sites_combo = FXComboBox.new(ts_frame, 5, nil, 0,
             COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
             #@filterCombo.width =200
 
@@ -338,15 +384,15 @@ load_icon(__FILE__)
             @sites_combo.editable = false
             @sites_combo.connect(SEL_COMMAND, method(:onSiteSelect))
 
-            FXLabel.new(@settings_frame, "Root Directory:")
-            @dir_combo = FXComboBox.new(@settings_frame, 5, nil, 0,
+            FXLabel.new(ts_frame, "Root Directory:")
+            @dir_combo = FXComboBox.new(ts_frame, 5, nil, 0,
             COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
             @dir_combo.numVisible = 20
             @dir_combo.numColumns = 35
             @dir_combo.editable = false
             @dir_combo.connect(SEL_COMMAND, method(:onDirSelect))
 
-            @test_all_dirs = FXCheckButton.new(@settings_frame, "test all sub-directories", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+            @test_all_dirs = FXCheckButton.new(ts_frame, "test all sub-directories", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
             @test_all_dirs.setCheck(false)
 
             # @use_ssl = FXCheckButton.new(@settings_frame, "use SSL", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
@@ -355,32 +401,100 @@ load_icon(__FILE__)
             #   @run_passive_checks.setCheck(false)
 
             frame = FXGroupBox.new(@settings_frame, "Logging", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
-            @logScanChats = FXCheckButton.new(frame, "Log Scan", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+            @logScanChats = FXCheckButton.new(frame, "enable", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
             @logScanChats.checkState = false
 
             @logScanChats.connect(SEL_COMMAND) do |sender, sel, item|
               if @logScanChats.checked? then
                 @scanlog_dir_text.enabled = true
-                @scanlog_dir_label.enabled = true
-                @scanlog_dir_btn.enable
+                @scanlog_dir_text.backColor = FXColor::White
+              #  @scanlog_dir_label.enabled = true
+              #  @scanlog_dir_btn.enable
               else
                 @scanlog_dir_text.enabled = false
-                @scanlog_dir_label.enabled = false
-                @scanlog_dir_btn.disable
+                @scanlog_dir_text.backColor = @scanlog_dir_text.parent.backColor 
+              #  @scanlog_dir_label.enabled = false
+              #  @scanlog_dir_btn.disable
               end
             end
 
             @scanlog_dir_dt = FXDataTarget.new('')
            # @scanlog_dir_dt.value = @project.scanLogDirectory() if File.exist?(@project.scanLogDirectory())
-            @scanlog_dir_label = FXLabel.new(frame, "Scan-Log Directory:" )
+            @scanlog_dir_label = FXLabel.new(frame, "Scan Name:" )
             scanlog_frame = FXHorizontalFrame.new(frame,:opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)
             @scanlog_dir_text = FXTextField.new(scanlog_frame, 20,
             :target => @scanlog_dir_dt, :selector => FXDataTarget::ID_VALUE,
             :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN|LAYOUT_FILL_X)
             @scanlog_dir_text.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-            @scanlog_dir_btn = FXButton.new(scanlog_frame, "Change")
+            unless @logScanChats.checked?
+              @scanlog_dir_text.enabled = false
+              @scanlog_dir_text.backColor = @scanlog_dir_text.parent.backColor
+            end 
+            #@scanlog_dir_btn = FXButton.new(scanlog_frame, "Change")
            # @scanlog_dir_btn.connect(SEL_COMMAND, method(:selectScanlogDirectory))
-
+           
+         
+          @db_files = %w( db_tests db_variables )
+          
+          @path = File.expand_path(File.dirname(__FILE__))
+          
+          
+          @known_db_paths = [                             
+                          #   File.expand_path(File.dirname(__FILE__)), 
+                            # "/pentest/web/nikto/plugins" # BackTrack
+                            @path
+                             ]
+          config = load_config
+          unless config.nil?
+            if config.has_key? :path_history
+              begin
+              config[:path_history].each do |p|
+                @known_db_paths << p unless @known_db_paths.include? p
+              end
+              rescue => bang
+                puts "!Broken Path History"                
+              end
+            end
+              @path = config[:db_path] if config.has_key? :db_path              
+            
+          end                   
+         
+           frame = FXGroupBox.new(@settings_frame, "DB Path", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
+            #FXLabel.new(frame, "Path:" )
+            db_frame = FXHorizontalFrame.new(frame,:opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)
+             @db_path_combo = FXComboBox.new(db_frame, 5, nil, 0,
+            COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
+            
+            @db_path_combo.numVisible = 3
+            @db_path_combo.numColumns = 8
+            
+            @db_path_combo.editable = false
+            @db_path_combo.connect(SEL_COMMAND){
+              path = @db_path_combo.getItemData(@db_path_combo.currentItem)
+              set_db_path path
+            }
+           # @db_path_txt = FXTextField.new(db_frame, 20, nil, 0, :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN|LAYOUT_FILL_X)
+           # @db_path_txt.text = @path
+           # @db_path_txt.handle(self, FXSEL(SEL_UPDATE, 0), nil)
+            @db_path_btn = FXButton.new(db_frame, "add")
+            @db_path_btn.connect(SEL_COMMAND){ 
+              select_db_path
+              # @db_path_txt.text = @path              
+               }
+            #@check_buttons = Hash.new
+            
+             
+             path_index = 0
+             @known_db_paths.each_with_index do |dbp,i|              
+               if File.exist? dbp               
+                   item = @db_path_combo.appendItem(dbp)
+                   @db_path_combo.setItemData(item, dbp)
+                   path_index = i if dbp == @path
+               end
+             end
+             
+             @db_path_combo.currentItem = path_index if @db_path_combo.numItems > 0
+             
             @pbar = FXProgressBar.new(@settings_frame, nil, 0, LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK|PROGRESSBAR_HORIZONTAL)
             @pbar.progress = 0
             @pbar.total = 0
@@ -393,16 +507,16 @@ load_icon(__FILE__)
             @start_button.connect(SEL_COMMAND, method(:start))
             @start_button.disable
 
-            gbox = FXGroupBox.new(@settings_frame, "Info", LAYOUT_SIDE_LEFT|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 150)
-            gbframe = FXVerticalFrame.new(gbox, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-            fxtext = FXText.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
-            fxtext.backColor = fxtext.parent.backColor
-            fxtext.disable
-            text = "Catalog-Scanner will test the web application for known directories and/or files. There must be two files in the appropriate plugin folder:\n"
-            text << "- db_tests\n- db_variables\n\nThe format of these files is very similar to the format nikto (http://cirt.net/nikto2) is using. So if you have your own nikto.db-files, you"
-            text << " can use them with this plugin."
-            text << "\n\nCatalog Directory:\n#{File.dirname(__FILE__)}"
-            fxtext.setText(text)
+        #    gbox = FXGroupBox.new(@settings_frame, "Info", LAYOUT_SIDE_LEFT|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 150)
+        #    gbframe = FXVerticalFrame.new(gbox, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
+        #    fxtext = FXText.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
+        #    fxtext.backColor = fxtext.parent.backColor
+        #    fxtext.disable
+        #    text = "Catalog-Scanner will test the web application for known directories and/or files. There must be two files in the appropriate plugin folder:\n"
+        #    text << "- db_tests\n- db_variables\n\nThe format of these files is very similar to the format nikto (http://cirt.net/nikto2) is using. So if you have your own nikto.db-files, you"
+        #    text << " can use them with this plugin."
+        #    text << "\n\nCatalog Directory:\n#{File.dirname(__FILE__)}"
+        #    fxtext.setText(text)
 
             @check = nil
 
@@ -411,8 +525,8 @@ load_icon(__FILE__)
 
             #log_text_frame = FXHorizontalFrame.new(bottom_frame, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|LAYOUT_BOTTOM)
             log_text_frame = FXVerticalFrame.new(log_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
-            @log_viewer = LogViewer.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-
+            @log_viewer = LogViewer.new(log_text_frame, nil, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+       
             updateView()
           rescue => bang
             puts bang
@@ -421,19 +535,21 @@ load_icon(__FILE__)
         end
 
         def create
-          @log_viewer.purge
+          super                  # Create the windows
+          @log_viewer.purge_logs
           @request_editor.setText('')
           @requestCombo.clearItems()
 
           @start_button.text = "Start"
-          super                  # Create the windows
+
           show(PLACEMENT_SCREEN) # Make the main window appear
           disableOptions()
+          @start_button.disable
         end
 
-      
-
+     
         private
+        
 
         def updateRequestEditor(chat=nil)
           @request_editor.setText('')
@@ -447,8 +563,8 @@ load_icon(__FILE__)
 
         def createChat()
           request = @request_editor.parseRequest()
-          puts "[#{self}] - createChat:"
-          puts request
+        #  puts "[#{self}] - createChat:"
+        #  puts request
           chat = Watobo::Chat.new(request, [], :id => 0)
         end
 
@@ -466,7 +582,7 @@ load_icon(__FILE__)
           @requestCombo.clearItems()
           chat_list.each do |chat|
             text = "[#{chat.id}] #{chat.request.url}"
-            @requestCombo.appendItem(text.slice(0..60), chat)
+            @requestCombo.appendItem(text, chat)
           end
           if @requestCombo.numItems > 0 then
             if @requestCombo.numItems < 10 then
@@ -497,7 +613,7 @@ load_icon(__FILE__)
               updateRequestEditor(chats.first)
               if @project then
                 @project.listDirs(@site) do |dir|
-                  text = "/" + dir.slice(0..35)
+                  text = "/" + dir #.slice(0..35)
                   text.gsub!(/\/+/, '/')
                   @dir_combo.appendItem(text, dir)
                 end
@@ -536,6 +652,34 @@ load_icon(__FILE__)
             end
           end
         end
+        
+        def select_db_path(start_path = nil)
+          s_path = start_path.nil? ? @path : start_path
+          path = FXFileDialog.getOpenDirectory(self, "Select DB Path", s_path)
+          unless path.empty?
+            set_db_path(path)
+          end
+        end
+        
+        def set_db_path(path)
+          if db_path?(path)
+              puts "New DB Path >> #{path}"
+                @path = path
+          @known_db_paths << @path unless @known_db_paths.include? @path
+          @start_button.enable
+          unless @db_path_combo.findItemByData(@path)
+            item = @db_path_combo.appendItem(dbp)
+                   @db_path_combo.setItemData(item, @path)
+                   @db_path_combo.currentItem = @db_path_combo.numItems - 1
+            
+          end
+              
+              save_config
+            else
+               @catalog_ready = false
+              @start_button.disable
+            end
+        end
 
         def enableOptions()
           #  @use_ssl.enable
@@ -568,6 +712,46 @@ load_icon(__FILE__)
           self.destroy
 
         end
+        
+        def db_path?(path)
+          @db_files.each do |file|
+            fname = File.join( path, file)
+            unless File.exists?(fname)
+              puts "WARNING: Missing catalog db file: #{fname}"
+              return false
+            end
+            
+          end
+        
+          return true
+        end
+        
+        def save_config()
+        wd = Watobo.working_directory
+
+        dir_name = Watobo::Utils.snakecase self.class.to_s.gsub(/.*::/,'')
+        path = File.join(wd, "conf", "plugins")
+        Dir.mkdir path unless File.exist? path
+        conf_dir = File.join(path, dir_name)
+        Dir.mkdir conf_dir unless File.exist? conf_dir
+        file = File.join(conf_dir, dir_name + "_config.yml")
+        config = { 
+                   :db_path => @path,
+                   :path_history => @known_db_paths                   
+                   }
+        Watobo::Utils.save_settings(file, config)
+      end
+
+      def load_config()
+        wd = Watobo.working_directory
+        dir_name = Watobo::Utils.snakecase self.class.to_s.gsub(/.*::/,'')
+        path = File.join(wd, "conf", "plugins")
+        Dir.mkdir path unless File.exist? path
+        conf_dir = File.join(path, dir_name)
+        Dir.mkdir conf_dir unless File.exist? conf_dir
+        file = File.join(conf_dir, dir_name + "_config.yml")
+        config = Watobo::Utils.load_settings(file)
+      end
 
         def start(sender, sel, item)
           if @start_button.text =~ /cancel/i then

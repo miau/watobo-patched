@@ -139,13 +139,15 @@ module Watobo
           
           if @project then
             @sites_combo.appendItem("no site selected", nil)
-            @project.listSites(:in_scope => @scope_only_cb.checked? ).each do |site|
+            @project.listSites(:in_scope => Watobo.project.has_scope? ).each do |site|
               #puts "Site: #{site}"
               @sites_combo.appendItem(site.slice(0..35), site)
             end
             @sites_combo.setCurrentItem(0) if @sites_combo.numItems > 0
             ci = @sites_combo.currentItem
             site = ( ci >= 0 ) ? @sites_combo.getItemData(ci) : nil
+             @sites_combo.numVisible = @sites_combo.numItems
+            @sites_combo.numColumns = 35
             
             if site
               @dir_combo.enable
@@ -216,9 +218,9 @@ module Watobo
             log_text_frame = FXVerticalFrame.new(result_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
             @request_editor = RequestEditor.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
             
-              @scope_only_cb = FXCheckButton.new(@settings_frame, "target scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
-            @scope_only_cb.setCheck(false)
-            @scope_only_cb.connect(SEL_COMMAND) { updateView() }
+           #   @scope_only_cb = FXCheckButton.new(@settings_frame, "target scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+           # @scope_only_cb.setCheck(false)
+           # @scope_only_cb.connect(SEL_COMMAND) { updateView() }
             
             FXLabel.new(@settings_frame, "Select Site:")
             @sites_combo = FXComboBox.new(@settings_frame, 5, nil, 0,
@@ -278,7 +280,17 @@ module Watobo
             
             #   @run_passive_checks = FXCheckButton.new(@settings_frame, "run passive checks", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
             #   @run_passive_checks.setCheck(false)
+            gbox = FXGroupBox.new(@settings_frame, "Extensions", LAYOUT_SIDE_LEFT|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 150)
+            gbframe = FXVerticalFrame.new(gbox, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
+            @extensions_text = FXText.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
+            ext = "bak;php;asp;aspx;tgz;tar.gz;gz;tmp;temp;old;_"
+         #   fxtext.backColor = fxtext.parent.backColor
+         #   fxtext.disable
+         #   text = "FileFinder allows you to search easily for specific files, e.g. files you have uploaded.\nIf you want to search for multiple files you can also use a db-file, "
+         #   text << "which is a plain text file - each filename on one line."
             
+            @extensions_text.setText(ext)
+             
             
             @pbar = FXProgressBar.new(@settings_frame, nil, 0, LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK|PROGRESSBAR_HORIZONTAL)
             @pbar.progress = 0
@@ -293,17 +305,7 @@ module Watobo
             @start_button.disable
             
             
-            gbox = FXGroupBox.new(@settings_frame, "Extensions", LAYOUT_SIDE_LEFT|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 150)
-            gbframe = FXVerticalFrame.new(gbox, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-            @extensions_text = FXText.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
-            ext = "bak;php;asp;aspx;tgz;tar.gz;gz;tmp;temp;old;_"
-         #   fxtext.backColor = fxtext.parent.backColor
-         #   fxtext.disable
-         #   text = "FileFinder allows you to search easily for specific files, e.g. files you have uploaded.\nIf you want to search for multiple files you can also use a db-file, "
-         #   text << "which is a plain text file - each filename on one line."
-            
-            @extensions_text.setText(ext)
-            
+           
             
             
             log_frame_header = FXHorizontalFrame.new(log_frame, :opts => LAYOUT_FILL_X)
@@ -322,11 +324,13 @@ module Watobo
         end
         
         def create
-          @log_viewer.purge
+          super
+          
+          @log_viewer.purge_logs
           @request_editor.setText('')
           @requestCombo.clearItems()
           @start_button.text = "Start"
-          super                  # Create the windows
+                   # Create the windows
           show(PLACEMENT_SCREEN) # Make the main window appear
           disableOptions()
         end

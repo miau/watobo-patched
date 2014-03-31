@@ -65,6 +65,7 @@ module Watobo
 
       def getSelectedModules()
         sel = @tree.getCheckedData
+      
       #sel.map { |i| p i.class }
       end
 

@@ -24,6 +24,7 @@ module Watobo
     class InterceptEditor < FXVerticalFrame
       
       include Watobo::Constants
+      include Watobo::Interceptor
       include Watobo::Gui::Utils
       
       def initialize(owner, opts)
@@ -411,6 +412,7 @@ module Watobo
 
       include Responder
       include Watobo
+      include Watobo::Interceptor
       include Watobo::Gui::Icons
       def execute
         create
@@ -465,13 +467,13 @@ module Watobo
         end
       end
 
-      def initialize(owner, interceptor, opts)
+      def initialize(owner, opts)
         # Invoke base class initialize function first
 
         super( owner, 'Interceptor', nil, nil, DECOR_ALL|DECOR_TITLE|DECOR_BORDER|DECOR_RESIZE, 0, 0, 600, 400, 0, 0, 0, 0, 0, 0)
         self.connect(SEL_CLOSE, method(:onClose))
         self.icon = ICON_INTERCEPTOR
-        @interceptor = interceptor
+        #@interceptor = interceptor
 
         @request_list = []
         @response_list = []
@@ -491,23 +493,39 @@ module Watobo
         #log_frame = FXVerticalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM,:height => 100)
 
         filter_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y||LAYOUT_FIX_HEIGHT|LAYOUT_BOTTOM)
-        FXLabel.new(filter_frame, "Intercept:" )
-        @intercept_request = FXCheckButton.new(filter_frame, "Requests", nil, 0,
+         gbframe = FXGroupBox.new(filter_frame, "Intercept", LAYOUT_SIDE_RIGHT|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
+        frame = FXVerticalFrame.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
+      #  FXLabel.new(filter_frame, "Intercept:" )
+        @intercept_request = FXCheckButton.new(frame, "Requests", nil, 0,
         ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
         @intercept_request.connect(SEL_COMMAND, method(:onInterceptChanged))
 
-        @intercept_response = FXCheckButton.new(filter_frame, "Response", nil, 0,
+        @intercept_response = FXCheckButton.new(frame, "Response", nil, 0,
         ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
         @intercept_response.connect(SEL_COMMAND, method(:onInterceptChanged))
-
-        @filter_options_btn = FXButton.new(filter_frame, "Filter Options", nil, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_LEFT)
+        @filter_options_btn = FXButton.new(frame, "Options", nil, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_LEFT)
         @filter_options_btn.connect(SEL_COMMAND, method(:onBtnFilterOptions))
+        
+        gbframe = FXGroupBox.new(filter_frame, "Rewrite", LAYOUT_SIDE_RIGHT|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
+        frame = FXVerticalFrame.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
+        #FXLabel.new(filter_frame, "Rewrite:" )
+        @rewrite_request = FXCheckButton.new(frame, "Requests", nil, 0,
+        ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+        @rewrite_request.connect(SEL_COMMAND, method(:onInterceptChanged))
+
+        @rewrite_response = FXCheckButton.new(frame, "Response", nil, 0,
+        ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+        @rewrite_response.connect(SEL_COMMAND, method(:onInterceptChanged))
+
+ @rewrite_options_btn = FXButton.new(frame, "Options", nil, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_LEFT)
+        @rewrite_options_btn.connect(SEL_COMMAND){ open_rewrite_options_dialog }
+       
         #@intercept_request.checkState = false
         #@intercept_response.checkState = false
-        unless @interceptor.nil?
+        if Watobo::Interceptor.active?
 
-          @intercept_request.checkState = @interceptor.mode & INTERCEPT_REQUEST > 0
-          @intercept_response.checkState = @interceptor.mode & INTERCEPT_RESPONSE > 0
+          @intercept_request.checkState = Watobo::Interceptor.intercept_requests?
+          @intercept_response.checkState = Watobo::Interceptor.intercept_requests?
         end
 
         view_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y||LAYOUT_FIX_HEIGHT|LAYOUT_BOTTOM)
@@ -702,7 +720,7 @@ end
 
       #    def onHide
       #      #  puts "* hiding interceptor"
-      #      @interceptor.mode = INTERCEPT_NONE
+      #      Watobo::Interceptor.intercept_mode = INTERCEPT_NONE
       #      @mutex.synchronize {
       #        @cv.signal
       #      }
@@ -711,7 +729,8 @@ end
       def onClose(sender, sel, ptr)
         puts "* closing Interceptor UI"
         puts "+ stop intercepting"
-        @interceptor.mode = INTERCEPT_NONE
+        Watobo::Interceptor.intercept_mode = INTERCEPT_NONE
+        Watobo::Interceptor.rewrite_mode = REWRITE_NONE
         puts "+ release all interceptions"
         releaseAll()
         #getApp().stopModal(self, 1)
@@ -756,24 +775,41 @@ end
       def onBtnFilterOptions(sender, sel, ptr)
 
         dlg = Watobo::Gui::InterceptorFilterSettingsDialog.new( self,
-        :request_filter_settings => @interceptor.getRequestFilter(),
-        :response_filter_settings => @interceptor.getResponseFilter()
+        :request_filter_settings => Interceptor.proxy.getRequestFilter(),
+        :response_filter_settings => Interceptor.proxy.getResponseFilter()
         )
         if dlg.execute != 0 then
         # TODO: Apply interceptor settings
-        @interceptor.setRequestFilter(dlg.getRequestFilter)
-        @interceptor.setResponseFilter(dlg.getResponseFilter)
+        Interceptor.proxy.setRequestFilter(dlg.getRequestFilter)
+        Interceptor.proxy.setResponseFilter(dlg.getResponseFilter)
         end
 
+      end
+      
+      def open_rewrite_options_dialog
+        dlg = Watobo::Gui::RewriteRulesDialog.new( self )
+        if dlg.execute != 0 then
+        # TODO: Apply interceptor settings
+        Interceptor::RequestCarver.set_carving_rules dlg.request_rules
+        Interceptor::ResponseCarver.set_carving_rules dlg.response_rules
+        end
       end
 
       def onInterceptChanged(sender, sel, ptr)
         begin
-          unless @interceptor.nil? then
-            @interceptor.mode = @intercept_response.checked? ? INTERCEPT_RESPONSE : 0
-            @interceptor.mode |= @intercept_request.checked? ? INTERCEPT_REQUEST : 0
-          #puts @interceptor.mode
-          end
+         # unless @interceptor.nil? then
+            mode = @intercept_response.checked? ? INTERCEPT_RESPONSE : 0
+            mode |= @intercept_request.checked? ? INTERCEPT_REQUEST : 0
+            #Watobo::Interceptor.intercept_mode = @intercept_response.checked? ? INTERCEPT_RESPONSE : 0
+           # Watobo::Interceptor.intercept_mode |= @intercept_request.checked? ? INTERCEPT_REQUEST : 0
+          #puts Watobo::Interceptor.intercept_mode
+         # puts "New Proxy Mode: #{mode}"
+          Watobo::Interceptor.intercept_mode = mode
+          
+          mode = @rewrite_request.checked? ? REWRITE_REQUEST : 0
+          mode |= @rewrite_response.checked? ? REWRITE_RESPONSE : 0
+          Watobo::Interceptor.rewrite_mode = mode
+         # end
         rescue => bang
           puts bang
           puts bang.backtrace if $DEBUG
@@ -785,6 +821,8 @@ end
     class InterceptorFilterSettingsDialog < FXDialogBox
 
       include Responder
+      include Watobo::Interceptor
+      
       def getRequestFilter()
         @request_filter
       end

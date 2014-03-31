@@ -137,6 +137,33 @@ module Watobo
           self.pop if self[-2].strip.empty?
         end
 
+        def set_header(header, value)
+          self.each do |h|
+            break if h.strip.empty?
+            if h =~ /^#{header}:/
+              h.replace "#{header}: #{value}\r\n"             
+            end
+          end
+        end
+
+        def set_body(content)
+          if self[-2].strip.empty?
+          self.pop
+          else
+            self << "\r\n"
+          end
+          self << content
+        end
+
+        def rewrite_body(pattern, content)
+          if self[-2].strip.empty?
+            puts "rewrite_body ... #{pattern} - #{content}"
+            b = self.pop
+            b.gsub!(/#{pattern}/i, content)
+          self << b
+          end
+        end
+
         def restoreURI(uri)
           if self.first =~ /(^[^[:space:]]{1,}) \/(.*) (HTTP\/.*)/ then
             method = $1
@@ -230,23 +257,24 @@ module Watobo
 
         def fix_content_length
           return false if self.body.nil?
-          eoh_index = self.length - 2
-          self.map!{ |x|
-            x.gsub!(/^(Content-Length: )(\d+)/, "\\1#{self.body.length.to_s}") if self.index(x) <= eoh_index
-            x
-          }
+          set_header("Content-Length" , body.length.to_s )
+        #          eoh_index = self.length - 2
+        #          self.map!{ |x|
+        #            x.gsub!(/^(Content-Length: )(\d+)/, "\\1#{self.body.length.to_s}") if self.index(x) <= eoh_index
+        #            x
+        #          }
         end
 
-        def fixupContentLength
+        def fixupContentLength_UNUSED
           te = self.transferEncoding
           if te == TE_CHUNKED then
             # puts "Transfer-Encoding = TE_CHUNKED"
             # puts self.body
             self.removeHeader("Transfer-Encoding")
             self.addHeader("Content-Length", "0")
-            new = []
-            new.concat self.headers
-            new.push "\r\n"
+            new_r = []
+            new_r.concat self.headers
+            new_r.push "\r\n"
 
             bytes_to_read = 0
             body = []
@@ -273,8 +301,8 @@ module Watobo
               off = chunk_end + 2
             end
 
-          new.push new_body
-          self.replace(new)
+          new_r.push new_body
+          self.replace(new_r)
           self.fix_content_length
           # puts "= FIXED ="
           # puts self.headers
@@ -284,16 +312,21 @@ module Watobo
 
         end
 
+        def fixupContentLength
+          self.unchunk
+          self.fix_content_length
+        end
+
         def setRawQueryParms(parm_string)
           return nil if parm_string.nil?
           return nil if parm_string == ''
-          new = ""
+          new_r = ""
           path = Regexp.quote(self.path)
           #puts path
           if self.first =~ /(.*#{path})/ then
-            new = $1 << "?" << parm_string
+            new_r = $1 << "?" << parm_string
           end
-          self.first.gsub!(/(.*) (HTTP\/.*)/, "#{new} \\2")
+          self.first.gsub!(/(.*) (HTTP\/.*)/, "#{new_r} \\2")
         end
 
         def appendQueryParms(parms)
@@ -340,6 +373,82 @@ module Watobo
           self.first.gsub!(/HTTP\/(.*)$/, "HTTP\/#{version}")
         #  puts "HTTPVersion fixed: #{self.first}"
         end
+
+        alias :method= :setMethod
+      end
+
+      module HttpResponse
+        include Watobo::Constants
+        def unchunk
+          if self.transfer_encoding == TE_CHUNKED then
+            self.removeHeader("Transfer-Encoding")
+            self.addHeader("Content-Length", "0")
+            new_r = []
+            new_r.concat self.headers
+            new_r.push "\r\n"
+
+            bytes_to_read = 20
+            body = []
+            is_new_chunk = false
+
+            off = 0
+            new_body = ''
+
+            body_orig = self.body
+            # puts body_orig.class
+            puts body_orig.length
+            pattern = '[0-9a-fA-F]{1,6}\r?\n'
+            while off >= 0 and off < body_orig.length
+              chunk_pos  = body_orig.index(/(#{pattern})/, off)
+              len_raw = $1
+              unless chunk_pos.nil?
+                #len_raw = body_orig.match(/#{pattern}/, chunk_pos)[0]
+                # puts "ChunkLen: #{len_raw} (#{len_raw.strip.hex})"
+                len = len_raw.strip.hex
+
+                chunk_start = chunk_pos + len_raw.length
+                chunk_end = chunk_start + len
+
+                break if len == 0
+
+                #new_body.chomp!
+                chunk = "#{body_orig[chunk_start..chunk_end]}"
+              new_body += chunk.chomp!
+
+              off = chunk_end
+              end
+            end
+          new_r.push new_body
+          self.replace(new_r)
+          self.fix_content_length
+          # puts "="
+          # self.headers.each {|h| puts h}
+          # puts "="
+          end
+
+        end
+
+        def unzip
+
+          if self.content_encoding == TE_GZIP or self.transfer_encoding == TE_GZIP
+            begin
+              if self.has_body?
+                gziped = self.pop
+                gz = Zlib::GzipReader.new( StringIO.new( gziped ) )
+                data = gz.read
+                #puts data
+                self << data
+                self.removeHeader("Transfer-Encoding") if self.transfer_encoding == TE_GZIP
+                self.removeHeader("Content-Encoding") if self.content_encoding == TE_GZIP
+              self.fix_content_length
+              end
+
+            rescue => bang
+              puts bang
+            end
+          end
+        end
+
       end
     end
   end

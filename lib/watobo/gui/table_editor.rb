@@ -149,7 +149,7 @@ module Watobo
                @request.removeHeader("Cookie")
                @request.addHeader("Cookie", cookies.join("; "))
             end
-            #  puts @request
+          
             @request
          end
 
@@ -205,7 +205,7 @@ module Watobo
             self.connect(SEL_DOUBLECLICKED) do |sender, sel, data|
                row = sender.getCurrentRow
                return nil unless row >= 0 and row < self.numRows
-               transcoder = FXTranscoder.new(FXApp.instance, self.getItemText(row, 2))
+               transcoder = TranscoderWindow.new(FXApp.instance, self.getItemText(row, 2))
                transcoder.create
                transcoder.show(Fox::PLACEMENT_SCREEN)
             end

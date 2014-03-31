@@ -20,7 +20,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
 module Watobo
-  def self.save_proxy_settings(prefs)
+  def self.save_proxy_settings(prefs={})
 
     c_prefs = {
       :save_passwords => false,
@@ -29,14 +29,32 @@ module Watobo
 
     c_prefs.update prefs
 
-    Watobo::Conf::ForwardingProxy.save do |name, proxy|
-      next unless proxy.is_a? Hash
-      unless c_prefs[:save_passwords] == false
-        unless c_prefs[:key].empty?
-
+    unless Watobo.project.nil?
+      Watobo::Conf::ForwardingProxy.save_project(Watobo.project.session_store) do |s|
+        s.each do |name, proxy|
+          next unless proxy.is_a? Hash
+          unless c_prefs[:save_passwords] == false
+            unless c_prefs[:key].empty?
+            #asdfa
+            end
+          else
+            proxy[:password] = ''
+          end
+        end
       end
-      else
-        proxy[:password] = ''
+    else
+
+      Watobo::Conf::ForwardingProxy.save do |s|
+        s.each do |name, proxy|
+          next unless proxy.is_a? Hash
+          unless c_prefs[:save_passwords] == false
+            unless c_prefs[:key].empty?
+            #asdfa
+            end
+          else
+            proxy[:password] = ''
+          end
+        end
       end
     end
 

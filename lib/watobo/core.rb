@@ -29,6 +29,6 @@
 
     end
 =end
-%w( project scanner session fuzz_gen http_socket interceptor passive_check active_check simple_ca cookie).each do |lib|
+%w( project scanner proxy session fuzz_gen http_socket interceptor passive_check active_check cookie request response intercept_filter intercept_carver forwarding_proxy cert_store netfilter_queue ).each do |lib|
   require File.join( "watobo", "core", lib)
 end
