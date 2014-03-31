@@ -1,7 +1,7 @@
 # .
 # detect_code.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Passive
       
@@ -46,7 +47,9 @@ module Watobo
          
           @pattern_list = []
           @pattern_list << ['<\?php', "PHP" ]
-          @pattern_list << [ '<!--.*select ', "COMMENT" ]
+          @pattern_list << [ '<!--[^>]*select ', "COMMENT" ]
+          @pattern_list << [ '\/\*[^(\*\/)]*select ', "COMMENT" ]
+          @pattern_list << [ '\/\/[^(\*\/\n)]*select ', "COMMENT" ]
           @pattern_list << [ 'sample code', "COMMENT" ]
               @pattern_list << [ '<%[^<%]*%>', "ASP" ]
           
@@ -68,7 +71,7 @@ module Watobo
                   match = $1
                   path = "/" + chat.request.path
                   addFinding(  
-                  :proof_pattern => "#{match}", 
+                  :proof_pattern => "#{Regexp.quote(match)}", 
                   :chat => chat,
                   :title => "[#{type}] - #{path}"
                   )

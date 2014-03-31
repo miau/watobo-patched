@@ -1,7 +1,7 @@
 # .
 # cookie_options.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -40,7 +40,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Passive
       

@@ -1,7 +1,7 @@
 # .
 # domino_db.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -22,18 +22,15 @@
 require 'digest/md5'
 require 'digest/sha1'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Domino
         
         
         class Domino_db < Watobo::ActiveCheck
-          
-          def initialize(project, prefs={})
-            super(project, prefs)
-            
-            @info.update(
+          @info.update(
                          :check_name => 'Lotus Domino DB Enumeration',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Enumeration of well known Domino DBs.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -47,6 +44,8 @@ module Watobo
             :type => FINDING_TYPE_HINT         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
             
+          def initialize(project, prefs={})
+            super(project, prefs)
             
             @domino_dbs = []
             
@@ -70,7 +69,7 @@ module Watobo
           
           def generateChecks(chat)            
             begin              
-              if chat.request.url =~ /(.*)\/\w*\.nsf/ then
+              if chat.request.url.to_s =~ /(.*)\/\w*\.nsf/ then
                 @domino_dbs.each do |db|
                   checker = proc{
                     test_request = nil
@@ -78,7 +77,7 @@ module Watobo
                     test = chat.copyRequest
                     line = test.shift
                     line.gsub!(/(\w*\.nsf.*) (HTTP\/.*)/, "#{db} \\2")
-                    puts line
+                   # puts line
                     test.unshift line
                     
                     test_request,test_response = doRequest(test,:default => true)
@@ -88,7 +87,7 @@ module Watobo
                      # test_chat = Chat.new(test, test_response, chat.id)
                       if test_response.join =~ /(names\.nsf\?Login)/ # if default db found, check for content
                         addFinding( test_request,test_response,
-                        :test_item => chat.request.url,
+                        :test_item => chat.request.url.to_s,
                                    :check_pattern => "#{db}",
                         :proof_pattern => "#{test_response.status}", 
                         :chat=>chat,
@@ -98,7 +97,7 @@ module Watobo
                         addFinding(test_request,test_response,
                                    :check_pattern => "#{db}",
                         :proof_pattern => "#{test_response.status}",
-                        :test_item => chat.request.url,
+                        :test_item => chat.request.url.to_s,
                         :class => "Lotus Domino: Unprotected Default DB",
                         :type => FINDING_TYPE_VULN,
                         :chat => chat,

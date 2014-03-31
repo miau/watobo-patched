@@ -1,7 +1,7 @@
 # .
 # full_scan_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     
     class FullScanDialog < FXDialogBox
@@ -96,15 +97,13 @@ module Watobo
         
         @switcher = FXSwitcher.new(base_frame,LAYOUT_FILL_X|LAYOUT_FILL_Y)   
         
-        @selectedSites = []
-        #    @selectSitesFrame = SelectSitesFrame.new(@switcher, project, prefs)
-        @defineScopeFrame = DefineScopeFrame.new(@switcher, @project.listSites(), @project.scope, prefs)
+        @defineScopeFrame = DefineScopeFrame.new(@switcher, prefs)
         
         @policyBase = FXVerticalFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         smf = FXHorizontalFrame.new(@policyBase, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP|FRAME_GROOVE)
         FXLabel.new(smf, "Select Checks")
         
-        @policyFrame = ChecksPolicyFrame.new(@policyBase, @project.active_checks, @project.getScanPolicy)
+        @policyFrame = ChecksPolicyFrame.new(@policyBase, @project.getScanPolicy)
         
       #  @scannerOptions = ScannerSettingsFrame.new(@switcher, @project.getScanPreferences(),:opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         @scannerOptions = ScannerSettingsFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)

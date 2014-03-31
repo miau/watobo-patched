@@ -1,7 +1,7 @@
 # .
 # request_editor.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class SimpleTextView < FXVerticalFrame
 
@@ -177,7 +178,10 @@ module Watobo
         @text = normalizeText(text)
       
         showText(@text)
+        true
       end
+      
+      alias_method :setRequest, :setText
 
       def filter(pattern)
         #dummy = @textbox.to_s.split(/\n/)
@@ -401,13 +405,13 @@ module Watobo
                 text = @textbox.extractText(pos,len)
                 rptxt = case event.code
                 when KEY_u
-                  CGI::escape(text).strip
+                  CGI::escape(text)
                 when KEY_b
-                  Base64.encode64(text).strip
+                  Base64.strict_encode64(text)
                 when KEY_U
-                  CGI::unescape(text).strip
+                  CGI::unescape(text)
                 when KEY_B
-                  Base64.decode64(text).strip
+                  Base64.decode64(text)
                 else
                 text
                 end
@@ -432,8 +436,9 @@ module Watobo
       def parseRequest
         begin
           return @textbox.to_request
-        rescue SyntaxError, LocalJumpError, NameError
-        #  puts bang
+        rescue SyntaxError, LocalJumpError, NameError => bang
+          puts bang
+          puts bang.backtrace
         #  puts bang.backtrace if $DEBUG
           notify(:error, "#{$!}")
         rescue => bang
@@ -476,6 +481,6 @@ module Watobo
       end
     end
 
-  # -> module Watobo::Gui
+  # -> # module Watobo::Gui
   end
 end

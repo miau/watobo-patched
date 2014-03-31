@@ -1,7 +1,7 @@
 # .
 # fileextensions.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Discovery
@@ -27,11 +28,7 @@ module Watobo
         
         class Fileextensions < Watobo::ActiveCheck
           
-          def initialize(session_name=nil, prefs={})
-          #  @project = project
-            super(session_name, prefs)
-            
-            @info.update(
+           @info.update(
                          :check_name => 'FileExtensions',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Checks for temporary- or backup-files",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -45,6 +42,12 @@ module Watobo
             :type => FINDING_TYPE_VULN         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
             
+          
+          def initialize(session_name=nil, prefs={})
+          #  @project = project
+            super(session_name, prefs)
+            
+           
             
             
             #  @tested_directories = Hash.new

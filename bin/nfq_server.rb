@@ -2,7 +2,7 @@
 # .
 # nfq_server.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -32,7 +32,8 @@ rescue LoadError
   exit
 end
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module NFQ
     class Connections
       attr :nfqueue
@@ -185,7 +186,7 @@ module Watobo
   end
 end
 
-DRb.start_service "druby://127.0.0.1:666", Watobo::NFQ::Connections.new
+DRb.start_service "druby://127.0.0.1:9090", Watobo::NFQ::Connections.new
 #puts DRb.uri
 DRb.thread.join
 

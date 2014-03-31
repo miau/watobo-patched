@@ -19,19 +19,14 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Apache
         class Mod_status < Watobo::ActiveCheck
-          def reset()
-            @checked_sites.clear
-          end
-
-          def initialize(project, prefs={})
-            super(project, prefs)
-
-            @info.update(
+          
+           @info.update(
             :check_name  => 'Server-Status page',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Check for status page created by mod_status",   # description of checkfunction
             :author      => "Hans-Martin Muench", # author of check
@@ -42,9 +37,18 @@ module Watobo
             @finding.update(
             :class        => "Information disclosure",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type         => FINDING_TYPE_HINT,           # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
-            :measure	     => "Disable the mod_status module or restrict the access to the status page",
-            :threat	     => "The result page of the mod-status module is accessible without authentication. This page contains information about the server activity and performance"
+            :measure       => "Disable the mod_status module or restrict the access to the status page",
+            :threat      => "The result page of the mod-status module is accessible without authentication. This page contains information about the server activity and performance"
             )
+            
+          def reset()
+            @checked_sites.clear
+          end
+
+          def initialize(project, prefs={})
+            super(project, prefs)
+
+           
 
             @status_checks = ['/server-status/', '/server_status/', '/serverstatus/', '/mod-status/', '/mod_status/', '/modstatus', 'status']
 

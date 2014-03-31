@@ -1,7 +1,7 @@
 # .
-# xss_rated.rb
+# xss_ng.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,18 +19,16 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Xss
         
         
-        class Xss_rated < Watobo::ActiveCheck
+        class Xss_ng < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-            super(project, prefs)
-            
-            threat =<<'EOF'
+          threat =<<'EOF'
 Cross-site Scripting (XSS) is an attack technique that involves echoing attacker-supplied code into a user's browser instance. 
 A browser instance can be a standard web browser client, or a browser object embedded in a software product such as the browser 
 within WinAmp, an RSS reader, or an email client. The code itself is usually written in HTML/JavaScript, but may also extend to 
@@ -49,49 +47,65 @@ EOF
             measure = "All user input should be filtered and/or escaped using a method appropriate for the output context"
             
             @info.update(
-                         :check_name => 'Rated Cross Site Scripting Checks',    # name of check which briefly describes functionality, will be used for tree and progress views
+                         :check_name => 'NextGeneration Cross Site Scripting Checks',    # name of check which briefly describes functionality, will be used for tree and progress views
             :check_group => AC_GROUP_XSS,
-            :description => "Checking every URL parameter for missing output sanitisation. The results have a rated exploitability.",   # description of checkfunction
+            :description => "XSS Checks with rating. Additional parameters are created by extracting input fields (name/value pairs) of the original response.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
             :version => "1.0"   # check version
             )
             
             @finding.update(
                             :threat => threat,        # thread of vulnerability, e.g. loss of information
-                            :class => "Reflected XSS [RATED]",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+                            :class => "Reflected XSS",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
             :rating => VULN_RATING_HIGH,
             :measure => measure
             )
+          
+          def initialize(project, prefs={})
+            super(project, prefs)
             
-            @envelop = [ "watobo", "watobo".reverse]
+            
+            @envelop = "watobo"
+            @env_count = 0
             @evasions = [ "%0a", "%00"]
             @xss_chars= %w( < > ' " ) 
             @escape_chars = ['\\']       
+            @additional_parms = []
+            
+            def reset
+              @additional_parms = []
+              @env_count = 0
+            end
+            
             
           end
           
           
           def generateChecks(chat)    
-            #
-            #  Check GET-Parameters
-            #
-            begin
+            begin   
+              # 
+              if chat.response.respond_to? :input_fields           
+              chat.response.input_fields do |field|                
+                @additional_parms << field.to_www_form_parm if chat.request.method_post?
+                @additional_parms << field.to_url_parm
+               
+              end
+              end
               
-              log_console("generating checks ...")
-              urlParmNames(chat).each do |parm|
-                log_console( parm )
-                # puts "#{Module.nesting[0].name}: run check on chat-id (#{chat.id}) with parm (#{parm})"
-                pval = chat.request.get_parm_value(parm)
+              @parm_list = chat.request.parameters(:data, :url)
+              @parm_list.concat @additional_parms
+              @parm_list.each do |parm|
+               #log_console( "#{parm.location} - #{parm.name} = #{parm.value}")
+               
                 checks = []
                 @xss_chars.each do |xss|
-                   tp = "#{@envelop[0]}"
-                   tp << CGI.escape(xss)
-                   tp << "#{@envelop[1]}"
-                   pattern = "#{@envelop[0]}([^#{@envelop[0]}]*#{xss})#{@envelop[1]}"   
-                   checks << [ xss.dup, "#{tp}" , pattern ]
-                   checks << [xss.dup, "#{pval}#{tp}", pattern ]
-                   checks << [xss.dup, "#{tp}#{pval}", pattern ]
+                  @env_count += 1
+                  
+                  check_id = "#{@envelop}#{@env_count}"
+                   checks << [ xss.dup, "#{xss}", check_id ]
+                   checks << [xss.dup, "#{parm.value}#{xss}", check_id ]
+                   checks << [xss.dup, "#{xss}#{parm.value}", check_id ]
                       
                   end
                   checker = proc {
@@ -99,13 +113,32 @@ EOF
                     rating = 0
                        test_request = nil
                       test_response = nil
-               
+                      
+                      # first we check, if parameter is injectable
+                      test = chat.copyRequest
+                     
+                      proof = "INJ#{Time.now.to_i.to_s}"
+                      parm.value = proof
+                      test.set parm
+                      
+                      test_request,test_response = doRequest(test)
+                      
+                      
+                      next [ test_request, test_response ] unless test_response.has_body?
+                                       
+                      next [ test_request, test_response ] unless test_response.body =~ /#{proof}/i
+                      
                     
-                    checks.each do |xss, check, proof|
+                    checks.each do |xss, check, check_id|
+                     
+                     # accept only one (escape) char between check_id and check string
+                      proof = "#{check_id}([^#{Regexp.quote(check)}]?(#{Regexp.quote(check)}){1})"
                       next if results.has_key? xss
                       test = chat.copyRequest
-                      test.replace_get_parm(parm, check)
-                        
+                     
+                      parm.value = check_id + CGI.escape(check)
+                      test.set parm
+                      
                       test_request,test_response = doRequest(test)
                                        
                       if not test_response then
@@ -115,8 +148,8 @@ EOF
                         end
                       elsif test_response.join =~ /#{proof}/i
                         match = $1
-                      #  puts "MATCH: #{match}/#{xss}"
-                        if match == xss
+                      #puts "MATCH: [ #{match} ] / [ #{check} ]"
+                        if match == check
                         results[xss] = { :match => :full, :check => check, :proof => proof }
                         end
                         
@@ -124,67 +157,67 @@ EOF
                           @escape_chars.each do |ec|
                             ep = Regexp.quote("#{ec}#{xss}")
                           #  puts "Escaped: #{match} / #{ep}"
-                            results[xss] = { :match => :escaped, :check => check, :proof => proof} if match =~ /#{ep}/
+                            results[xss] = { :match => :escaped, :check => check, :proof => proof, :escape_char => "#{ec}"} if match =~ /#{ep}/
                           end
                         end
                         
-                        results[xss] = { :match => :modified, :check => check, :proof => proof } unless results.has_key? xss
-                        
                       end
-                      puts results.to_yaml if $DEBUG
+                      
                     end
                     
-                   
+                   puts results.to_yaml if $DEBUG
                     xss_combo = ""
+                    combo_patterns = []
                    results.each do |k,v|
                      mp = CGI.escape(k)
                      rp = CGI.escape(@xss_chars.join)
+                     xss_combo += CGI.escape(k)
+                     #puts "[#{k}] - #{v}"
                      case v[:match]
+                       
                      when :full
-                         rating += 100/@xss_chars.length
-                         xss_combo = v[:check].gsub(/#{mp}/, rp)
+                         rating += 100/@xss_chars.length                         
+                         combo_patterns << k 
                        when :escaped
                           rating += 100/(@xss_chars.length*4)
-                          xss_combo = v[:check].gsub(/#{mp}/, rp) if xss_combo.empty?
-                       when :modified
-                         rating += 100/(@xss_chars.length*4)
-                         xss_combo = v[:check].gsub(/#{mp}/, rp) if xss_combo.empty?
+                          combo_patterns << Regexp.quote("#{v[:escape_char]}#{k}") 
                        end
                    end                   
                     
                     if rating > 0
                       test = chat.copyRequest
-                      puts "COMBO-REQUEST: #{xss_combo}"
-                      test.replace_get_parm(parm, xss_combo)
+                      #puts "COMBO-REQUEST: #{xss_combo}"
+                      parm.value = "#{@envelop}#{@env_count}#{xss_combo}"
+                      pattern = "(#{@envelop}#{@env_count}(#{combo_patterns.join("|")})+)"
+                      test.set parm
                         
-                    #  puts "Reflected XSS: #{ts}"
-                   #     pattern = "#{@envelop[0]}[^#{@envelop[0]}]*(\\\\)?#{@xss_chars.join('(\\\\)?')}#{@envelop[1]}"
                       match = ""
-                      pattern = "#{@envelop[0]}([^#{@envelop[0]}]*(#{@xss_chars.join("|")})+[^#{@envelop[0]}]*)#{@envelop[1]}"
+                      
                       test_request,test_response = doRequest(test)
                       if not test_response then
                         puts "got no response :("
                       elsif test_response.join =~ /#{pattern}/i
                         match = $1
-                        puts "MATCH: #{match}"
+                        #puts "MATCH: #{match}"
                       end
                      
+                     fclass = "Reflected XSS - #{rating}%"
+                     fclass = "Reflected XSS (POST) - #{rating}%" if parm.location == :data
                       addFinding( test_request, test_response,
                                  :check_pattern => xss_combo, 
                       :proof_pattern => "#{match}", 
-                      :test_item => parm,
-                      :class => "Reflected XSS", 
+                      :test_item => parm.name,
+                      :class => fclass, 
                       :chat => chat,
-                      :title => "[#{parm} - #{rating}%] - #{test_request.path}"
+                      :title => "[#{parm.name}] - #{test_request.path}"
                       )
                     end
-                    #@project.new_finding(:short_name=>"#{parm}", :check=>"#{check}", :proof=>"#{pattern}", :kategory=>"XSS-Post", :type=>"Vuln", :chat=>test_chat, :rating=>"High")
+                   
                     [ test_request, test_response ]
                   }
                   yield checker
                
               end
-             
               
             rescue => bang
               puts bang

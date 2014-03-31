@@ -1,7 +1,7 @@
 # .
 # core.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -29,6 +29,6 @@
 
     end
 =end
-%w( project scanner proxy session fuzz_gen http_socket interceptor passive_check active_check cookie request response intercept_filter intercept_carver forwarding_proxy cert_store netfilter_queue ).each do |lib|
+%w( subscriber sid_cache ott_cache parameter conversation chat findings chats active_checks passive_checks scope passive_scanner scanner3 finding project scanner proxy session fuzz_gen interceptor passive_check active_check cookie request response intercept_filter intercept_carver plugin forwarding_proxy cert_store netfilter_queue ).each do |lib|
   require File.join( "watobo", "core", lib)
 end

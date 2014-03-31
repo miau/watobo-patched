@@ -1,7 +1,7 @@
 # .
 # create_project.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   @project_name = ''
   @session_name = ''
   @project = nil
@@ -50,26 +51,32 @@ module Watobo
       project_settings[:session_name] = prefs[:session_name]
     end
 
-    ds = Watobo::DataStore.acquire(project_settings[:project_name], project_settings[:session_name])
+    Watobo::DataStore.connect(project_settings[:project_name], project_settings[:session_name])
     @project_name = project_settings[:project_name]
     @session_name = project_settings[:session_name]
 
     # updating settings
-    Watobo::Conf.load_project_settings(ds)
-    Watobo::Conf.load_session_settings(ds)
+    Watobo::Conf.load_project_settings()
+    Watobo::Conf.load_session_settings()
 
-    project_settings[:session_store] = ds
+    #project_settings[:session_store] = ds
 
-    puts "= initialize passive checks ="
-    project_settings[:passive_checks] = init_passive_modules
-    puts "Total: " + project_settings[:passive_checks].length.to_s
+    puts "* INIT PASSIVE MODULES"
+    Watobo::PassiveModules.init
     puts
-    puts "= initialize active checks ="
-    project_settings[:active_checks] = init_active_modules
+    puts "Total: " + Watobo::PassiveModules.length.to_s
+   # project_settings[:passive_checks] = init_passive_modules
+    #puts "Total: " + project_settings[:passive_checks].length.to_s
+    #puts
+    puts "* INIT ACTIVE MODULES"
+    #project_settings[:active_checks] = init_active_modules
+    Watobo::ActiveModules.init
     #  project_settings[:active_checks].each do |ac|
     #    puts ac.class
     #  end
-    puts "Total: " + project_settings[:active_checks].length.to_s
+    puts
+    puts "Total: " + Watobo::ActiveModules.length.to_s
+    puts
 
     project = Project.new(project_settings)
     #@running_projects << project

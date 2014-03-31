@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Flash 
@@ -27,26 +28,28 @@ module Watobo
         
         class Crossdomain < Watobo::ActiveCheck
           
+          @info.update(
+                        :check_name => 'Crossdomain Policy',        # name of check which briefly describes functionality, will be used for tree and progress views
+                :description => "Check for crossdomain.xml weaknesses", # description of checkfunction
+          :check_group => AC_GROUP_FLASH,
+                :author => "Hans-Martin Muench",      # author of check
+                :version => "0.1"             # check version
+            )
+            
+            
+            
+            @finding.update(
+                        :class => "Crossdomain.xml check",          # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+                :type => FINDING_TYPE_VULN              # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
+            )
+          
           def reset()
             @checked_dirs.clear  
           end
           
           def initialize(project, prefs={})
             super(project, prefs)
-            @info.update(
-                        :check_name => 'Crossdomain Policy',    		# name of check which briefly describes functionality, will be used for tree and progress views
-            		:description => "Check for crossdomain.xml weaknesses", # description of checkfunction
-					:check_group => AC_GROUP_FLASH,
-            		:author => "Hans-Martin Muench", 			# author of check
-            		:version => "0.1"   					# check version
-            )
             
-            
-            
-            @finding.update(
-                        :class => "Crossdomain.xml check",    			# vulnerability class, e.g. Stored XSS, SQL-Injection, ...
-            		:type => FINDING_TYPE_VULN         			# FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
-            )
             
             
             @checked_dirs = Hash.new

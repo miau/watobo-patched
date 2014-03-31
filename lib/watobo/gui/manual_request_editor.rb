@@ -1,7 +1,7 @@
 # .
 # manual_request_editor.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,431 +19,56 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
-   module Gui
-
-      class RequestBuilder < FXVerticalFrame
-
-         def subscribe(event, &callback)
-            (@event_dispatcher_listeners[event] ||= []) << callback
-         end
-
-         def clearEvents(event)
-            @event_dispatcher_listener[event].clear
-         end
-
-         def setRequest(request)
-            begin
-               @text_edit.setText(request)
-               @parm_table.setRequest(request)
-
-               if request.is_a? Array
-                  text = "#{request.first}"
-               else
-                  text = request.slice(/.* HTTP\/\d\.\d/)
-               end
-               #text.gsub!(/\?.*/,"")
-               #text.gsub!(/ HTTP\/.*/,"")
-               @req_line.setText(text.strip)
-            rescue => bang
-               puts bang
-               # puts bang.backtrace if $DEBUG
-               # puts request
-               # puts "== EOE =="
-            end
-         end
-
-         def highlight(pattern)
-            @text_edit.highlight(pattern)
-         end
-
-         def rawRequest
-            case @tab.current
-            when 0
-               @text_edit.rawRequest
-            when 1
-               @parm_table.rawRequest
-            end
-         end
-
-         def parseRequest
-
-            case @tab.current
-            when 0
-
-               @text_edit.parseRequest
-            when 1
-
-               @parm_table.parseRequest
-            end
-         end
-
-         def initialize(owner, opts)
-            super(owner,opts)
-
-            @event_dispatcher_listeners = Hash.new
-
-            @tab = FXTabBook.new(self, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
-
-            FXTabItem.new(@tab, "Text", nil)
-            frame = FXVerticalFrame.new(@tab, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-            @text_edit = Watobo::Gui::RequestEditor.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
-
-            @text_edit.subscribe(:error) { |msg| notify(:error, msg) }
-
-            FXTabItem.new(@tab, "Table", nil)
-            frame = FXVerticalFrame.new(@tab, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-            frame = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
-            @req_line = FXText.new(frame, :opts => LAYOUT_FILL_X|TEXT_FIXEDWRAP)
-            @req_line.visibleRows = 1
-            @req_line.backColor = @req_line.parent.backColor
-            @req_line.disable
-            @parm_table = TableEditor.new(frame, :opts => FRAME_SUNKEN|TABLE_COL_SIZABLE|TABLE_ROW_SIZABLE|LAYOUT_FILL_X|LAYOUT_FILL_Y|TABLE_READONLY|LAYOUT_SIDE_TOP, :padding => 2)
-            # setup message chain
-            @parm_table.subscribe(:hotkey_ctrl_enter){ notify(:hotkey_ctrl_enter) }
-            @text_edit.subscribe(:hotkey_ctrl_enter){ notify(:hotkey_ctrl_enter) }
-
-         end
-
-         private
-
-         def notify(event, *args)
-            if @event_dispatcher_listeners[event]
-               @event_dispatcher_listeners[event].each do |m|
-                  m.call(*args) if m.respond_to? :call
-               end
-            end
-         end
-      end
-
-      class SelectionInfo < FXVerticalFrame
-         def update(info)
-            begin
-               @hid_label.text = info[:hid] || "-"
-               @url_label.text = info[:url] || "-"
-               @length_label.text = info[:length] || "-"
-               @status_label.text = info[:status] || "-"
-
-            rescue => bang
-               puts "!!! Could not update SelectionInfo"
-               puts bang
-            end
-         end
-
-         def clear()
-            @hid_label.text = "-"
-            @url_label.text = "-"
-            @length_label.text = "-"
-            @status_label.text = "-"
-         end
-
-         def initialize(owner, opts)
-            super(owner, opts)
-            frame = FXHorizontalFrame.new(self, :opts => FRAME_NONE|LAYOUT_FILL_X, :padding => 0)
-            FXLabel.new(frame, "History-ID: ")
-            @hid_label = FXLabel.new(frame, " - ")
-
-            frame = FXHorizontalFrame.new(self, :opts => FRAME_NONE|LAYOUT_FILL_X, :padding => 0)
-            FXLabel.new(frame, "URL: ")
-            @url_label = FXLabel.new(frame, " - ")
-
-            frame = FXHorizontalFrame.new(self, :opts => FRAME_NONE|LAYOUT_FILL_X, :padding => 0)
-            FXLabel.new(frame, "Length: ")
-            @length_label = FXLabel.new(frame, " - ")
-
-            frame = FXHorizontalFrame.new(self, :opts => FRAME_NONE|LAYOUT_FILL_X, :padding => 0)
-            FXLabel.new(frame, "Status: ")
-            @status_label = FXLabel.new(frame, " - ")
-         end
-      end
+# @private 
+module Watobo#:nodoc: all
+   module Gui      
 
       class HistoryItem
 
-         attr :request
-         attr :response
          attr :raw_request
-         def initialize(request, response, raw_request)
-            @request = request
-            @response = response
+         
+         def request
+           @chat.request
+         end
+         
+         def response
+           @chat.response
+         end
+         
+         def initialize(chat, raw_request)
+            @chat = chat
             @raw_request = raw_request
          end
       end
 
-      class HistoryButton < FXVerticalFrame
-         attr :item
-         def reset()
-            self.backColor = @backColor
-         end
-
-         def highlight()
-            self.backColor = FXColor::Red
-         end
-
-         def update(history_item)
-            @button.text = history_item.id.to_s
-            #@button.text = "Huhule"
-            #puts "!update Button #{@button}"
-            @button.update()
-            @item = history_item
-         end
-
-         def initialize(owner, text, target, opts)
-            super(owner, opts)
-            @item = nil
-            @backColor = self.backColor
-
-            @button = FXButton.new(self, text, nil, target, DiffFrame::ID_HISTORY_BUTTON, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-
-         end
-      end
-
-      class HistorySlider < FXScrollWindow
-         def update(history)
-            @history = history
-            reset()
-            history.length.times do |i|
-               begin
-
-                  @buttons[i].update(history[i])
-               rescue => bang
-                  puts bang
-               end
-            end
-         end
-
-         def getItem(id)
-            item = nil
-            @history.each do |h|
-               item = h if h.id == id
-               break if item
-            end
-            return item
-         end
-
-         def reset()
-            @buttons.each do |b|
-               b.reset()
-            end
-
-         end
-
-         def initialize(owner, target, history_size, opts)
-            @size = history_size
-            @buttons = []
-            @history = []
-            super(owner, opts)
-            frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_Y|LAYOUT_FILL_X, :padding => 0)
-            @size.times do |i|
-               @buttons.push HistoryButton.new(frame, 'empty', target, :opts => FRAME_NONE|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT, :width => 50, :height => 50)
-            end
-         end
-      end
-
-      class DiffFrame < FXVerticalFrame
-         include Responder
-
-         ID_HISTORY_BUTTON = FXMainWindow::ID_LAST
-         def onHistoryButton(sender, sel, event)
-            @history_slider.reset()
-            sender.parent.backColor = FXColor::Red
-            @slider_selection = sender.parent.item
-         end
-
-         def updateHistory(history)
-            @slider_selection = nil
-            @history = history
-            # @history_slider.update(history)
-            updateHistoryTable()
-            # updateSelections()
-         end
-
-         def onTableClick(sender,sel,item)
-            begin
-
-               row = item.row
-               @historyTable.selectRow(row, false)
-               hi = @historyTable.getRowText(row).to_i - 1
-
-               if @first_selection and @second_selection
-                  @first_selection = nil
-                  @second_selection = nil
-               end
-
-               if !@first_selection
-                  @first_selection = @history[hi]
-               else
-                  @second_selection = @history[hi]
-               end
-
-               updateSelection()
-
-            rescue => bang
-               puts "!!!ERROR: onTableClick"
-               puts bang
-               puts "!!!"
-
-            end
-         end
-
-         def initHistoryTable()
-            @historyTable.clearItems()
-            @historyTable.setTableSize(0, 3)
-
-            @historyTable.setColumnText( 0, "STATUS" )
-            @historyTable.setColumnText( 1, "LENGTH" )
-            @historyTable.setColumnText( 2, "URL" )
-
-            @historyTable.rowHeader.width = 50
-            @historyTable.setColumnWidth(0, 100)
-
-            @historyTable.setColumnWidth(1, 100)
-            @historyTable.setColumnWidth(2, 200)
-
-         end
-
-         def updateHistoryTable()
-            begin
-               @historyTable.clearItems()
-               initHistoryTable()
-
-               @history.each do |h|
-                  lastRowIndex = @historyTable.getNumRows
-                  @historyTable.appendRows(1)
-                  @historyTable.setRowText(lastRowIndex, (@history.index(h) + 1 ).to_s)
-                  @historyTable.setItemText(lastRowIndex, 0, h.response.status) if h.response.respond_to? :status
-                  @historyTable.setItemText(lastRowIndex, 1, h.response.join.length.to_s)
-                  @historyTable.setItemText(lastRowIndex, 2, h.request.url) if h.request.respond_to? :url
-                  3.times do |i|
-                     i = @historyTable.getItem(lastRowIndex, i)
-                     i.justify = FXTableItem::LEFT unless i.nil?
-                  end
-               end
-            rescue => bang
-               puts bang
-            end
-
-         end
-
-         def updateSelection()
-            @first_sel_info.clear()
-            @second_sel_info.clear()
-
-            if @first_selection
-
-               @first_sel_info.update( :url => @first_selection.request.url,
-               :hid => (@history.index(@first_selection) + 1).to_s,
-               :status => @first_selection.response.status,
-               :length => @first_selection.response.join.length.to_s)
-
-            end
-
-            if @second_selection
-               @second_sel_info.update( :url => @second_selection.request.url,
-               :hid => (@history.index(@second_selection) + 1).to_s,
-               :status => @second_selection.response.status,
-               :length => @second_selection.response.join.length.to_s)
-
-            end
-         end
-
-         def getDiffChats()
-            first = nil
-            second = nil
-            begin
-               case @first_chat_dt.value
-               when 0
-
-               when 1
-
-               end
-
-            rescue
-
-               return first, second
-            end
-         end
-
-         def initialize(owner, opts)
-            super(owner, opts)
-
-            @history_size = 10
-            @history = []
-            @slider_selection = nil
-            @first_selection = nil
-            @second_selection = nil
-
-            FXMAPFUNC(SEL_COMMAND, DiffFrame::ID_HISTORY_BUTTON, 'onHistoryButton')
-
-            frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
-            # frame_left = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_Y|LAYOUT_FIX_WIDTH, :width => 70, :padding => 0)
-            # @history_slider = HistorySlider.new(frame_left, self, @history_size, opts)
-
-            frame_right = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-            sunken = FXVerticalFrame.new(frame_right, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
-            @historyTable = FXTable.new(sunken, :opts => FRAME_SUNKEN|TABLE_COL_SIZABLE|TABLE_ROW_SIZABLE|LAYOUT_FILL_X|LAYOUT_FILL_Y|TABLE_READONLY|LAYOUT_SIDE_TOP, :padding => 2)
-            initHistoryTable()
-
-            @historyTable.connect(SEL_COMMAND, method(:onTableClick))
-
-            first_chat_gb = FXGroupBox.new(frame_right, "First Chat", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
-            @first_sel_info = SelectionInfo.new(first_chat_gb, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-            second_chat_gb = FXGroupBox.new(frame_right, "Second Chat", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
-            @second_sel_info = SelectionInfo.new(second_chat_gb, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-
-            diff_button = FXButton.new(frame_right, "Diff it!", nil, nil, 0, :opts => LAYOUT_FILL_X|FRAME_RAISED|FRAME_THICK)
-
-            diff_button.connect(SEL_COMMAND) {
-               # new, orig = getDiffChats()
-               if @first_selection and @second_selection then
-                  first_request = Watobo::Utils.copyObject(@first_selection.request)
-                  first_response = Watobo::Utils.copyObject(@first_selection.response)
-                  second_request = Watobo::Utils.copyObject(@second_selection.request)
-                  second_response = Watobo::Utils.copyObject(@second_selection.response)
-
-                  chat_one = Watobo::Chat.new(first_request, first_response, :id => 0)
-                  chat_two = Watobo::Chat.new(second_request, second_response, :id => 0)
-                  project = nil
-                  diffViewer = ChatDiffViewer.new(FXApp.instance, chat_one, chat_two)
-                  diffViewer.create
-                  diffViewer.show(Fox::PLACEMENT_SCREEN)
-               end
-            }
-         end
-      end
-
-      #
       class ManualRequestSender < Watobo::Session
-         def initialize(project)
-            @project = project
-            super(project.object_id,  project.getScanPreferences())
+         def initialize(session_id)
+            
+            super(session_id,  Watobo::Conf::Scanner.to_h )
 
          end
 
          def sendRequest(new_request, prefs)
-            id = 0
-            if prefs[:run_login ] == true
-               runLogin(@project.getLoginChats(), prefs)
-            end
-            #if prefs[:update_session ] == true and
-            unless prefs[:update_csrf_tokens] == true
-               prefs[:csrf_requests] = []
-               prefs[:csrf_patterns] = []
-            end
 
-            new_request.extend Watobo::Mixin::Parser::Web10
-            new_request.extend Watobo::Mixin::Shaper::Web10
-            begin
-               test_req, test_resp = self.doRequest(new_request, prefs)
-               test_req.extend Watobo::Mixin::Parser::Url
-               test_req.extend Watobo::Mixin::Parser::Web10
-               test_resp.extend Watobo::Mixin::Parser::Web10
-               return test_req,test_resp
-            rescue => bang
-               puts bang
-               puts bang.backtrace if $DEBUG
-            end
-            return nil, nil
-            
+           if prefs[:run_login ] == true               
+             login_chats = Watobo::Conf::Scanner.login_chat_ids.uniq.map{|id| Watobo::Chats.get_by_id(id) }  
+           #  puts "running #{login_chats.length} login requests"
+           #  puts login_chats.first.class            
+             runLogin(login_chats, prefs)
+           end           
+
+           request = Watobo::Request.new(new_request)
+           begin
+              test_req, test_resp = self.doRequest(request, prefs)
+              rq = Watobo::Request.new test_req
+              rs = Watobo::Response.new test_resp
+              rs.unchunk
+              return rq, rs
+           rescue => bang
+              puts bang
+              puts bang.backtrace if $DEBUG
+           end
+           return nil, nil            
          end
       end
 
@@ -455,7 +80,7 @@ module Watobo
          include Watobo::Constants
          include Watobo::Gui::Icons
 
-         include Responder
+         # include Responder
          # ID_CTRL_S = ID_LAST
          # ID_LAST = ID_CTRL_S + 1
          SCANNER_IDLE = 0x00
@@ -467,26 +92,12 @@ module Watobo
          end
 
          def openCSRFTokenDialog(sender, sel, item)
-            csrf_dlg = CSRFTokenDialog.new(self, @project, @chat)
+            csrf_dlg = CSRFTokenDialog.new(self, @chat)
             if csrf_dlg.execute != 0 then
                csrf_ids = csrf_dlg.getTokenScriptIds()
-               csrf_patterns = csrf_dlg.getTokenPatterns()
-
-               # puts csrf_ids.to_yaml
-               # puts "= = ="
-               # puts csrf_patterns.to_yaml
-
-               @project.setCSRFRequest(@original_request, csrf_ids, csrf_patterns)
-
-               @csrf_requests = []
-               csrf_ids.each do |id|
-                  chat = @project.getChat(id)
-                  @csrf_requests.push chat.copyRequest
-               end
-
-               # save settings
-               #  saveProjectSettings(@active_project)
-               #  saveSessionSettings(@active_project)
+               Watobo::OTTCache.set_chat_ids @chat, csrf_ids
+               Watobo::Conf::OttCache.patterns = csrf_dlg.getTokenPatterns()
+               Watobo::Conf::OttCache.save_project
             end
          end
 
@@ -506,19 +117,13 @@ module Watobo
             @req_builder.setRequest(@original_request)
          end
 
-         # def onShowPreview(sender, sel, item)
-         #@interface.showPreview(request, response)
-         # end
-
          def logger(message)
           @log_viewer.log( LOG_INFO, message )
           puts "[#{self.class.to_s}] #{message}" if $DEBUG
          end
 
-
-
-         def addHistoryItem(request, response, raw_request)
-            @history.push HistoryItem.new(request, response, eval(YAML.load(YAML.dump(raw_request.inspect))))
+         def addHistoryItem(chat, raw_request)
+            @history.push HistoryItem.new(chat, eval(YAML.load(YAML.dump(raw_request.inspect))))
 
             @history.shift if @history.length > @history_size
 
@@ -526,12 +131,15 @@ module Watobo
          end
 
          def onBtnQuickScan(sender, sel, item)
-            dlg = Watobo::Gui::QuickScanDialog.new(self, @project, :target_chat => @chat, :enable_one_time_tokens => @updateCSRF.checked?)
+            dlg = Watobo::Gui::QuickScanDialog.new(self, :target_chat => @chat, :enable_one_time_tokens => @updateCSRF.checked?)
             scan_chats = []
             if sender.text =~ /Cancel/i
-               @scanner.cancel() if @scanner
+               @scanner.cancel() if @scanner.respond_to? :cancel
+               @scanner = nil
                logger("QuickScan canceled by user")
-                @pbar.progress = 0
+               @pbar.progress = 0
+               @pbar.total = 0
+               @pbar.barColor = 'grey' #FXRGB(255,0,0)
                sender.text = "QuickScan"
                return
             end
@@ -549,26 +157,22 @@ module Watobo
                   req = @req_builder.parseRequest()
                end
 
-               scan_chats.push Chat.new(req, [""], :id => @chat.id, :run_passive_checks => false)
+               scan_chats.push Chat.new(Watobo::Request.new(req), Watobo::Response.new(@chat.response), :id => @chat.id, :run_passive_checks => false)
             end
 
             unless scan_chats.empty? then
-               # we only need array of selected class names
-              # scan_modules = dlg.selectedModules().map{ |m| m.class.to_s }
-               
-              # acc = @project.active_checks.select do |ac|
-              #    scan_modules.include? ac.class.to_s
-              # end
+              
                log_message = ["QuickScan Started"]
                log_message << "Target URL: #{scan_chats.first.request.url}"
                
                acc = dlg.selectedModules
                
                acc.each do |ac|
-                 log_message << "Module: #{ac.info[:check_name]}"
+                 log_message << "Module: #{ac.check_name}"
                end
 
-               scan_prefs = @project.getScanPreferences
+              # scan_prefs = @project.getScanPreferences
+              scan_prefs = Watobo::Conf::Scanner.to_h
                # we don't want logout detection during a QuickScan
                # TODO: let this decide the user!
                scan_prefs[:logout_signatures] = [] if quick_scan_options[:detect_logout] == false
@@ -581,39 +185,32 @@ module Watobo
                   scan_prefs[:scanlog_name] = quick_scan_options[:scanlog_name]
                end
                
+               scan_prefs.update quick_scan_options
+               
                if $DEBUG
                 puts "* creating scanner ..."
                 puts quick_scan_options.to_yaml
                 puts "- - - - - - - - -"
                 puts scan_prefs.to_yaml
               end
-
-               @scanner = Watobo::Scanner2.new(scan_chats, acc, @project.passive_checks, scan_prefs)
               
-               @pbar.total = @scanner.numTotalChecks
+              # we only can have one thread for csrf_token updates ... because it's not thread-safe ... yet
+              scan_prefs[:max_parallel_checks] = 1 if scan_prefs[:update_csrf_tokens] == true
+
+               @scanner = Watobo::Scanner3.new(scan_chats, acc, [], scan_prefs)
+               
+               sum_totals = 0
+               @scanner.progress.each_value do |v|
+                 sum_totals += v[:total]
+               end
+               @pbar.total = sum_totals
                @pbar.progress = 0
                @pbar.barColor = FXRGB(255,0,0)
-
-               @scanner.subscribe(:progress) { |m|
-                  #         print "="
-                  @pbar.increment(1)
-               }
-
-
-               @scanner.subscribe(:new_finding) { |f|
-                  @project.addFinding(f)
-               }
-               
-               @scanner.subscribe(:module_started){ |m| logger("Module #{m} started")}
-               @scanner.subscribe(:module_finished){ |m| logger("Module #{m} finished")}
 
                csrf_requests = []
 
                if quick_scan_options[:update_csrf_tokens] == true
-                  @project.getCSRFRequestIDs(req).each do |id|
-                     chat = @project.getChat(id)
-                     csrf_requests.push chat.copyRequest
-                  end
+                  csrf_requests = Watobo::OTTCache.requests(req)
                   puts "* Got No CSRF Requests!!" if csrf_requests.empty?
                end
 
@@ -630,25 +227,8 @@ module Watobo
               Watobo.log(log_message, :sender => self.class.to_s.gsub(/.*:/,""))
               
               @scan_status = SCANNER_STARTED
-              Thread.new(run_prefs) { |rp|
-                  begin
-                  # puts "* starting scanner ..."
-                  # puts run_prefs.to_yaml
-                  
-                  @scanner.run( rp )
-
-                    #sender.text = "QuickScan"
-                  rescue => bang
-                    puts bang
-                    puts bang.backtrace if $DEBUG
-                  ensure
-                   logger("Scan finished!")
-                   Watobo.log("QuickScan finished", :sender => self.class.to_s.gsub(/.*:/,""))
-                   @scan_status_lock.synchronize do
-                      @scan_status |= SCANNER_FINISHED
-                   end  
-                  end
-                 }
+              @scanner.run( run_prefs)
+              
             end
 
             # return 0
@@ -694,8 +274,9 @@ module Watobo
                super(owner, "Manual Request Toolkit", :opts => DECOR_ALL,:width=>850, :height=>600)
 
                @event_dispatcher_listeners = Hash.new
+               @chat_queue = Queue.new
 
-               @request_sender = ManualRequestSender.new(project)
+               @request_sender = ManualRequestSender.new(self.object_id)
                @request_sender.subscribe(:follow_redirect){ |loc| logger( "follow redirect -> #{loc}")}
                @responseFilter = FXDataTarget.new("")
 
@@ -731,12 +312,7 @@ module Watobo
                @scan_status_lock = Mutex.new
                @scan_status = SCANNER_IDLE
 
-               # shortcuts here
-               #FXMAPFUNC(SEL_COMMAND, ID_CTRL_S, :on_ctrl_s)
-               #accelTable.addAccel(fxparseAccel("Ctrl+S"), self, FXSEL(SEL_COMMAND, ID_CTRL_S))
-
-               # @scanlog_dir = @project.scanLogDirectory()
-
+              
                self.icon = ICON_MANUAL_REQUEST
 
                # Construct some hilite styles
@@ -757,8 +333,6 @@ module Watobo
                req_editor = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_GROOVE,:width=>400, :height=>500)
 
                req_edit_header = FXHorizontalFrame.new(req_editor, :opts => LAYOUT_FILL_X)
-
-               #req_viewer = FXVerticalFrame.new(req_editor, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
 
                @req_builder = RequestBuilder.new(req_editor, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding=>0)
                @req_builder.subscribe(:hotkey_ctrl_s) {
@@ -797,12 +371,6 @@ module Watobo
                # Button to pop menu
                FXMenuButton.new(req_edit_header, "&Transform", nil, menu, (MENUBUTTON_DOWN|FRAME_RAISED|FRAME_THICK|ICON_AFTER_TEXT|LAYOUT_RIGHT|LAYOUT_FILL_Y))
 
-               # req_reset_button = FXButton.new(request_frame, "POST -> GET", nil, nil, 0, FRAME_RAISED|FRAME_THICK)
-               # req_reset_button.connect(SEL_COMMAND, method(:switchMethod))
-
-               #request_frame = FXHorizontalFrame.new(req_edit_header, :opts => FRAME_GROOVE|LAYOUT_RIGHT)
-               # FXLabel.new(request_frame, "Request:", :opts => LAYOUT_CENTER_Y )
-
                frame = FXHorizontalFrame.new(req_editor, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM, :padding => 0)
                req_options = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
                #eq_options = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM)
@@ -814,9 +382,6 @@ module Watobo
                resp_tab = FXTabItem.new(@settings_tab, "Request Options", nil)
                opt= FXVerticalFrame.new(@settings_tab, :opts => FRAME_THICK|FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-               #  opt = FXVerticalFrame.new(frame,:opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-               #  btn = FXVerticalFrame.new(frame,:opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-               #FXCheckButton.new(rob, "URL Encoding", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
                @updateContentLength = FXCheckButton.new(opt, "Update Content-Length", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
                @updateContentLength.checkState = true
 
@@ -827,12 +392,15 @@ module Watobo
                ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
                @logChat.checkState = false
 
-               # scan_tab = FXTabItem.new(@settings_tab, "QuickScan Options", nil)
                sess_tab = FXTabItem.new(@settings_tab, "Session Settings", nil)
                session_frame = FXVerticalFrame.new(@settings_tab, :opts => FRAME_THICK|FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y)
-
-               @updateSID = FXCheckButton.new(session_frame, "Update SID Cache", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+               
+               sidframe = FXHorizontalFrame.new(session_frame, :opts => FRAME_NONE|LAYOUT_FILL_X|PACK_UNIFORM_HEIGHT, :padding => 0 )
+               @updateSID = FXCheckButton.new(sidframe, "Update SID Cache ...", nil, 0, JUSTIFY_LEFT|JUSTIFY_CENTER_Y|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
                @updateSID.checkState = false
+               FXButton.new(sidframe, "Clear", nil, nil, 0, FRAME_RAISED|FRAME_THICK).connect(SEL_COMMAND){
+                 Watobo::SIDCache.acquire(self.object_id).clear
+               }
 
                @updateSession = FXCheckButton.new(session_frame, "Update Session", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
                @updateSession.checkState = true
@@ -843,10 +411,10 @@ module Watobo
                @runLogin = FXCheckButton.new(session_frame, "Run Login", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
                @runLogin.checkState = false
 
-               csrf_frame = FXHorizontalFrame.new(session_frame,:opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP, :padding => 0)
-               @updateCSRF = FXCheckButton.new(csrf_frame, "Update One-Time-Tokens", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+               csrf_frame = FXHorizontalFrame.new(session_frame,:opts => LAYOUT_FILL_X|PACK_UNIFORM_HEIGHT, :padding => 0)
+               @updateCSRF = FXCheckButton.new(csrf_frame, "Update One-Time-Tokens ...", nil, 0, JUSTIFY_LEFT|ICON_BEFORE_TEXT)
                @updateCSRF.checkState = false
-               @csrf_settings_btn = FXButton.new(csrf_frame, "O-T-T Settings")
+               @csrf_settings_btn = FXButton.new(csrf_frame, "Settings", nil, nil, 0, FRAME_RAISED|FRAME_THICK)
                @csrf_settings_btn.connect(SEL_COMMAND, method(:openCSRFTokenDialog))
 
                @updateCSRF.connect(SEL_COMMAND) do |sender, sel, item|
@@ -856,8 +424,6 @@ module Watobo
                      @csrf_settings_btn.disable
                   end
                end
-
-               ##################################################
 
                ##################################################
 
@@ -874,13 +440,8 @@ module Watobo
                @btn_quickscan = FXButton.new(frame, "QuickScan", nil, nil, 0, FRAME_RAISED|FRAME_THICK)
                @btn_quickscan.connect(SEL_COMMAND, method(:onBtnQuickScan))
                @pbar = FXProgressBar.new(frame, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK|PROGRESSBAR_HORIZONTAL)
-               #@pbar.create
-               @pbar.connect(SEL_CHANGED) {
-                  print ":"
-               }
                @pbar.progress = 0
                @pbar.total = 0
-               @pbar.barColor=0
                @pbar.barColor = 'grey' #FXRGB(255,0,0)
 
                # TODO: Implement font sizing
@@ -909,9 +470,9 @@ module Watobo
                browser_button = FXButton.new(options, "Browser-View", ICON_BROWSER_MEDIUM, nil, 0, :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
                browser_button.connect(SEL_COMMAND) {
                   begin
-                     if @last_request and @last_response then
+                     unless @current_chat.nil?
                         #@interface.openBrowser(@last_request, @last_response)
-                        notify(:show_browser_preview, @last_request, @last_response)
+                        notify(:show_browser_preview, @current_chat.request, @current_chat.response)
                      end
                   rescue => bang
                      puts bang
@@ -925,9 +486,6 @@ module Watobo
                diff_tab = FXTabItem.new(@tabBook, "Differ", nil)
 
                @diff_frame = DiffFrame.new(@tabBook, :opts => FRAME_THICK|FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y)
-
-            #   log_frame_header = FXHorizontalFrame.new(log_frame, :opts => LAYOUT_FILL_X)
-             #  FXLabel.new(log_frame_header, "Logs:" )
 
                log_text_frame = FXVerticalFrame.new(log_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
                @log_viewer = LogViewer.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
@@ -946,60 +504,60 @@ module Watobo
 
          private
 
-  def add_update_timer(ms)
-  @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
-    @scan_status_lock.synchronize do
+   def add_update_timer(ms)
+        @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
+    unless @scanner.nil?
+      @scan_status_lock.synchronize do
+
+      if @pbar.total > 0
+        sum_progress = 0
+        @scanner.progress.each_value do |v|
+          sum_progress += v[:progress]
+        end
+        @pbar.progress = sum_progress
+      end
       
-      if @scan_status == ( SCANNER_STARTED | SCANNER_FINISHED ) or @scan_status == ( SCANNER_STARTED | SCANNER_CANCELED )
-        puts "[SCAN-STATUS] #{@scan_status}"
-         @pbar.total = 0
-         @pbar.progress = 0
-         @pbar.barColor = 'grey'
-         @btn_quickscan.text = "QuickScan"
-         @scan_status = SCANNER_IDLE
+      if @scanner.finished?
+        @scanner = nil
+        logger("Scan Finished!")
+        @pbar.progress = 0
+        @pbar.total = 0
+        @pbar.barColor = 'grey' #FXRGB(255,0,0)
+        @btn_quickscan.text = "QuickScan"
       end
     end
-    @update_lock.synchronize do
-      unless @new_response.nil? 
-        @last_request = nil
-        @last_response = nil
-        
-        @response_viewer.setText @new_response
-        @last_response = @new_response
+    end
 
-        if @logChat.checked? == true
-
-          chat = Watobo::Chat.new(@new_request, @new_response, :source => CHAT_SOURCE_MANUAL, :run_passive_checks => false)
-
-          notify(:new_chat, chat)
-        end
+    while @chat_queue.size > 0 do
+      request, response = @chat_queue.pop
       
+      unless request.nil? then
+        unless response.nil?
+          @response_viewer.setText response
+          @current_chat = Watobo::Chat.new(request, response, :source => CHAT_SOURCE_MANUAL, :run_passive_checks => false)
 
-      unless @new_request.nil? then
-        @request_viewer.setText @new_request
-        @last_request = @new_request
+          Watobo::Chats.add( @current_chat ) if @logChat.checked? == true
 
-        @response_viewer.setText(@new_response, :filter => true)
-        @responseMD5.text = @new_response.contentMD5
+          @request_viewer.setText request
+          @last_request = request
 
-        addHistoryItem(@new_request, @new_response, @req_builder.rawRequest)
+          @response_viewer.setText(response, :filter => true)
+          @responseMD5.text = response.contentMD5
 
-        @history_pos_dt.value = @history.length
-        @history_pos.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-      # puts @req_builder.rawRequest
+          addHistoryItem( @current_chat, @req_builder.rawRequest)
+
+          @history_pos_dt.value = @history.length
+          @history_pos.handle(self, FXSEL(SEL_UPDATE, 0), nil)
+        end
       else
-        logger("ERROR: #{@last_response.first}");
+        logger("ERROR: #{@current_chat.response.first}") if @current_chat.respond_to? :response
         @responseMD5.text = "- N/A -"
       end
-      
-      @new_request = nil
-      @new_response = nil
-      
-      end
+
     end
-    
+
   }
-end
+      end
          
          def sendManualRequest
             @request_viewer.setText('')
@@ -1010,91 +568,52 @@ end
                logger("Could not send request!")
                return false
             end
-           
+            
+            csrf_requests = []           
 
-            if @updateCSRF.checked?
-               @csrf_requests = []
-               @project.getCSRFRequestIDs(new_request).each do |id|
-                  chat = @project.getChat(id)
-                  @csrf_requests.push chat.copyRequest
+           # if @updateCSRF.checked?
+           #    csrf_requests = Watobo::OTTCache.requests(new_request)
+           # end
+            
+            prefs = Watobo::Conf::Scanner.to_h
+          #  puts "= SCANNER PREFS ="
+          #  puts prefs[:csrf_patterns]
+            
 
-               end
-            end
-
-            prefs = {:run_login => @updateSession.checked? ? @runLogin.checked? : false,
+            current_prefs = {:run_login => @updateSession.checked? ? @runLogin.checked? : false,
                :update_session => @updateSession.checked?,
                :update_contentlength => @updateContentLength.checked?,
-               :update_csrf_tokens => @updateCSRF.checked?,
-               :csrf_requests => @csrf_requests,
-               :csrf_patterns => @project.getCSRFPatterns(),
+               :update_otts => @updateCSRF.checked?,
+            #   :csrf_requests => csrf_requests,
+              # :csrf_patterns => @project.getCSRFPatterns(),
                :update_sids => @updateSID.checked?,
                :follow_redirect => @followRedirect.checked?
             }
+            
+            prefs.update current_prefs
 
-            prefs.update @project.getScanPreferences
-            #  puts "=== Scan Preferences"
-            #  puts prefs.to_yaml
-
-             @request_thread = Thread.new(new_request, prefs) { |nr, p|
-            #nr = new_request
-            #p = prefs
-
-            begin
-               logger("send request")
-             #  puts p.to_yaml
-               last_request, last_response = @request_sender.sendRequest(nr, p )
-               
-               logger("got answer")
-               
-
-=begin
-               if last_request and p[:follow_redirect] == true and last_response.status =~ /302/
-                  if @logChat.checked? == true
-                     chat = Watobo::Chat.new(last_request, last_response, :source => CHAT_SOURCE_MANUAL, :run_passive_checks => false)
-                     notify(:new_chat, chat)
-                  end
-                  #   puts "* Following redirect"
-
-                  loc_header = last_response.headers("Location:").first
-                  new_location = loc_header.gsub(/^[^:]*:/,'').strip
-                  unless new_location =~ /^http/
-                     new_location = last_request.proto + "://" + last_request.site + "/" + last_request.dir + "/" + new_location.sub(/^[\.\/]*/,'')
-                  end
-                  logger("follow redirect: #{new_location}")
-                  # create GET request for new location
-                  nr.replaceMethod("GET")
-                  nr.removeHeader("Content-Length")
-                  nr.removeBody()
-                  nr.replaceURL(new_location)
-                  # puts nr.first
-                  last_request, last_response = @request_sender.sendRequest(nr, p )
-                  logger("got answer")
-               end
-=end               
-               @new_request = last_request
-               @new_response = last_response
-               
-            rescue => bang
-               puts bang
-
-            end            
-              }
+            @request_thread = Thread.new(new_request, prefs) { |nr, p|
+              begin
+                logger("send request")
+                last_request, last_response = @request_sender.sendRequest(nr, p )
+                logger("got answer")
+                @chat_queue.push [ last_request, last_response ]
+              rescue => bang
+                puts bang
+              end            
+            }
 
          end
 
          def trans2Get(sender, sel, item)
             request = @req_builder.parseRequest
             return nil if request.nil?
-            @project.extendRequest(request)
-
-            #  puts sender.methods.sort
-            #  puts sel
-            #  puts item
+            request = Watobo::Request.new request
 
             if request.method =~ /POST/i
                request.setMethod("GET")
                request.removeHeader("Content-Length")
-               data = request.data
+               data = request.data.to_s
                #      puts "Data: "
                #      puts data
                request.appendQueryParms(data)
@@ -1106,12 +625,9 @@ end
          def trans2Post(sender, sel, item)
             request = @req_builder.parseRequest
             return nil if request.nil?
-            @project.extendRequest(request)
+           request = Watobo::Request.new request
 
-            #    puts sender.methods.sort
-            #    puts sel
-            #    puts item
-            if request.method =~ /GET/i
+             if request.method =~ /GET/i
                request.setMethod("POST")
                request.addHeader("Content-Length", "0")
                data = request.query
@@ -1123,11 +639,10 @@ end
          end
 
          def simulatePressSendBtn()
-            Thread.new{
-               @btn_send.state = STATE_DOWN
-               sleep 0.1
+           @btn_send.state = STATE_DOWN
+            getApp().addTimeout(250, :repeat => false ) do 
                @btn_send.state = STATE_UP
-            }
+            end
          end
 
          def hide()

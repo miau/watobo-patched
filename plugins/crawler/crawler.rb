@@ -1,7 +1,7 @@
 # .
 # crawler.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -36,7 +36,8 @@ path = File.expand_path(File.dirname(__FILE__))
 end
  
 if $0 == __FILE__
-  module Watobo
+  # @private 
+module Watobo#:nodoc: all
     module Conf
       class Interceptor
         def self.port
@@ -64,7 +65,7 @@ if $0 == __FILE__
         puts "Cookie: #{cookie.name}"
         clean_jar.add! cookie unless cookie.name =~ /^box/i
       }
-      exit unless agent.cookie_jar.empty?(request.url)
+      exit unless agent.cookie_jar.empty?(request.url.to_s)
       agent.cookie_jar = clean_jar
     rescue => bang
       puts bang

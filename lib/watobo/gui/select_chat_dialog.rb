@@ -1,7 +1,7 @@
 # .
 # select_chat_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
    module Gui
       class SelectChatDialog < FXDialogBox
          include Watobo::Gui::Utils
@@ -34,7 +35,7 @@ module Watobo
                   @chatTable.selectRow(row)
                   chatid = @chatTable.getRowText(row).to_i
                   # @logText.appendText("selected ID: (#{chatid})\n")
-                  @chat_list.each do |chat|
+                  Watobo::Chats.each do |chat|
                      if chat.id == chatid then
                         @sel_chat = chatid
 
@@ -72,18 +73,13 @@ module Watobo
          end
 
          def updateTable()
-            dummy = @chat_list
-            unless @project.nil?
-
-               if @show_scope_only.checked?
-
-                  dummy = @chat_list.select{ |x|
-                     @project.siteInScope?(x.request.site)
-                  }
-               end
-
-            end
-            @chatTable.showConversation(dummy)
+           chats = nil
+           if @show_scope_only.checked?
+             chats = Watobo::Chats.in_scope
+           else
+             chats = Watobo::Chats.to_a
+           end
+           @chatTable.showConversation( chats )
 
          end
 
@@ -98,11 +94,11 @@ module Watobo
             end
          end
 
-         def initialize(owner, title, chat_list=[], project=nil)
+         def initialize(owner, title)
             #  @chat_selection = []
-            @project = project
+           
             @selection = FXDataTarget.new('')
-            @chat_list = chat_list
+
             @sel_chat = nil
             super(owner, title, DECOR_ALL, :width=>600, :height=>600)
             main_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
@@ -111,18 +107,12 @@ module Watobo
 
             preview_frame = FXVerticalFrame.new(splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :height => 300, :padding => 0)
 
-            unless @project.nil?
+           
                quick_filter_gb = FXGroupBox.new(top_frame, "Quick Filter", FRAME_GROOVE|LAYOUT_FILL_X)
                quick_filter_frame = FXHorizontalFrame.new(quick_filter_gb, :opts => FRAME_NONE|LAYOUT_FILL_X, :padding => 0)
                @show_scope_only = FXCheckButton.new(quick_filter_frame, "scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
                @show_scope_only.setCheck(false)
                @show_scope_only.connect(SEL_COMMAND) { updateTable }
-
-               #  @show_referer = FXCheckButton.new(quick_filter_frame, "show referer", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
-               #  @show_referer.setCheck(false)
-               #  @show_referer.connect(SEL_COMMAND) { updateTable }
-            end
-
             table_frame = FXVerticalFrame.new(top_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE)
 
             @chatTable = ConversationTable.new(table_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)

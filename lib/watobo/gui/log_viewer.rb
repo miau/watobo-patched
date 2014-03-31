@@ -1,7 +1,7 @@
 # .
 # log_viewer.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class LogViewer < FXVerticalFrame
 
@@ -95,86 +96,6 @@ module Watobo
 
       end
      
-    end
-
-    class LogViewer_UNUSED < FXVerticalFrame
-
-      include Watobo::Constants
-      def purge
-        @lock.synchronize do
-          @textbox.text = ''
-        end
-      end
-
-      def log(sender=nil, log_level, msg )
-        puts "#{sender.class} => #{msg}" if $DEBUG
-        begin
-          t = Time.now
-          now = t.strftime("%m/%d/%Y @ %H:%M:%S")
-
-          begin
-            log_text = case log_level
-            when LOG_INFO
-              "#{now}: #{msg}\n"
-            else
-            ""
-            end
-          rescue => bang
-            puts bang
-            puts bang.backtrace if $DEBUG
-          end
-          @lock.synchronize do
-            log_text << @log_message unless @log_message.nil?
-            @log_message = log_text
-          end
-        rescue => bang
-          puts bang
-          puts bang.backtrace
-        end
-
-      end
-
-      def start_update_timer
-        @timer = FXApp.instance.addTimeout( 50, :repeat => true) {
-           @lock.synchronize do
-             unless @log_message.nil?
-               unless @log_message.empty?
-                 case @mode
-                 when :insert
-             @textbox.insertText(0,@log_message)
-             when :append
-               @textbox.appendText(@log_message)
-             end
-             end
-             @log_message = nil
-             end
-            end
-          }
-      end
-
-      def destroy
-        getApp().removeTimeout(@timer) unless @timer.nil?
-        super
-        1
-      end
-
-      def initialize(parent, mode = :insert, opts)
-        opts[:padding] = 0
-        super(parent, opts)
-
-        @mode = mode
-
-        @log_message = nil
-        @lock = Mutex.new
-        @timer = nil
-
-        #self.connect(SEL_CLOSE, method(:onClose))
-
-        @textbox = FXText.new(self,  nil, 0, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-        @textbox.editable = false
-        start_update_timer
-      end
-
     end
 
   end

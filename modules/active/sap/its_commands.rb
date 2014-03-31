@@ -1,7 +1,7 @@
 # .
 # its_commands.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Sap
@@ -27,12 +28,7 @@ module Watobo
         
         class Its_commands < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-           
-            super(project, prefs)
-            
-            
-            @info.update(
+          @info.update(
                          :check_name => 'SAP ITS: Default Commands',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Identifies vulnerable SAP ITS commands",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -46,6 +42,11 @@ module Watobo
             :type => FINDING_TYPE_VULN         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
             
+          
+          def initialize(project, prefs={})
+           
+            super(project, prefs)
+            
             # commands 2d array containing the command name and risk rating
             @commands=[
             ["AgateInstallCheck", VULN_RATING_LOW],
@@ -57,7 +58,7 @@ module Watobo
           def generateChecks(chat)
             
             begin
-              if chat.request.url =~ /\/wgate\/(\w*)\// then 
+              if chat.request.url.to_s =~ /\/wgate\/(\w*)\// then 
                 
                 @commands.each do |cmd, risk|
                   checker = proc{

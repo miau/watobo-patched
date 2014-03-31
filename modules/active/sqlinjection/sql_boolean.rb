@@ -1,7 +1,7 @@
 # .
 # sql_boolean.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -22,7 +22,8 @@
 require 'digest/md5'
 require 'digest/sha1'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Sqlinjection
@@ -30,9 +31,7 @@ module Watobo
         
         class Sql_boolean < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-            super(project, prefs)
-            @info.update(
+           @info.update(
                          :check_name => 'Boolean SQL-Injection',    # name of check which briefly describes functionality, will be used for tree and progress views
             :check_group => AC_GROUP_SQL,
             :description => "Checks parameter values for boolean-style SQL-Injection flaws.",   # description of checkfunction
@@ -58,13 +57,26 @@ EOF
             
             @finding.update(
                             :threat => threat,        # thread of vulnerability, e.g. loss of information
-                            :class => "SQL-Injection",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+                            :class => "SQL-Injection (Boolean)",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
             :rating => VULN_RATING_CRITICAL,
             :measure => measure
             )
+          
+          def initialize(project, prefs={})
+            super(project, prefs)
+           
             
             @boolean_checks = [ 
+            [ '\'--', '\''],
+            [ ' or 1=1', ' and 1=2'],
+            [ '\' or \'1\'=\'1', '\' and \'1\'=\'2'],
+            [ '\') or \'1\'=\'1\'(\'', '\') and \'1\'=\'2\'(\'' ],
+            [ '\')) or \'1\'=\'1\'((\'', '\')) and \'1\'=\'2\'((\'' ],
+            [ '\'))) or \'1\'=\'1\'(((\'', '\'))) and \'1\'=\'2\'(((\'' ], 
+            [ ') or \'1\'=\'1\'(', ') and \'1\'=\'2\'(' ],
+            [ ')) or \'1\'=\'1\'((', ')) and \'1\'=\'2\'((' ],
+            [ '))) or \'1\'=\'1\'(((', '))) and \'1\'=\'2\'(((' ],
             [ ' and 1=1', ' and 1=2'],
             [ '\' and \'1\'=\'1', '\' and \'1\'=\'2'],
             [ '\') and \'1\'=\'1\'(\'', '\') and \'1\'=\'2\'(\'' ],
@@ -72,8 +84,11 @@ EOF
             [ '\'))) and \'1\'=\'1\'(((\'', '\'))) and \'1\'=\'2\'(((\'' ], 
             [ ') and \'1\'=\'1\'(', ') and \'1\'=\'2\'(' ],
             [ ')) and \'1\'=\'1\'((', ')) and \'1\'=\'2\'((' ],
-            [ '))) and \'1\'=\'1\'(((', '))) and \'1\'=\'2\'(((' ],             
+            [ '))) and \'1\'=\'1\'(((', '))) and \'1\'=\'2\'(((' ],                      
             ]
+            
+            @prefs = [ '', '%']
+            @fins = [ '', '--', ';--']
           end
           
           def generateChecks(chat)
@@ -83,53 +98,82 @@ EOF
             #
             begin
               urlParmNames(chat).each do |get_parm|
-                
-                @boolean_checks.each do |check_true, check_false|
-                  
-                  
+                checks = []
+                @prefs.each do |p|
+                @fins.each do |f|
+                  @boolean_checks.each do  |c| 
+                    checks << [ p + c[0] + f, p + c[1] +f ]
+                  end
+                end
+                end
+                checks.each do |check_true, check_false|
                   checker = proc {
-                  parm = get_parm.dup
-                   check_t = CGI::escape(check_true)
-                   check_f = CGI::escape(check_false)
-                    
                     begin
+                     # puts "TRUE ==> #{check_true}"
+                     # puts "FALSE ==> #{check_false}"
+                      parm = get_parm.dup
+                      check_t = CGI::escape(check_true)
+                      check_f = CGI::escape(check_false)
                       test_request = nil
                       test_response = nil
                       
                       # first do request double time to check if hashes are the same
                       test = chat.copyRequest
-                      value = test.get_parm_value(parm)
-                      test_request,test_response = doRequest(test,:default => true)
-                    #  puts "test(Request/Response): #{test.object_id}(#{test_request.object_id}/#{test_response.object_id})"
-                      text_1, hash_1 =  Watobo::Utils.smartHash(chat.request, test_request, test_response)
+                      test_request,test_response = doRequest(test, :default => true)
+                      text_1, hash_1 = Watobo::Utils.smartHash(chat.request, test_request, test_response)
+                     # puts test_response
                       test = chat.copyRequest
-                      test_request,test_response = doRequest(test,:default => true)
-                      text_2, hash_2 =  Watobo::Utils.smartHash(chat.request, test_request, test_response)
-                    #  puts "test(Request/Response): #{test.object_id}(#{test_request.object_id}/#{test_response.object_id})"
-                      
+                      test_request,test_response = doRequest(test, :default => true)
+                     # puts test_response
+                      text_2, hash_2 = Watobo::Utils.smartHash(chat.request, test_request, test_response)
+                      #puts "=== SQL BOOLEAN (#{parm}) ===="
+                      #puts "=TEXT_1 (#{parm})\r\n#{text_1}\r\n=HASH_1\r\n#{hash_1}" if parm =~ /button/
+                      #puts "=TEXT_2 (#{parm})\r\n#{text_2}\r\n=HASH_2\r\n#{hash_2}" if parm =~ /button/
+                     
                       if hash_1 == hash_2 then
                         test = chat.copyRequest
                         val = test.get_parm_value(parm)
-                        val += check_f
+                       # val << "AB" if val.empty?
+                        val << check_t
+                       
                         test.replace_get_parm(parm, val)
+                        true_request,true_response = doRequest(test, :default => true)
+                        text_true, hash_true = Watobo::Utils.smartHash(chat.request, true_request, true_response)
                         
-                        test_request,test_response = doRequest(test,:default => true)
-                        text_false, hash_false = Watobo::Utils.smartHash(chat.request, test_request, test_response)
-                        # check if hash is the same, if yes then this parameter is not good for us
-                        if hash_1 != hash_false then
-                          
+                        test = chat.copyRequest
+                        val = test.get_parm_value(parm)
+                       # val << "AB" if val.empty?
+                        val.reverse!
+                        val += check_t
+                       
+                        test.replace_get_parm(parm, val)
+                        random_request,random_response = doRequest(test, :default => true)
+                        text_random, hash_random = Watobo::Utils.smartHash(chat.request, random_request, random_response)
+                        
+                        test = chat.copyRequest
+                        val = test.get_parm_value(parm)
+                        #val << "AB" if val.empty?
+                        val += check_f
+                       
+                        test.replace_get_parm(parm, val)
+                        false_request,false_response = doRequest(test, :default => true)
+                        text_false, hash_false = Watobo::Utils.smartHash(chat.request, false_request, false_response)
+                         
+                        unless (hash_true == hash_false) and (hash_true == hash_random) then
                           test = chat.copyRequest
                           val = test.get_parm_value(parm)
+                          #val << "AB" if val.empty?
                           val += check_t
                           test.replace_get_parm(parm, val)
-                          test_request, test_response = doRequest(test, :default => true)
-                          #puts "test(Request/Response): #{test.object_id}(#{test_request.object_id}/#{test_response.object_id})"
+                          test_request,test_response = doRequest(test, :default => true)
                           text_true, hash_true = Watobo::Utils.smartHash(chat.request, test_request, test_response)
-                          
-                          if hash_true == hash_1 then
+                        
+                          if hash_true == hash_1 or hash_false == hash_1 or hash_true == hash_random or hash_false == hash_random then
+                        
                             path = "/" + test_request.path
-                           # test_chat = Chat.new(test, test_response,chat.id)
-                            addFinding( test_request,test_response,
+                           # test_chat = Chat.new(test,test_response,chat.id)
+                         #  puts "MATCH !!! #{self.to_s.gsub(/.*::/,'')}"
+                            addFinding(test_request,test_response,
                             :test_item => parm,
                                        :check_pattern => "#{parm}",
                             :chat => chat,
@@ -138,10 +182,17 @@ EOF
                             )                            
                           end                          
                         else
-                         # puts "\n! Boolean check not possible on chat #{chat.id}. Get parameter #{parm} is imune :("
+                          #puts "\n! Boolean check not possible on chat #{chat.id}. URL parmeter #{parm} is imune :("
+                          #puts "--- Hashes are equal!"
+                          #puts text_true
+                          #puts "---"
+                          #puts text_false
+                          #puts "---"
+                          #puts text_random
+                          #puts "==="
                         end
                       else
-                       # puts "\n! Boolean check not possible on chat #{chat.id}. Hashes don't match for get parameter #{parm} :("
+                         puts "\n! Boolean check not possible on chat #{chat.id}. Response differs too much :(" if $DEBUG
                       end
                     rescue => bang
                       puts bang
@@ -156,11 +207,20 @@ EOF
               end
               
               postParmNames(chat).each do |post_parm|
-                
-                @boolean_checks.each do |check_true, check_false|
+                checks = []
+                @prefs.each do |p|
+                @fins.each do |f|
+                  @boolean_checks.each do  |c| 
+                    checks << [ p + c[0] + f, p + c[1] +f ]
+                  end
+                end
+                end
+                checks.each do |check_true, check_false|
                   
                   checker = proc {
                     begin
+                     # puts "TRUE ==> #{check_true}"
+                     # puts "FALSE ==> #{check_false}"
                       parm = post_parm.dup
                       check_t = CGI::escape(check_true)
                       check_f = CGI::escape(check_false)
@@ -171,54 +231,58 @@ EOF
                       test = chat.copyRequest
                       test_request,test_response = doRequest(test, :default => true)
                       text_1, hash_1 = Watobo::Utils.smartHash(chat.request, test_request, test_response)
+                     # puts test_response
                       test = chat.copyRequest
                       test_request,test_response = doRequest(test, :default => true)
+                     # puts test_response
                       text_2, hash_2 = Watobo::Utils.smartHash(chat.request, test_request, test_response)
                       #puts "=== SQL BOOLEAN (#{parm}) ===="
                       #puts "=TEXT_1 (#{parm})\r\n#{text_1}\r\n=HASH_1\r\n#{hash_1}" if parm =~ /button/
                       #puts "=TEXT_2 (#{parm})\r\n#{text_2}\r\n=HASH_2\r\n#{hash_2}" if parm =~ /button/
+                     
                       if hash_1 == hash_2 then
                         test = chat.copyRequest
                         val = test.post_parm_value(parm)
+                       # val << "AB" if val.empty?
+                        val << check_t
+                       
+                        test.replace_post_parm(parm, val)
+                        true_request,true_response = doRequest(test, :default => true)
+                        text_true, hash_true = Watobo::Utils.smartHash(chat.request, true_request, true_response)
+                        
+                        test = chat.copyRequest
+                        val = test.post_parm_value(parm)
+                       # val << "AB" if val.empty?
+                        val.reverse!
+                        val += check_t
+                       
+                        test.replace_post_parm(parm, val)
+                        random_request,random_response = doRequest(test, :default => true)
+                        text_random, hash_random = Watobo::Utils.smartHash(chat.request, random_request, random_response)
+                        
+                        test = chat.copyRequest
+                        val = test.post_parm_value(parm)
+                        #val << "AB" if val.empty?
                         val += check_f
                        
                         test.replace_post_parm(parm, val)
-                        test_request,test_response = doRequest(test, :default => true)
-                        text_false, hash_false = Watobo::Utils.smartHash(chat.request, test_request, test_response)
-                       # puts "=TEXT_FALSE (#{parm})\r\n#{text_false}\r\n=HASH_FALSE\r\n#{hash_false}" if parm =~ /button/
-                                                                        
-                                                                        
-                        # check if hash is the same, if yes then this parameter is not good for us
-                        if hash_1 != hash_false then
+                        false_request,false_response = doRequest(test, :default => true)
+                        text_false, hash_false = Watobo::Utils.smartHash(chat.request, false_request, false_response)
+                         
+                        unless (hash_true == hash_false) and (hash_true == hash_random) then
                           test = chat.copyRequest
                           val = test.post_parm_value(parm)
+                          #val << "AB" if val.empty?
                           val += check_t
                           test.replace_post_parm(parm, val)
                           test_request,test_response = doRequest(test, :default => true)
                           text_true, hash_true = Watobo::Utils.smartHash(chat.request, test_request, test_response)
-                        #  puts "=TEXT_TRUE (#{parm})\r\n#{text_true}\r\n=HASH_TRUE\r\n#{hash_true}" if parm =~ /button/
-                                                
-                                                
-                        #  if parm =~ /account/ then
-                        #    filename = File.join(File.dirname($0), "bc_1.txt")
-                        #    puts filename
-                        #    fh = File.new(filename, "w")
-                        #    fh.puts text_1
-                        #    fh.close
-                        #    filename = File.join(File.dirname($0), "bc_true.txt")
-                        #    puts filename
-                        #    fh = File.new(filename, "w")
-                        #    
-                        #    fh.puts text_true
-                        #    fh.close
-                        #    
-                        #  end
                         
-                          if hash_true == hash_1 then
-                            puts "!GOTCHA! #{hash_1} / #{hash_true}\r\n=TEXT_1 (#{parm})\r\n#{text_1}\r\n=HASH_1\r\n#{hash_1}\r\n=TEXT_2 (#{parm})\r\n#{text_2}\r\n=HASH_2\r\n#{hash_2}\r\n=TEXT_FALSE (#{parm})\r\n#{text_false}\r\n=HASH_FALSE\r\n#{hash_false}\r\n=TEXT_TRUE (#{parm})\r\n#{text_true}\r\n=HASH_TRUE\r\n#{hash_true}"
-                
+                          if hash_true == hash_1 or hash_false == hash_1 or hash_true == hash_random or hash_false == hash_random then
+                        
                             path = "/" + test_request.path
                            # test_chat = Chat.new(test,test_response,chat.id)
+                          # puts "MATCH !!! #{self.to_s.gsub(/.*::/,'')}"
                             addFinding(test_request,test_response,
                             :test_item => parm,
                                        :check_pattern => "#{parm}",
@@ -228,17 +292,17 @@ EOF
                             )                            
                           end                          
                         else
-                        #  puts "\n! Boolean check not possible on chat #{chat.id}. Postparmeter #{parm} is imune :("
+                          #puts "\n! Boolean check not possible on chat #{chat.id}. URL parmeter #{parm} is imune :("
+                          #puts "--- Hashes are equal!"
+                          #puts text_true
+                          #puts "---"
+                          #puts text_false
+                          #puts "---"
+                          #puts text_random
+                          #puts "==="
                         end
                       else
-                       # puts "\n! Boolean check not possible on chat #{chat.id}. Hashes don't match for post parameter #{parm} :("
-                       # fh = File.new("bc_1e.txt", "w")
-                       #     fh.puts text_1
-                       #     fh.close
-                       #     fh = File.new("bc_truee.txt", "w")
-                       #     fh.puts text_true
-                       #     fh.close
-                            
+                         puts "\n! Boolean check not possible on chat #{chat.id}. Response differs too much :(" if $DEBUG
                       end
                     rescue => bang
                       puts bang

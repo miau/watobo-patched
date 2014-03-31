@@ -1,7 +1,7 @@
 # .
 # request.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,22 +19,107 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   def self.create_request(url, prefs={})
-    u = "http://" unless url =~ /^http/
-    u << url
+    unless url =~ /^https?:\/\//
+      u = "http://#{url}"
+    else
+    u = url
+    end
+
     uri = URI.parse u
-     r = "GET #{uri.to_s} HTTP/1.0\r\n"
-     r << "Host: #{uri.host}" 
-     r.extend Watobo::Mixins::RequestParser
-     r.to_request
+    r = "GET #{uri.to_s} HTTP/1.0\r\n"
+    r << "Host: #{uri.host}\r\n"
+    r.extend Watobo::Mixins::RequestParser
+    r.to_request
   end
-  
-  module Request
+
+  class Request < Array
+    
+    attr :data
+    attr :url
+    attr :header
+    attr :cookies
+    
     def self.create request
       request.extend Watobo::Mixin::Parser::Url
       request.extend Watobo::Mixin::Parser::Web10
       request.extend Watobo::Mixin::Shaper::Web10
+     # request = Request.new(request)
+      
+    end
+    
+    def copy
+      c = YAML.load(YAML.dump(self))
+      Watobo::Request.new c
+    end
+    
+    def uniq_hash()
+      begin
+        settings = Watobo::Conf::Scanner.to_h
+        hashbase = site + method + path
+        
+        get_parm_names.sort.each do |p|
+          hashbase << p
+          hashbase << get_parm_value(p) if settings[:non_unique_parms].include?(p)
+        end
+
+        post_parm_names.sort.each do |p|
+        
+          hashbase << p
+          hashbase << post_parm_value(p) if settings[:non_unique_parms].include?(p)
+        end
+        # puts hashbase
+        return Digest::MD5.hexdigest(hashbase)
+      rescue => bang
+        puts bang
+        puts bang.backtrace if $DEBUG
+        return nil
+      end
+    end
+    
+    def parameters(*locations)
+      parms = []
+      parms.concat @data.parameters
+      parms.concat @url.parameters
+      parms
+    end
+    
+    def set(parm)
+      case parm.location
+      when :data
+        #
+       # replace_post_parm(parm.name, parm.value)
+       @data.set parm
+      when :url
+        @url.set parm
+      end
+      true
+    end
+
+    def initialize(r)
+      if r.respond_to? :concat
+        #puts "Create REQUEST from ARRAY"
+       self.concat r
+      elsif r.is_a? String
+        if r =~ /^http/
+          uri = URI.parse r
+          self << "GET #{uri.to_s} HTTP/1.0\r\n"
+          self << "Host: #{uri.host}\r\n"
+        else
+          r.extend Watobo::Mixins::RequestParser
+        self.concat r.to_request
+        end
+
+      end
+      self.extend Watobo::Mixin::Parser::Url
+      self.extend Watobo::Mixin::Parser::Web10
+      self.extend Watobo::Mixin::Shaper::Web10
+      
+      @url = Watobo::HTTP::Url.new(self)
+      @data = Watobo::HTTPData::WWW_Form.new(self)
+      @cookies = Watobo::HTTP::Cookies.new(self)
     end
   end
 end

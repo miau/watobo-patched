@@ -1,7 +1,7 @@
 # .
 # its_services.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -22,7 +22,8 @@
 require 'digest/md5'
 require 'digest/sha1'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Sap
@@ -30,12 +31,7 @@ module Watobo
         
         class Its_services < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-          
-            super(project, prefs)
-            
-            
-            @info.update(
+          @info.update(
                          :check_name => 'SAP ITS: Default Services',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Checks SAP ITS System for enabled default services.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -48,6 +44,11 @@ module Watobo
             :class => "SAP ITS: Default Services",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_HINT         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
+          
+          def initialize(project, prefs={})
+          
+            super(project, prefs)
+            
             
             @its_services = [ 
                   "admin", 
@@ -60,7 +61,7 @@ module Watobo
             
             begin
               
-              if chat.request.url =~ /\/wgate\/(\w*\/!?)/ then
+              if chat.request.url.to_s =~ /\/wgate\/(\w*\/!?)/ then
                 service_name = $1
                 @its_services.each do |service|
                   checker = proc{

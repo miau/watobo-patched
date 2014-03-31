@@ -1,7 +1,7 @@
 # .
 # save_chat_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class SaveChatDialog < FXDialogBox
       class Sender < Watobo::Session
@@ -38,7 +39,10 @@ module Watobo
 
           id = 0
           if prefs[:run_login ] == true
-            runLogin(@project.getLoginChats(), prefs)
+            puts prefs.to_yaml
+            puts "Scanner Settings:"
+            puts Watobo::Conf::Scanner.to_h.to_yaml
+            runLogin( prefs[:login_chats], prefs)
           end
           #if prefs[:update_session ] == true and
           unless prefs[:update_csrf_tokens] == true

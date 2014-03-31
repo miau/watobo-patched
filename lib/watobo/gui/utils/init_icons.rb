@@ -1,7 +1,7 @@
 # .
 # init_icons.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     module Icons
       WATOBO_LOGO = Watobo::Gui.load_gui_icon("watobo-logo.png")
@@ -59,6 +60,7 @@ module Watobo
 
       # Findings Tree Icons
       ICON_VULN = Watobo::Gui.load_gui_icon("Mr. Bomb_24x24.ico")
+      ICON_VULN_BP = Watobo::Gui.load_gui_icon("BestPractice_24x24.ico")
       ICON_VULN_LOW = Watobo::Gui.load_gui_icon("Yellow Ball_24x24.ico")
       ICON_VULN_MEDIUM = Watobo::Gui.load_gui_icon("Orange Ball_24x24.ico")
       ICON_VULN_HIGH = Watobo::Gui.load_gui_icon("Red Ball_24x24.ico")
@@ -72,6 +74,7 @@ module Watobo
       # small
       ICON_PROJECT_SMALL = Watobo::Gui.load_gui_icon("Web Browser_16x16.ico")
       ICON_VULN_SMALL = Watobo::Gui.load_gui_icon("Mr. Bomb_16x16.ico")
+      ICON_VULN_BP_SMALL = Watobo::Gui.load_gui_icon("BestPractice_16x16.ico")
       ICON_VULN_LOW_SMALL = Watobo::Gui.load_gui_icon("Yellow Ball_16x16.ico")
       ICON_VULN_MEDIUM_SMALL = Watobo::Gui.load_gui_icon("Orange Ball_16x16.ico")
       ICON_VULN_HIGH_SMALL = Watobo::Gui.load_gui_icon("Red Ball_16x16.ico")

@@ -1,7 +1,7 @@
 # .
 # hotspots.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Passive
       
@@ -59,11 +60,13 @@ module Watobo
                     @pattern_list.each do |ext|
                       if line =~ /([\w%\/\\\.:-]*\.#{ext})[^\w]/ then
                         match = $1
+                        hotspot = Watobo::Utils::URL.create_url(chat, match)
                         if not @known_functions.include?(match) then
                           addFinding(  
                                        :proof_pattern => match, 
-                                       :title => match,
-                                       :chat => chat
+                                       :title => hotspot,
+                                       :chat => chat,
+                                       :fid => Digest::MD5.hexdigest("#{self}#{hotspot}")
                           )  
                           @known_functions.push match
                         end

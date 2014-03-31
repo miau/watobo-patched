@@ -1,7 +1,7 @@
 # .
 # hex_viewer.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,17 +19,18 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class HexViewer < FXHorizontalFrame
       def normalizeText(text)
         dummy = []
         begin
           text.headers.each do |h|
-            dummy.push h.strip + "\r\n"
+            dummy.push h.strip.unpack("C*").pack("C*") + "\r\n"
           end
           dummy.push "\r\n"
-          dummy.push text.body
+          dummy.push text.body.unpack("C*").pack("C*")
           dummy = dummy.join
         rescue => bang
           dummy = text
@@ -37,7 +38,16 @@ module Watobo
         return dummy
       end
       
-      def setText(raw_text)
+      def setText(tobject)
+        raw_text = tobject
+        
+        if tobject.respond_to? :has_body?
+          raw_text = ""
+         raw_text << tobject.body.to_s unless tobject.body.nil? 
+        end
+            
+       
+        
         initTable()
         
         if raw_text and not raw_text.empty? then
@@ -58,6 +68,7 @@ module Watobo
             
             if pos % 16 == 0 then
               chunk = raw_text[row*16..pos-1]
+              
              # puts chunk
               @hexTable.setItemText(row, 16, chunk.gsub(/[^[:print:]]/,'.')) if !chunk.nil?
               @hexTable.getItem(row, 16).justify = FXTableItem::LEFT

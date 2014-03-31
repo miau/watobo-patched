@@ -2,7 +2,7 @@
 # .
 # watobo.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -29,6 +29,7 @@ require 'timeout'
 require 'openssl'
 require 'optparse'
 require 'digest/md5'
+require 'stringio'
 require 'zlib'
 require 'base64'
 require 'cgi'
@@ -36,6 +37,8 @@ require 'uri'
 require 'pathname'
 require 'net/ntlm'
 require 'drb'
+require 'nokogiri'
+require 'stringio'
 
 require 'watobo/constants'
 require 'watobo/utils'
@@ -46,10 +49,17 @@ require 'watobo/core'
 require 'watobo/externals'
 require 'watobo/adapters'
 require 'watobo/framework'
+require 'watobo/http/data/data'
+require 'watobo/http/url/url'
+require 'watobo/http/cookies/cookies'
+require 'watobo/parser'
+require 'watobo/interceptor'
+require 'watobo/http_socket'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all #:nodoc: all
 
-  VERSION = "0.9.12"
+  VERSION = "0.9.13"
 
   def self.base_directory
     @base_directory ||= ""

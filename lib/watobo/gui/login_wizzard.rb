@@ -1,7 +1,7 @@
 # .
 # login_wizzard.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -41,7 +41,7 @@ class FXLoginWizzard < FXDialogBox
   
   def onRequestClick(sender,sel,item)
     @lastid=item
-    chat = @project.getChat(@request_list.getItemText(@lastid))
+    chat = Watobo::Chats.get_by_id(@request_list.getItemText(@lastid))
     if chat then
       show_chat(chat)
     end
@@ -70,7 +70,7 @@ class FXLoginWizzard < FXDialogBox
     @request_list.clearItems
     idlist.each do |chatid|
       
-      chat = @project.getChat(chatid)
+      chat = Watobo::Chats.get_by_id(chatid)
       puts chat.id
       if chat then
         #puts chatid

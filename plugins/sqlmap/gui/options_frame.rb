@@ -1,7 +1,7 @@
 # .
 # options_frame.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Plugin
     class Sqlmap
       class OptionsFrame < FXVerticalFrame
@@ -59,7 +60,7 @@ module Watobo
         def initialize(owner, opts)
           super(owner, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
           
-          self.extend Watobo::Gui::Subscriber
+          self.extend Watobo::Subscriber
           
           groupbox = FXGroupBox.new(self, "Request", FRAME_GROOVE|LAYOUT_FILL_Y|LAYOUT_FILL_X, 0, 0, 0, 0)
           FXLabel.new(groupbox, "Enter a test request below or use 'SEND TO -> SQLMap' from the conversation-table menu (right-click).")

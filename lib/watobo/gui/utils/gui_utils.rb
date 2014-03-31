@@ -1,7 +1,7 @@
 # .
 # gui_utils.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     module Utils
       
@@ -40,14 +41,14 @@ module Watobo
 
       def cleanupHTTP(text)
 
-        if text.class.to_s =~ /Array/i then
+        if text.is_a?(Request) or text.is_a?(Response)
           dummy = []
           text.each do |line|
             chunk = line.gsub(/\r/,'').strip
             dummy.push chunk.gsub("\x00","")
           end
           return dummy.join("\n")
-        elsif text.class.to_s =~ /String/i then
+        elsif text.is_a? String
           chunk = text.gsub(/\r/,'').strip
           return chunk.gsub("\x00","")
           #return text.gsub(/\r/,"")

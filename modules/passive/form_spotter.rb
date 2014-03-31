@@ -1,7 +1,7 @@
 # .
 # form_spotter.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Passive
       
@@ -49,17 +50,19 @@ module Watobo
             #  puts "running module: #{Module.nesting[0].name}"
             return true unless chat.response.content_type =~ /(text|script)/
             return true if chat.response.body.nil?
-            off = chat.response.body.index(/<form/i, 0)
-            until off.nil?
-              action = chat.response.body[off..-1] =~ /<form [^<\/form]*action="([^"]*)"/i ? $1 : "undefined" 
+            
+            doc = Nokogiri::HTML(chat.response.body)
+            doc.css('form').each do |f|
+              action = f["action"] 
+              next if action.nil?
               title = action.strip.empty? ? "[none]" : "#{action}"
             #  puts "!FOUND FORM #{action}"
               addFinding(  
-                         :proof_pattern => "<form [^>]*>", 
+                         :proof_pattern => "<form[^>]*#{Regexp.quote(action)}[^>]*>", 
               :title => title,
               :chat => chat
               )  
-              off = chat.response.body.index(/<form/i, off+1)
+
             end
           rescue => bang
             #  raise

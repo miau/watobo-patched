@@ -1,7 +1,7 @@
 # .
 # init_modules.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,10 +19,11 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
 
   private
-  def self.init_passive_modules(filter='')
+  def self.init_passive_modules_UNUSED(filter='')
     # puts "get passive modules from path #{@settings[:module_path]}/passive"
     passive_modules = []
     passive_path = Watobo.passive_module_path
@@ -53,6 +54,34 @@ module Watobo
     end
     passive_modules
   end
+  
+   def self.init_passive_modules(filter='')
+    # puts "get passive modules from path #{@settings[:module_path]}/passive"
+    passive_modules = []
+
+    Dir["#{Watobo.passive_module_path}/*.rb"].each do |mod_file|
+      begin
+        mod = File.basename(mod_file)
+
+        load mod_file
+        rescue => bang
+      puts "!!!"
+      puts bang
+      end
+    end
+    
+    Watobo::Modules::Passive.constants.each do |m|
+      begin
+        class_constant = Watobo::Modules::Passive.const_get(m)
+        passive_modules.push class_constant
+      rescue => bang
+      puts "!!!"
+      puts bang
+      end
+    end
+    passive_modules
+  end
+
 
   def self.init_active_modules()
 

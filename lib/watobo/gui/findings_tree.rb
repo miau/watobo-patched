@@ -1,7 +1,7 @@
 # .
 # findings_tree.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class FindingsTree < FXTreeList
       include Watobo::Constants
@@ -31,6 +32,7 @@ module Watobo
       end
 
       def expandFullTree(item)
+        @expandeds = []
         self.expandTree(item)
         item.each do |c|
           expandFullTree(c) if !self.itemLeaf?(c)
@@ -38,6 +40,7 @@ module Watobo
       end
 
       def collapseFullTree(item)
+        @expandeds = []
         self.collapseTree(item)
         item.each do |c|
           collapseFullTree(c) if !self.itemLeaf?(c)
@@ -49,26 +52,24 @@ module Watobo
         false
       end
 
-      def refresh_tree
-        self.clearItems
-
-        @findings.each_value do |finding|
-
-          addFinding(finding)
-
-        end
-      end
-
+     
       def reload()
-
-        unless @project.nil?
+         self.clearItems        
           @findings.clear
-          @project.findings.each do |fid, finding|
-            @findings[fid] = finding
-          end
-        end
-        refresh_tree
-
+          Watobo::Findings.each do |fid, finding|
+            addFinding(finding)
+          end   
+         expand_findings
+         @expandeds.each do |t|
+           site, text = t.split("|")
+           if( site = self.findItem(site, nil, SEARCH_FORWARD|SEARCH_NOWRAP) )
+             if( node = self.findItem(text, site, SEARCH_FORWARD|SEARCH_NOWRAP) )
+               self.expandTree(node)
+             else
+               @expandeds.delete t
+             end
+           end
+         end     
       end
 
       def useRegularIcons()
@@ -77,6 +78,7 @@ module Watobo
         regular_font.create
         # Findings Tree Icons
         @icon_vuln = ICON_VULN
+        @icon_vuln_bp = ICON_VULN_BP
         @icon_vuln_low = ICON_VULN_LOW
         @icon_vuln_medium = ICON_VULN_MEDIUM
         @icon_vuln_high = ICON_VULN_HIGH
@@ -95,6 +97,7 @@ module Watobo
         small_font = FXFont.new(getApp(), "helvetica", GUI_SMALL_FONT_SIZE)
         small_font.create
         @icon_vuln = ICON_VULN_SMALL
+        @icon_vuln_bp = ICON_VULN_BP_SMALL
         @icon_vuln_low = ICON_VULN_LOW_SMALL
         @icon_vuln_medium = ICON_VULN_MEDIUM_SMALL
         @icon_vuln_high = ICON_VULN_HIGH_SMALL
@@ -119,7 +122,7 @@ module Watobo
         #  puts finding.details[:title]
         @findings[finding.details[:fid]] = finding
         if @show_scope_only == true
-          addFindingItem(finding) if @project.siteInScope?(finding.request.site)
+          addFindingItem(finding) if Watobo::Scope.match_site?(finding.request.site)
         else
           addFindingItem(finding)
         end
@@ -161,6 +164,8 @@ module Watobo
 
             when FINDING_TYPE_VULN
               finding_type = "Vulnerabilities"
+              icon = @icon_vuln_bp
+              
               if finding.details[:rating] == VULN_RATING_LOW
               icon = @icon_vuln_low
               #  puts "low-rating-vuln"
@@ -179,7 +184,7 @@ module Watobo
             sub_tree = self.findItem(finding_type, site, SEARCH_FORWARD|SEARCH_IGNORECASE|SEARCH_NOWRAP)
             if sub_tree and sub_tree.parent == site and finding.details[:class]
 
-              class_item = self.findItem(finding.details[:class], sub_tree, SEARCH_FORWARD|SEARCH_IGNORECASE|SEARCH_NOWRAP)
+              class_item = self.findItem(finding.details[:class], sub_tree, SEARCH_FORWARD|SEARCH_IGNORECASE|SEARCH_NOWRAP|SEARCH_PREFIX)
               if not class_item or class_item.parent != sub_tree
                 class_item = self.appendItem(sub_tree, finding.details[:class], icon, icon)
                 self.setItemData(class_item, :finding_class )
@@ -199,6 +204,13 @@ module Watobo
               request_item = self.appendItem(title_item, text)
               self.setItemData(request_item, finding)
               end
+              
+              #
+              unless class_item.text =~ / \(\d+\)$/
+                class_item.text = class_item.text + " (#{class_item.numChildren})"
+              else
+              class_item.text = class_item.text.gsub(/ \(\d+\)$/, " (#{class_item.numChildren})")
+              end
             end
 
           end
@@ -217,6 +229,8 @@ module Watobo
         @findings = Hash.new
         @show_scope_only = false
         @hide_false_positives = false
+        @clipboard = ""
+        @expandeds = []
 
         @event_dispatcher_listeners = Hash.new
 
@@ -225,6 +239,30 @@ module Watobo
         useRegularIcons()
 
         @filtered_domains = Hash.new # domains which already have been filtered
+        
+        self.connect(SEL_CLIPBOARD_REQUEST) do
+            setDNDData(FROM_CLIPBOARD, FXWindow.stringType, Fox.fxencodeStringData(@clipboard.to_s))
+        end
+        
+        self.connect(SEL_EXPANDED) do |sender, sel, item|
+          parent = item
+          while parent.parent
+            parent = parent.parent
+          end
+          unless parent.nil? or item.nil?
+            node = "#{parent.text}|#{item.text}"
+            @expandeds << node
+          end
+        end
+        
+        self.connect(SEL_COLLAPSED) do |sender, sel, item|
+          parent = item
+          while parent.parent
+            parent = parent.parent
+          end
+          node = "#{parent.text}|#{item.text}"
+          @expandeds.delete node
+        end
 
         self.connect(SEL_COMMAND) do |sender, sel, item|
           if self.itemLeaf?(item)
@@ -293,7 +331,7 @@ module Watobo
 
               target.connect(SEL_COMMAND) { |ts, sl, it|
                 @show_scope_only = ts.checked?
-                refresh_tree
+                reload
               }
 
               target = FXMenuCheck.new(menu_pane, "hide false-positives" )
@@ -302,7 +340,7 @@ module Watobo
 
               target.connect(SEL_COMMAND) { |ts, sl, it|
                 @hide_false_positives = ts.checked?
-                refresh_tree
+                reload
               }
             
             
@@ -317,8 +355,9 @@ module Watobo
                 if data == :item_type_site then
                  # FXMenuSeparator.new(menu_pane)
                   FXMenuCommand.new(menu_pane, "add site to scope" ).connect(SEL_COMMAND) {
-
-                    notify(:add_site_to_scope, item.to_s)
+                    #notify(:add_site_to_scope, item.to_s)
+                    Watobo::Scope.add item.to_s
+                    reload
                   }
                # 
                 elsif data == :title
@@ -329,6 +368,8 @@ module Watobo
                       end
                       
                    fp_submenu = FXMenuPane.new(self) do |sub|
+                     
+                     
 
                     target = FXMenuCommand.new(sub, "Set False Positive" )
                     target.connect(SEL_COMMAND) {
@@ -429,6 +470,22 @@ module Watobo
                       end
                       
                   fp_submenu = FXMenuPane.new(self) do |sub|
+                    
+                     target = FXMenuCommand.new(sub, "Copy URLs" )
+                    target.connect(SEL_COMMAND) {
+                     
+                     urls = []
+                     findings.each do |f|
+                       proto = f.request.proto
+                       site = f.request.site
+                       path = f.request.path
+                       urls << "#{proto}://#{site}/#{path}"
+                     end
+                     types = [ FXWindow.stringType ]
+                     if acquireClipboard(types)
+                       @clipboard = urls.uniq.join("\n")
+                     end
+                    }
 
                     target = FXMenuCommand.new(sub, "Set False Positive" )
                     target.connect(SEL_COMMAND) {
@@ -490,6 +547,13 @@ module Watobo
                   }
 
                 elsif data.is_a? Watobo::Finding then
+                  FXMenuCommand.new(menu_pane, "Copy URL" ).connect(SEL_COMMAND){
+                    types = [ FXWindow.stringType ]
+                     if acquireClipboard(types)
+                       @clipboard = item.data.request.url.to_s
+                     end
+                    
+                  }
                  # FXMenuSeparator.new(menu_pane)
                   doManual = FXMenuCommand.new(menu_pane, "Manual Request.." )
                   doManual.connect(SEL_COMMAND) {
@@ -514,6 +578,17 @@ module Watobo
       end
 
       private
+      
+      def expand_findings()
+        self.each do |site|
+          expandTree site
+           %w(Vulnerabilities Hints Info).each do |item|
+              f = self.findItem(item, site,SEARCH_FORWARD|SEARCH_IGNORECASE)
+              expandTree(f) unless site.nil?
+           end
+        end
+       
+      end
 
       def notify(event, *args)
         if @event_dispatcher_listeners[event]

@@ -1,7 +1,7 @@
 # .
 # config.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Conf
 
     @@settings = Hash.new
@@ -33,15 +34,15 @@ module Watobo
       @@modules.length
     end
     
-    def self.load_project_settings(data_store)
+    def self.load_project_settings()
       @@modules.each do |m|
-        m.load_project(data_store)
+        m.load_project()
       end
     end
     
-    def self.load_session_settings(data_store)
+    def self.load_session_settings()
       @@modules.each do |m|
-        m.load_session(data_store)
+        m.load_session()
       end
     end
 
@@ -80,29 +81,28 @@ module Watobo
           @settings = YAML.load(YAML.dump(settings))
         end
 
-        def self.save_session(data_store, *filter, &b)
-          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
+        def self.save_session( *filter, &b)
+          #raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
           s = filter_settings filter
           yield s if block_given?
          # puts group_name
-          data_store.save_session_settings( group_name, s )
+          Watobo::DataStore.save_session_settings( group_name, s )
         end
 
-        def self.save_project(data_store, *filter, &b)
-          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
+        def self.save_project( *filter, &b)
+         # raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
           s = filter_settings filter
          # puts @settings.to_yaml
          # puts s.to_yaml
-          data_store.save_project_settings(group_name, s)
+          Watobo::DataStore.save_project_settings(group_name, s)
         end
         
-        def self.load_session(data_store, prefs={}, &b)
-          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :load_project_settings
+        def self.load_session(prefs={}, &b)
           
           p = { :update => true }
           p.update prefs
           
-          s = data_store.load_session_settings(group_name)
+          s = Watobo::DataStore.load_session_settings(group_name)
           return false if s.nil?
           
           if p[:update] == true
@@ -112,13 +112,11 @@ module Watobo
           end
         end
         
-        def self.load_project(data_store, prefs={}, &b)
-          raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :load_project_settings
-          
+        def self.load_project(prefs={}, &b)
           p = { :update => true }
           p.update prefs
           
-          s = data_store.load_project_settings(group_name)
+          s = Watobo::DataStore.load_project_settings(group_name)
           return false if s.nil?
           
           if p[:update] == true

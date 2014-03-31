@@ -1,7 +1,7 @@
 # .
 # lfi_simple.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -22,18 +22,15 @@
 require 'digest/md5'
 require 'digest/sha1'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Fileinclusion
         
         
         class Lfi_simple < Watobo::ActiveCheck
-          
-          def initialize(project, prefs={})
-            super(project, prefs)
-            
-            @info.update(
+           @info.update(
                          :check_name => 'Local File Inclusion',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Checks for parameters, which can lead to local file inclusion.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -46,6 +43,11 @@ module Watobo
             :class => "Local File Inclusion",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_VULN         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
+            
+          def initialize(project, prefs={})
+            super(project, prefs)
+            
+           
             
             @include_checks = [ 
                                 ["etc/passwd",'root:[^:]+:\w+:\w+' ],

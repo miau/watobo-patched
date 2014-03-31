@@ -1,7 +1,7 @@
 # .
 # catalog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Plugin
     module Catalog
       
@@ -33,17 +34,13 @@ module Watobo
         
         about_txt = FXText.new(main, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
         about_txt.editable = false
-                                    
-about_txt.disable                                    
+        about_txt.disable                                    
         about_txt.setText text
         about_txt.font = FXFont.new(getApp(), "courier", 12, FONTWEIGHT_BOLD) 
         about_txt.backColor = FXColor::White
         
         bottom = FXHorizontalFrame.new(main, :opts => LAYOUT_FILL_X)
-        FXButton.new(bottom, "OK" ,
-        :target => self, :selector => FXDialogBox::ID_ACCEPT,
-        :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
-        
+        FXButton.new(bottom, "OK" , :target => self, :selector => FXDialogBox::ID_ACCEPT, :opts => BUTTON_NORMAL|LAYOUT_RIGHT)        
       end 
     end
       
@@ -51,6 +48,21 @@ about_txt.disable
         attr_writer :db_files
         attr_writer :var_files
         attr_writer :path
+        
+        @info.update(
+          :check_name => 'Catalog-Scan',    # name of check which briefly describes functionality, will be used for tree and progress views
+          :description => "Using catalog databases for testing the web application.",   # description of checkfunction
+          :author => "Andreas Schmidt", # author of check
+          :version => "1.0"   # check version
+          )
+
+          @finding.update(
+          :threat => 'catalog db finding',        # thread of vulnerability, e.g. loss of information
+          :class => "Catalog",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+          :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
+          :rating => VULN_RATING_LOW
+          )
+          
         
         def loadVars(path)
           dbpath = Dir.getwd
@@ -75,6 +87,7 @@ about_txt.disable
             end
             # puts "* db vars total: #{@dbvars.length}"
           end
+          @dbvars["@RFIURL"] = [ "http://cirt.net/rfiinc.txt" ] unless @dbvars.has_key? "@RFIURL"
         end
 
         def loadDBFiles(path, *opts)
@@ -88,21 +101,15 @@ about_txt.disable
             if File.exists?(fname)
               File.open(fname) { |fh|
                 fh.each do |line|
-
-                  next if line.strip =~ /^#/
-                  # puts "+ #{line}"
+                  next if line.strip =~ /^#/                  
                   fields = line.split("\",")
                   fields.map!{ |f| f.gsub!(/^"/,'') }
                   fields.first.gsub!(/^\"/,"")
                   fields.last.gsub!(/\"?/,"")
-                  #  puts fields.join(" : ")
-                  #   puts "*" + fields.length.to_s
-                  #  gets
                   @catalog_checks.push fields
                 end
               }
-              # puts "* db checks total: #{@catalog_checks.length}"
-            else
+              else
               puts "* file (#{fname}) does not exist. Please check path and name."
             end
           end
@@ -123,43 +130,31 @@ about_txt.disable
 
               if pattern and uri =~ /(#{pattern})/
                 key = $1
-                #puts "+ found var key: #{key}"
                 @dbvars[key].each do |v|
-                  # puts "--#{v}"
-                  new_uri = uri.gsub(/#{key}/, v)
-                  #count += 1
-                  #print "\r[Plugin] Total Checks. #{count}          "
-                  yield dbid, osvdb, threat, new_uri, method, match, or_match, and_match, fail, or_fail, summary, post_data, headers
+                    new_uri = uri.gsub(/#{key}/, v)
+                    if new_uri =~ /#{pattern}/
+                      @catalog_checks << [ dbid, osvdb, threat, new_uri, method, match, or_match, and_match, fail, or_fail, summary, post_data, headers ]
+                    else
+                      yield dbid, osvdb, threat, new_uri, method, match, or_match, and_match, fail, or_fail, summary, post_data, headers
+                    end
+              
                 end
               else
-                #count += 1
-                #print "\r[Plugin] Total Checks. #{count}          "
                 yield dbid, osvdb, threat, uri, method, match, or_match, and_match, fail, or_fail, summary, post_data, headers
               end
             end
-            #puts "[Plugin] Total Checks. #{count}"
           rescue => bang
             puts bang
             puts bang.backtrace if $DEBUG
           end
         end
 
+ 
+
         def initialize(project)
           super(project, project.getScanPreferences())
 
-          @info.update(
-          :check_name => 'Catalog-Scan',    # name of check which briefly describes functionality, will be used for tree and progress views
-          :description => "Using catalog databases for testing the web application.",   # description of checkfunction
-          :author => "Andreas Schmidt", # author of check
-          :version => "1.0"   # check version
-          )
-
-          @finding.update(
-          :threat => 'catalog db finding',        # thread of vulnerability, e.g. loss of information
-          :class => "Catalog",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
-          :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
-          :rating => VULN_RATING_LOW
-          )
+         
 
           @path = nil
 
@@ -187,8 +182,7 @@ about_txt.disable
               checker = proc {
                 test_request = nil
                 test_response = nil
-                # !!! ATTENTION !!!
-                # MAKE COPY BEFORE MODIFIYING REQUEST
+               
                 test = chat.copyRequest
                 test.replaceFileExt(uri.gsub(/^\//,''))
 
@@ -199,7 +193,7 @@ about_txt.disable
                 if method =~ /post/i then
                   test.addHeader("Content-Length", "0")
                 end
-
+                               
                 status, test_request, test_response = fileExists?(test, :default => true)
                
                 
@@ -207,15 +201,7 @@ about_txt.disable
                   test_result = false
                   response = test_response.join
                   if status == true
-                    if test_request.url =~ /splashAdmin/
-                      puts "splashAdmin.php exists!"
-                      puts "Match: #{match}"
-                      puts "Or-Match: #{or_match}"
-                      puts "Fail: #{fail}"
-                      puts "Or-Fail: #{or_fail}"
-                     
-                    end
-
+                    
                     if ( (match.empty? and or_match.empty?) or ( match != "" and response =~ /#{Regexp.quote(match)}/i) or ( or_match != "" and response =~ /#{Regexp.quote(or_match)}/i )) then
                       test_result = true
                       if and_match != "" then
@@ -227,13 +213,8 @@ about_txt.disable
                     test_result = false if fail != "" and response =~ /#{Regexp.quote(fail)}/i
                     test_result = false if or_fail != "" and response =~ /#{Regexp.quote(or_fail)}/i
 
-                    # test_chat = Chat.new(test_request, test_response, chat.id)
-
                     if test_result then
-                      
-                      #  path = test_request.url.gsub(/#{uri}/,"")
                       path = test_request.path
-                    #  puts "ADD FINDING!"
                       addFinding(  test_request, test_response,
                       :test_item => uri,
                       :proof_pattern => "#{Regexp.quote(match)}",
@@ -243,13 +224,9 @@ about_txt.disable
                       :title => "[#{uri}] - #{path}"
 
                       )
-                    #  puts "OK"
-
                     end
                   end
                 end
-
-                # notify(:db_finished)
                 [ test_request, test_response ]
               }
               yield checker
@@ -266,21 +243,19 @@ about_txt.disable
         include Watobo::Constants
         
         def updateView()
-          #@project = project
           @sites_combo.clearItems()
           @dir_combo.clearItems()
           @dir_combo.disable
 
-          if @project then
+          
             @sites_combo.appendItem("no site selected", nil)
-            scope_only = Watobo.project.has_scope?
-            sites = @project.listSites(:in_scope => Watobo.project.has_scope? )
+            scope_only = Watobo::Scope.exist?
+            sites = Watobo::Chats.sites(:in_scope => Watobo::Scope.exist? )
             if sites.empty?
               scope_only = false
               @log_viewer.log(LOG_INFO, "Defined scope does not match one site. Using all sites.")
             end
-            @project.listSites(:in_scope => scope_only ).each do |site|
-              #puts "Site: #{site}"
+            Watobo::Chats.sites(:in_scope => scope_only ).each do |site|
               site_string = site
               if site.length > 60
                 site_string = site.slice(0..55)
@@ -293,21 +268,19 @@ about_txt.disable
             @sites_combo.setCurrentItem(0) if @sites_combo.numItems > 0
             ci = @sites_combo.currentItem
             site = ( ci >= 0 ) ? @sites_combo.getItemData(ci) : nil
+            puts site
+            puts site.class
 
-            if site
+            unless site.nil?
               @dir_combo.enable
-              @project.listDirs(@site) do |dir|
+              Watobo::Chats.dirs(site) do |dir|
+                puts dir
                 @dir_combo.appendItem(dir.slice(0..35), dir)
               end
               @dir_combo.setCurrentItem(0, true) if @dir_combo.numItems > 0
 
             end
-          end
-
-        end
-
-        def onClose
-
+          
         end
 
         def initialize(owner, project)
@@ -328,15 +301,10 @@ about_txt.disable
           dlg = Watobo::Plugin::Catalog::About.new(self, text)
           dlg.execute
           }
-        
-          self.connect(SEL_CLOSE, method(:onClose))
 
           @event_dispatcher_listeners = Hash.new
           @scanner = nil
           @plugin_name = "Catalog-Scan"
-          @project = project
-          
-          
          
           @site = nil
           @dir = nil
@@ -371,22 +339,14 @@ about_txt.disable
               FXLabel.new(request_frame, "Select a request template from drop-down list or enter manually.")
             @requestCombo = FXComboBox.new(request_frame, 5, nil, 0,
             COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
-            #@filterCombo.width =200
 
             @requestCombo.numVisible = 0
             @requestCombo.numColumns = 50
             @requestCombo.editable = false
             @requestCombo.connect(SEL_COMMAND, method(:onSelectRequest))
 
-            #log_text_frame = FXVerticalFrame.new(request_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
-            # @request_box = FXText.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-            #   @request_box.styled = true
-            # Set the styles
-            #  @request_box.hiliteStyles = [ hs_green, hs_red]
-
             @request_editor = RequestEditor.new(request_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
 
-          #  FXLabel.new(@settings_frame, "Select Site:")
             ts_frame = FXGroupBox.new(@settings_frame, "Scan Settings", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
 
            # @scope_only_cb = FXCheckButton.new(@settings_frame, "target scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
@@ -395,7 +355,6 @@ about_txt.disable
 
             @sites_combo = FXComboBox.new(ts_frame, 5, nil, 0,
             COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
-            #@filterCombo.width =200
 
             @sites_combo.numVisible = @sites_combo.numItems >= 20 ? 20 : @sites_combo.numItems
             @sites_combo.numColumns = 35
@@ -426,13 +385,9 @@ about_txt.disable
               if @logScanChats.checked? then
                 @scanlog_dir_text.enabled = true
                 @scanlog_dir_text.backColor = FXColor::White
-              #  @scanlog_dir_label.enabled = true
-              #  @scanlog_dir_btn.enable
               else
                 @scanlog_dir_text.enabled = false
                 @scanlog_dir_text.backColor = @scanlog_dir_text.parent.backColor 
-              #  @scanlog_dir_label.enabled = false
-              #  @scanlog_dir_btn.disable
               end
             end
 
@@ -448,9 +403,6 @@ about_txt.disable
               @scanlog_dir_text.enabled = false
               @scanlog_dir_text.backColor = @scanlog_dir_text.parent.backColor
             end 
-            #@scanlog_dir_btn = FXButton.new(scanlog_frame, "Change")
-           # @scanlog_dir_btn.connect(SEL_COMMAND, method(:selectScanlogDirectory))
-           
          
           @db_files = %w( db_tests db_variables )
           
@@ -514,11 +466,9 @@ about_txt.disable
              @db_path_combo.currentItem = path_index if @db_path_combo.numItems > 0
              
             @pbar = FXProgressBar.new(@settings_frame, nil, 0, LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK|PROGRESSBAR_HORIZONTAL)
-            @pbar.progress = 0
-            @pbar.total = 0
-            @pbar.barColor=0
-            @pbar.barColor = 'grey' #FXRGB(255,0,0)
-
+            
+            reset_pbar
+           
             @speed = FXLabel.new(@settings_frame, "Requests per second: 0")
 
             @start_button = FXButton.new(@settings_frame, "start")
@@ -546,6 +496,8 @@ about_txt.disable
             @log_viewer = LogViewer.new(log_text_frame, nil, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
        
             updateView()
+            start_update_timer()
+            
           rescue => bang
             puts bang
             puts bang.backtrace if $DEBUG
@@ -563,11 +515,18 @@ about_txt.disable
           show(PLACEMENT_SCREEN) # Make the main window appear
           disableOptions()
           @start_button.disable
+          
+          updateView()
         end
 
      
         private
         
+        def reset_pbar
+           @pbar.progress = 0
+            @pbar.total = 0
+            @pbar.barColor = 'grey' #FXRGB(255,0,0)
+        end
 
         def updateRequestEditor(chat=nil)
           @request_editor.setText('')
@@ -599,7 +558,7 @@ about_txt.disable
         def updateRequestCombo(chat_list)
           @requestCombo.clearItems()
           chat_list.each do |chat|
-            text = "[#{chat.id}] #{chat.request.url}"
+            text = "[#{chat.id}] #{chat.request.url.to_s}"
             @requestCombo.appendItem(text, chat)
           end
           if @requestCombo.numItems > 0 then
@@ -626,17 +585,17 @@ about_txt.disable
             if @site
               @dir_combo.appendItem("/", nil)
 
-              chats = @project.findChats(@site, :method => "GET")
+              chats = Watobo::Chats.select(@site, :method => "GET")
               updateRequestCombo(chats)
               updateRequestEditor(chats.first)
-              if @project then
-                @project.listDirs(@site) do |dir|
-                  text = "/" + dir #.slice(0..35)
-                  text.gsub!(/\/+/, '/')
-                  @dir_combo.appendItem(text, dir)
-                end
-                @dir_combo.setCurrentItem(0, true) if @dir_combo.numItems > 0
+              
+              Watobo::Chats.dirs(@site) do |dir|
+                text = "/" + dir #.slice(0..35)
+                text.gsub!(/\/+/, '/')
+                @dir_combo.appendItem(text, dir)
               end
+              @dir_combo.setCurrentItem(0, true) if @dir_combo.numItems > 0
+              
             end
             enableOptions()
             @dir_combo.enable
@@ -724,15 +683,15 @@ about_txt.disable
           else
             @dir = ""
           end
-          chats = @project.findChats(@site, :method => "GET", :dir => @dir)
+          chats = Watobo::Chats.select(@site, :method => "GET", :dir => @dir)
           updateRequestCombo(chats)
           updateRequestEditor(chats.first)
         end
 
         def hide()
-
-          #  puts "* #{self.class} closed"
+          #  TODO: Warn user if scan is in progress
           @scanner.cancel() if @scanner
+          @scanner = nil
 
          super
 
@@ -779,13 +738,37 @@ about_txt.disable
         file = File.join(conf_dir, dir_name + "_config.yml")
         config = Watobo::Utils.load_settings(file)
       end
+      
+      def start_update_timer
+         @timer = FXApp.instance.addTimeout( 250, :repeat => true) {
+           unless @scanner.nil?
+             progress = @scanner.progress
+             sum_progress = progress.values.inject(0){|i, v|  i += v[:progress] }
+             @speed.text = "Checks per second: #{sum_progress - @pbar.progress}"            
+            @pbar.progress = sum_progress
+            
+            if @scanner.finished?             
+              msg = "Scan Finished!"              
+              @log_viewer.log(LOG_INFO, msg)
+              Watobo.log(msg, :sender => "Catalog")              
+              @scanner = nil
+              reset_pbar()
+               
+            @speed.text = "Requests per second: -"
+            @start_button.text = "Start"
+            end
+           end
+          }           
+      end
 
         def start(sender, sel, item)
           if @start_button.text =~ /cancel/i then
             @scanner.cancel()
             @start_button.text = "Start"
-            @pbar.progress = 0
-             Watobo.log("Scan Canceled By User", :sender => "Catalog")
+            reset_pbar
+            msg = "Scan Canceled By User"
+             Watobo.log(msg, :sender => "Catalog")
+              @log_viewer.log(LOG_INFO, msg)
             return
           end
 
@@ -799,19 +782,7 @@ about_txt.disable
           @start_button.text = "Cancel"
 
 
-          @check = Check.new(@project)
-
-          #@check.subscribe(:db_finished) {
-          #    @pbar.increment(1)
-          #puts @pbar.progress.to_s + "/" + @pbar.total.to_s
-          #     if @pbar.progress == @pbar.total-1
-          #       @pbar.barColor = 'grey'
-          #       puts @pbar.progress.to_s + "/" + @pbar.total.to_s
-          #     end
-
-          #}
-
-
+          @check = Check.new(Watobo.project)
         
           @check.path = @path
 
@@ -824,22 +795,15 @@ about_txt.disable
 
           @log_viewer.log( LOG_INFO, "Starting ...")
           puts "Site: #{@site}"
-       #   progressWindow = Watobo::Gui::ProgressWindow.new(self, "Initialize Plugin")
-
-        #  progressWindow.create
-        #  progressWindow.show(PLACEMENT_SCREEN)
-          #  progressWindow.newProject(@active_project, project_settings)
-
-       #   progressWindow.register(self)
-          progressWindow = nil
+         progressWindow = nil
   #        Thread.new(progressWindow){ |pw|
             begin
               c=1
               if @test_all_dirs.checked? then
                 c = 0
-                @project.listDirs(@site, :base_dir => @dir, :include_subdirs => @test_all_dirs.checked?) { c += 1 }
-                notify(:update_progress, :total => c, :job => @dir)
-                @project.listDirs(@site, :base_dir => @dir, :include_subdirs => @test_all_dirs.checked?) do |dir|
+                Watobo::Chats.dirs(@site, :base_dir => @dir, :include_subdirs => @test_all_dirs.checked?) { c += 1 }
+                
+                Watobo::Chats.dirs(@site, :base_dir => @dir, :include_subdirs => @test_all_dirs.checked?) do |dir|
                   msg = "running checks in #{@path} on #{@site} for /#{dir}"
                   puts msg
                   Watobo.log(msg, :sender => "Catalog")
@@ -848,93 +812,55 @@ about_txt.disable
                   chat.request.replaceFileExt('')
                   chat.request.setDir(dir)
                   chatlist.push chat
-                  # @check.getCheckCount(chat)
+                
                   @check.updateCounters(chat)
-                 # pw.update_progress( :progress => 1)
+                
                 end
               else
-            #    notify(:update_progress, :total => c, :job => @dir)
-                msg = "running checks in #{@path} on #{@site} for /#{@dir}"
+                
+                chat = createChat()
+                chat.request.replaceFileExt('')
+                
+                chatlist.push chat
+                @check.updateCounters(chat)
+             
+                 msg = "running checks in #{@path} on #{@site} for /#{chat.request.dir}"
                 puts msg
                 Watobo.log(msg, :sender => "Catalog")
                 @log_viewer.log(LOG_INFO, msg)
-                chat = createChat()
-             #   puts chat.request.first
-                chat.request.replaceFileExt('')
-                chat.request.setDir(@dir)
-              #  puts chat.request.first
-                chatlist.push chat
-                @check.updateCounters(chat)
-             #   notify(:update_progress, :progress => 1)
               end
             rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG
             ensure
-            #  pw.hide
+ 
             end
- #         }
-
-         # getApp().runModalWhileShown(progressWindow)
-
-          scan_prefs = @project.getScanPreferences
-
-          
+          #scan_prefs = @project.getScanPreferences
+          scan_prefs = Watobo::Conf::Scanner.to_h          
           if @logScanChats.checked?
             scan_prefs[:scanlog_name] = @scanlog_dir_dt.value unless @scanlog_dir_dt.value.empty?
           end
           
-
-          @scanner = Watobo::Scanner2.new(chatlist, checklist, @project.passive_checks, scan_prefs)
-          
-          @pbar.total = @check.numChecks * chatlist.length
+          @scanner = Watobo::Scanner3.new(chatlist, checklist, Watobo::PassiveModules.to_a, scan_prefs)
+          @pbar.total = @scanner.progress.values.inject(0){|i,v| i += v[:total]}
           @pbar.progress = 0
           @pbar.barColor = 'red'
 
           speed = 0
           lasttime = 0
-          @scanner.subscribe(:progress) { |m|
-            time = Time.now.to_i
-            if time == lasttime then
-              speed += 1
-            else
-              @speed.text = "Requests per second: #{speed}"
-              speed = 1
-              lasttime = time
-            end
-            @pbar.increment(1)
-          }
-          
-            @scanner.subscribe(:new_finding) { |f|
-          #  puts "Project.addFinding"
-             @project.addFinding(f) 
-          }
 
 
-          msg= "Total Requests: #{@check.numChecks}"
+          msg= "Total Requests: #{@pbar.total}"
           @log_viewer.log(LOG_INFO, msg)
-         
-
-        st =  Thread.new(@scanner){ |scan| 
-            begin
+             begin
               msg = "start scanning..."
               @log_viewer.log(LOG_INFO, msg)
-             
-              scan.run(:run_passive_checks => false)
-              
-              msg = "scanning finished!"
-              @log_viewer.log(LOG_INFO, msg)
-                Watobo.log("Scan finished", :sender => "Catalog")
+              @scanner.run(:run_passive_checks => false)
             rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG
             end
-            @pbar.progress = 0
-            @pbar.barColor = 'grey'
-            @speed.text = "Requests per second: 0"
-            @start_button.text = "Start"
-          }
-       #   st.join
+           
         end
 
       end

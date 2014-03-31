@@ -1,7 +1,7 @@
 # .
 # checkboxtree.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -33,7 +33,8 @@ if $0 == __FILE__
 
 end
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class CheckBoxTreeItem < FXTreeItem
       attr_accessor :checked
@@ -156,14 +157,13 @@ module Watobo
         self.setItemClosedIcon(parent, icon)
       end
 
-     def getCheckedData(item = nil, data = nil)
-        data = [] if !data
-        item = self if !item
-        item.each do |c|
-          getCheckedData(c, data) if c.numChildren > 0
-          data.push c.data if self.itemLeaf?(c) and c.checked
+     def getCheckedData(root = self)
+        @selected = [] if root == self
+        root.each do |c|
+          getCheckedData(c) if c.numChildren > 0
+          @selected << c.data if self.itemLeaf?(c) and c.checked
         end
-        data
+        @selected
       end
 
       def checkAll
@@ -271,7 +271,8 @@ end
 ##########################
 
 if $0 == __FILE__
-  module Watobo
+  # @private 
+module Watobo#:nodoc: all
     module Gui
 
       @application ||= FXApp.new('LayoutTester', 'FoxTest')
@@ -311,8 +312,8 @@ if $0 == __FILE__
 
         def leave
           d = @cbtree.getCheckedData
-          puts d.class
-          puts d
+          #puts d.class
+          #puts d
           exit
         end
 

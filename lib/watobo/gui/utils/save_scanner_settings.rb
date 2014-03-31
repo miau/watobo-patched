@@ -1,7 +1,7 @@
 # .
 # save_scanner_settings.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,18 +19,19 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     def self.save_scanner_settings()
       unless Watobo.project.nil?
 
-        Watobo::Conf::Scanner.save_project(Watobo.project.session_store ){ |s|
+        Watobo::Conf::Scanner.save_project(){ |s|
         # puts s.to_yaml
           x
         }
 
         session_filter = [ :sid_patterns, :logout_signatures, :custom_error_patterns, :max_parallel_checks, :excluded_parms, :non_unique_parms ]
-        Watobo::Conf::Scanner.save_session(Watobo.project.session_store)
+        Watobo::Conf::Scanner.save_session()
       return true
       else
         Watobo::Conf::Scanner.save

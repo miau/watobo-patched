@@ -1,7 +1,7 @@
 # .
 # detect_infrastructure.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Passive
       class Detect_infrastructure < Watobo::PassiveCheck
@@ -55,7 +56,9 @@ module Watobo
 @pattern_list << [ 'SharePoint 2010', Regexp.new('MicrosoftSharePointTeamServices.*14.0.0.6106')]
 # And in SharePoint 2007 site, the result is like this: MicrosoftSharePointTeamServices:12.0.0.4518
 @pattern_list << [ 'SharePoint 2007', Regexp.new('MicrosoftSharePointTeamServices.*12.0.0.4518')]
-          
+          # "vaadinVersion":"7.0.4"
+          @pattern_list << [ 'VAADIN }>', Regexp.new('vaadinVersion":"(\d+\.\d+\.\d+)')]
+          @pattern_list << [ 'JBoss'    ,Regexp.new('JBoss Web.(\d+\.\d+\.\d+)')]
 
           #@pattern_list << 'sample code'
 
@@ -76,7 +79,7 @@ module Watobo
                     addFinding(
                     :proof_pattern => "#{match}",
                     :chat => chat,
-                    :title => "[#{pat[0]}] - #{match.slice(0..15)}"
+                    :title => "[#{pat[0]}] - #{match.slice(0..21)}"
                     )
                     break
                   end

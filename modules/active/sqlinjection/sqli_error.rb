@@ -1,7 +1,7 @@
 # .
 # sqli_error.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Sqlinjection
@@ -27,9 +28,7 @@ module Watobo
         
         class Sqli_error < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-            super(project, prefs)
-            @info.update(
+          @info.update(
                          :check_name => 'Error-based SQL-Injection',    # name of check which briefly describes functionality, will be used for tree and progress views
             :check_group => AC_GROUP_SQL,
             :description => "Check every parameter for SQL-Injection flaws. The detection is based on error messages of the database.",   # description of checkfunction
@@ -55,11 +54,15 @@ EOF
             
             @finding.update(
                             :threat => threat,        # threat of vulnerability, e.g. loss of information
-                            :class => "Error-based SQL-Injection",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+                            :class => "SQL-Injection (Error)",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
             :rating => VULN_RATING_CRITICAL,
             :measure => measure 
             )
+          
+          def initialize(project, prefs={})
+            super(project, prefs)
+            
             
             @sql_checks=[
             "';--",

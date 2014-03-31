@@ -1,7 +1,7 @@
 # .
 # scanner.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   class Scanner2
 
     attr :numTotalChecks
@@ -234,11 +235,9 @@ module Watobo
           @check_count += 1
           puts "CheckCount: #{@check_count}" if $DEBUG
           notify( :progress, m )
-          unless @prefs[:scanlog_name].nil?
-            if @prefs[:session_store].respond_to? :add_scan_log
+          unless @prefs[:scanlog_name].nil?            
               chat = Chat.new(request, response, :id => 0, :chat_source => @prefs[:chat_source])
-              @prefs[:session_store].add_scan_log(chat, @prefs[:scanlog_name])
-            end
+              Watobo::DataStore.add_scan_log(chat, @prefs[:scanlog_name])            
           end
         end
 
@@ -341,7 +340,7 @@ module Watobo
       puts @prefs.to_yaml if $DEBUG
 
       @filtered_chat_list = filteredChats(@chat_list, @prefs)
-      puts "#ActiveChecks: #{@active_checks.length}"
+      puts "#ActiveModules: #{@active_checks.length}"
 
       @active_checks.uniq.each do |m|
         puts m.class

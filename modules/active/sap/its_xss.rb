@@ -1,7 +1,7 @@
 # .
 # its_xss.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -22,7 +22,8 @@
 require 'digest/md5'
 require 'digest/sha1'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Sap
@@ -30,12 +31,7 @@ module Watobo
         
         class Its_xss < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-            @project = project
-            super(project, prefs)
-            
-            
-            @info.update(
+          @info.update(
                          :check_name => 'SAP ITS: XSS',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Checks for generic XSS flaws in SAP ITS Systems.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -48,6 +44,11 @@ module Watobo
             :class => "SAP ITS: XSS",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_HINT         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
+          
+          def initialize(project, prefs={})
+            @project = project
+            super(project, prefs)
+            
           end
           
           def generateChecks(chat)
@@ -57,7 +58,7 @@ module Watobo
             #
             begin
               
-              if chat.request.url =~ /!$/ then 
+              if chat.request.url.to_s =~ /!$/ then 
                 checker = proc{
                 test = chat.copyRequest
                 new_p = "~urlmime"
@@ -69,7 +70,7 @@ module Watobo
                 if test_response.join =~ /watobo/i then
                   #test_chat = Chat.new(test,test_response,chat.id)
                   addFinding(test_request,test_response,
-                  :test_item => chat.request.url,
+                  :test_item => chat.request.url.to_s,
                          :check_pattern => "#{new_p}",
                          :proof_pattern => "#{new_v}",
                          :chat => chat,

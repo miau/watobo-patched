@@ -1,7 +1,7 @@
 # .
 # main_window.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     ####################################################################################################################
     # M A I N   A P P L I C A T I O N   W I N D O W
@@ -48,7 +49,7 @@ module Watobo
           }
 
           mrtk.subscribe(:new_chat) { |c|
-            @project.addChat(c)
+            Watobo::Chats.add c
           }
           mrtk.show(Fox::PLACEMENT_SCREEN)
         rescue => bang
@@ -66,6 +67,16 @@ module Watobo
         addFinding(f)
       end
       @finding_queue.clear
+    end
+    
+    unless @scanner.nil?
+      if @scanner.finished?
+         @scan_running = false
+         @status_lock.synchronize do
+            @new_status = SCAN_FINISHED
+         end
+         @scanner = nil
+      end
     end
     
     @chat_lock.synchronize do
@@ -269,10 +280,10 @@ module Watobo
 #        end
       end
 
-      def update_conversation_table(project)
-        return false if project.nil?
-         @chatTable.showConversation(project.chats)
-         @chatTable.apply_filter()  
+      def update_conversation_table()
+         @chatTable.showConversation(Watobo::Chats.to_a)
+         @chatTable.apply_filter(@conversation_table_ctrl.filter)
+         @conversation_table_ctrl.update_text  
          return true
       end
       
@@ -309,6 +320,7 @@ module Watobo
       # SHOW VULN
       #
       def showVulnerability(vuln)
+       
         @mre_button.enabled = true
         @fuzz_button.enabled = true
         @bv_button.enabled = true
@@ -323,7 +335,7 @@ module Watobo
         if vuln.details[:check_pattern] then
 
         pattern = vuln.details[:check_pattern].strip
-
+       
         @request_viewer.highlight(pattern)
         end
 
@@ -354,14 +366,14 @@ module Watobo
           unless Watobo.project.nil?
              ids = smdlg.getLoginScriptIds()
           Watobo.project.setLoginChatIds(ids)
-          Watobo.project.setSidPatterns(sidpatterns)
+          #Watobo.project.setSidPatterns(sidpatterns)
           Watobo.project.setLogoutSignatures(logout_signatures)
           end
         # save settings
         #saveProjectSettings(@project)
         #saveSessionSettings(@project)
         Watobo::Conf::Scanner.logout_signatures = logout_signatures
-        Watobo::Conf::Scanner.sid_patterns = sidpatterns
+        Watobo::Conf::SidCache.patterns = sidpatterns
         Watobo::Gui.save_settings()
         end
       end
@@ -424,10 +436,10 @@ module Watobo
           if ccdlg.execute != 0
           #puts "* New WWW-Authentication"
           #puts @project.getWwwAuthentication().to_yaml
-          @settings[:password_policy][:save_passwords] = ccdlg.savePasswords?
+          #@settings[:password_policy][:save_passwords] = ccdlg.savePasswords?
           puts "* got client certificate settings"
           puts ccdlg.client_certificates.to_yaml
-          @project.client_certificates = ccdlg.client_certificates
+          Watobo.project.client_certificates = ccdlg.client_certificates
           Watobo::Interceptor.proxy.client_certificates = ccdlg.client_certificates
          # saveProjectSettings(@project)
           Watobo::Gui.save_settings()
@@ -487,12 +499,12 @@ module Watobo
         @sites_tree.addChat(chat)
       end
 
-      def showPassiveCheckStatus
+      def showPassiveModulestatus
         @switcher.current=2
         @dashboard.tabBook.current = 1
       end
 
-      def showActiveCheckStatus
+      def showActiveModulestatus
         @switcher.current=2
         @dashboard.tabBook.current = 2
       end
@@ -508,6 +520,7 @@ module Watobo
 
       def showLogs(sender, sel, ptr)
         @switcher.current=1
+        @log_viewer.show_logs
       end
 
       def showConversation(sender=nil, sel=nil, item=nil)
@@ -592,8 +605,8 @@ module Watobo
       end
 
       def refreshViewers()
-        @findings_tree.refresh_tree()
-        @sites_tree.refresh_tree()
+        @findings_tree.reload()
+        @sites_tree.reload()
       #@chatTable.clearItems()
       end
 
@@ -618,11 +631,11 @@ module Watobo
         end
       end
 
-      def update_status_bar(project=nil)
+      def update_status_bar()
         unless Watobo.project.nil?          
          @statusBar.projectName = Watobo.project_name
          @statusBar.sessionName = Watobo.session_name
-         @dashboard.updateProjectInfo(Watobo.project)
+         @dashboard.updateProjectInfo()
          @scan_button.enable
          @statusBar.statusInfoText = "Ready"
         end
@@ -665,6 +678,9 @@ module Watobo
 
       def closeProject()
         @project = nil
+        Watobo::Chats.reset
+        Watobo::Findings.reset
+        Watobo::Scope.reset
         @findings_tree.clearItems()
         @sites_tree.clearItems()
         @chatTable.clearItems()
@@ -725,7 +741,7 @@ module Watobo
         puts "DEBUG: starting project" if $DEBUG
         @project = project
 
-        subscribeProject(@project)
+        subscribeProject()
 
         @project.subscribe(:update_progress){ |up|
           begin
@@ -748,16 +764,10 @@ module Watobo
             @project.setupProject()
             print "[OK]\n"
 
-            #puts "= SETTINGS ="
-            #puts @settings.to_yaml
-            
-          
-           
+                  
             Watobo::Gui.clear_plugins
             Watobo::Gui::Utils.load_plugins(@project)
-            #            saveProjectSettings(@project)
-            #            saveSessionSettings(@project)
-
+       
             @sites_tree.project = @project
             @findings_tree.project = @project
             Watobo::Gui.project = @project
@@ -776,23 +786,35 @@ module Watobo
 
         }
         getApp().runModal
-      #  puts "* finished modal mode"
-       update_conversation_table(@project)
-
-            update_status_bar(@project)
-            
-            
-            Watobo::Interceptor.start
-
-            @browserView = BrowserPreview.new(Watobo::Interceptor.proxy)
-
-
-        @progress_window.hide
-        @chatTable.show
-        @sites_tree.show
-        @sites_tree.reload
-        @findings_tree.show
-        @findings_tree.reload
+      
+      
+       update_conversation_table()
+       update_status_bar()
+       puts "* starting interceptor"
+       Watobo::Interceptor.start
+       puts "* starting passive scanner"
+       Watobo::PassiveScanner.start
+       @browserView = BrowserPreview.new(Watobo::Interceptor.proxy)
+       
+       #  be sure to hide the progress window      
+       @progress_window.destroy
+       
+       
+       @chatTable.show
+       @sites_tree.show
+       @sites_tree.reload
+       @findings_tree.show
+       @findings_tree.reload
+       
+       @chatTable.apply_filter(@conversation_table_ctrl.filter)
+       @conversation_table_ctrl.update_text
+       
+        
+        puts "Project Started"
+        puts "Active Modules: #{Watobo::ActiveModules.length}"
+        puts "Passive Modules: #{Watobo::PassiveModules.length}"
+        puts "Chats: #{Watobo::Chats.length}"
+        puts "Findings: #{Watobo::Findings.length}"
       end
 
       def decryptPassword(enc_pw=nil, dlg_titel="Encrypted Password")
@@ -1006,72 +1028,49 @@ module Watobo
       end
 
       def openScopeDialog(sender,sel,ptr)
-        unless Watobo.project.nil?
-        dlg = Watobo::Gui::EditScopeDialog.new(self, @project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        dlg = Watobo::Gui::EditScopeDialog.new(self, LAYOUT_FILL_X|LAYOUT_FILL_Y)
         if dlg.execute != 0 then
-        @project.scope = YAML.load(YAML.dump(dlg.scope))
-       # saveProjectSettings(@project)
-        Watobo::Gui.save_settings()
-        refreshViewers()
-        end
-        else
-          FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First!")
+          Watobo::Gui.save_settings()
+          refreshViewers()
         end
       end
 
       def startFullScan(sender,sel,ptr)
-        if @scan_button.icon == ICON_STOP
-        @scanner.cancel() if @scanner
-        @scan_button.icon = ICON_START
-        @scan_running = false
+        unless @scanner.nil?
+        #if @scan_button.icon == ICON_STOP
+           @scanner.cancel() if @scanner
+           @scan_button.icon = ICON_START
+           @scan_running = false
+           @scanner = nil
         else
           dlg = Watobo::Gui::FullScanDialog.new(self, @project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
           if dlg.execute != 0 then
 
             @scan_running = true
             @scan_button.icon = ICON_STOP
-            #@pause_scan_button.enable
-            @project.setScope(dlg.scope)
+           
+            Watobo::Scope.set dlg.scope
 
-            #  saveProjectSettings(@project)
-            #  saveSessionSettings(@project)
+           
+            selected_modules = dlg.activeModules
+            
+            in_scope_chats = Watobo::Chats.in_scope()
+           
+            puts "Chats in Scope: #{in_scope_chats.length}"
 
-            #@project.scanLogDirectory = dlg.scan_prefs[:scanlog_dir] unless dlg.scan_prefs[:scanlog_dir] == ''
-
-            #   chats = @project.getChats(dlg.scope)
-            dlg_modules = dlg.activeModules().map{ |m| m.class.to_s}
-            # we only need array of selected class names
-            #  scan_modules = dlg.selectedModules().map{ |m| m.class.to_s }
-            acc = @project.active_checks.select do |ac|
-              dlg_modules.include? ac.class.to_s
-            end
-
-            in_scope_chats = @project.chatsInScope()
-            #  puts "Chats to scan:"
-            #  puts in_scope_chats.length
-            #  p
-
-            confirm_dlg = Watobo::Gui::ConfirmScanDialog.new(self, in_scope_chats, @project.getScanPreferences())
+            confirm_dlg = Watobo::Gui::ConfirmScanDialog.new(self, in_scope_chats)
+            
             if confirm_dlg.execute == 0
-            @scan_button.icon = ICON_START
-            @scan_running = false
-            return 0
+              @scan_button.icon = ICON_START
+              @scan_running = false
+              return 0
             end
 
-            scan_prefs = @project.getScanPreferences()
-=begin
-            scan_prefs[:scanlog_dir] = dlg.scan_prefs[:scanlog_dir]
-            if File.exist?(scan_prefs[:scanlog_dir]) then
-            new_dir = File.join(scan_prefs[:scanlog_dir], "scan-" + Time.now.to_f.to_s + "_full")
-            Dir.mkdir(new_dir)
-            scan_prefs[:scanlog_dir] = new_dir
-            end
-=end
-
-            #scan_prefs[:data_store] = @project.datastore
+           # scan_prefs = @project.getScanPreferences()
+           scan_prefs = Watobo::Conf::Scanner.to_h
             scan_prefs[:scan_name] = "scan_" + Time.now.to_i.to_s + "_full"
 
-            @scanner = Watobo::Scanner2.new(in_scope_chats, acc , @project.passive_checks, scan_prefs)
+            @scanner = Watobo::Scanner3.new(in_scope_chats, selected_modules , [], scan_prefs)
 
             @scanner.subscribe(:progress) { |check|
                  @dashboard.progress(check)
@@ -1083,7 +1082,8 @@ module Watobo
             }
 
             @scanner.subscribe(:logger){ |level, message|             
-               @log_viewer.log(level, message)              
+               #@log_viewer.log(level, message)
+               Watobo.log(message, :sender=>'Scanner')              
             }
 
 
@@ -1097,23 +1097,12 @@ module Watobo
             }
 
 
-            @dashboard.setupScanProgressFrame(@scanner.numChecksPerModule)
+          @dashboard.setupScanProgressFrame(@scanner)
             
-            @dashboard.setScanStatus("Running")
-            @statusBar.setStatusInfo(:text => "Full Scan Running", :color => 'red')
-            Thread.new {
-              begin               
-                @scanner.run(:run_passive_checks => false, :update_sids => true, :update_session => true)
-               # logger("scan finished")
+          @dashboard.setScanStatus("Running")
+          @statusBar.setStatusInfo(:text => "Full Scan Running", :color => 'red')
+          @scanner.run(:run_passive_checks => false, :update_sids => true, :update_session => true)
            
-                @scan_running = false
-                @status_lock.synchronize do
-                  @new_status = SCAN_FINISHED
-                end
-              rescue => bang
-              puts bang
-              end
-            }
           end
         end
       end
@@ -1356,12 +1345,12 @@ module Watobo
         @treeTabbook = FXTabBook.new(frame, nil, 0, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
 
         ftab = FXTabItem.new(@treeTabbook, "Findings", nil)
-        ftab.setFont(FXFont.new(getApp(), "helvetica", 12, FONTWEIGHT_BOLD, FONTSLANT_ITALIC, FONTENCODING_DEFAULT))
+        ftab.setFont(FXFont.new(getApp(), "helvetica", 12, FONTWEIGHT_BOLD, FONTENCODING_DEFAULT))
         tab_frame = FXVerticalFrame.new(@treeTabbook, :opts => LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_RAISED, :width => 100)
         frame = FXVerticalFrame.new(tab_frame, :opts => LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN, :padding => 0)
         @findings_tree = Watobo::Gui::FindingsTree.new(frame, self, nil)
         stab = FXTabItem.new(@treeTabbook, "  Sites  ", nil)
-        stab.setFont(FXFont.new(getApp(), "helvetica", 12, FONTWEIGHT_BOLD, FONTSLANT_ITALIC, FONTENCODING_DEFAULT))
+        stab.setFont(FXFont.new(getApp(), "helvetica", 12, FONTWEIGHT_BOLD, FONTENCODING_DEFAULT))
         tab_frame = FXVerticalFrame.new(@treeTabbook, :opts => LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_RAISED, :width => 100)
         frame = FXVerticalFrame.new(tab_frame, :opts => LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN, :padding => 0)
         @sites_tree = Watobo::Gui::SitesTree.new(frame, self, nil)
@@ -1372,7 +1361,7 @@ module Watobo
     #  @chatTable.apply_filter @conversation_table_ctrl.filter_settings
                 begin
                   getApp().beginWaitCursor()
-                  update_conversation_table(@project)
+                  update_conversation_table()
                 ensure
                   getApp().endWaitCursor()
                 end
@@ -1398,20 +1387,30 @@ request_splitter.connect(SEL_COMMAND){
 }
 
         # C H A T  T A B L E  C O N T R O L L E R
-        @conversation_table_ctrl = ConversationTableCtrl.new(request_splitter,  :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
+       # @conversation_table_ctrl = ConversationTableCtrl.new(request_splitter,  :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
+        @conversation_table_ctrl = ConversationTableCtrl2.new(request_splitter,  :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
 
         # C H A T   T A B L E
         @chatTable = ConversationTable.new(@conversation_table_ctrl )
         @conversation_table_ctrl.table= @chatTable
 
         @chatTable.autoscroll =  true
-
+=begin
         @chatTable.connect(SEL_COMMAND) do |sender, sel, item|
           @findings_tree.killSelection()
           @sites_tree.killSelection()
           onTableClick(sender,sel,item)
         end
-
+=end
+        @chatTable.subscribe(:chat_selected){ |chat|
+           chat_selected(chat) unless chat.nil?
+          }
+          
+        @chatTable.subscribe(:chat_doubleclicked){ |chat|
+          open_manual_request_editor(chat)
+          }
+          
+=begin          
         @chatTable.connect(SEL_DOUBLECLICKED) do |sender, sel, data|
           @findings_tree.killSelection()
           @sites_tree.killSelection()
@@ -1419,19 +1418,50 @@ request_splitter.connect(SEL_COMMAND){
           if row >= 0 then
           @chatTable.selectRow(row, false)
           chatid = @chatTable.getRowText(row).to_i
-          chat = @project.getChat(chatid)
+          chat = Watobo::Chats.get_by_id(chatid)
           open_manual_request_editor(chat)
           end
         end
+=end
         
+=begin
         @chatTable.connect(SEL_CHANGED){ |sender, sel, item|
           #puts item.row
            @chatTable.selectRow(item.row, false)
            chatid = @chatTable.getRowText(item.row).to_i
-          chat = @project.getChat(chatid)
-          chat_selected(chat)
+           chat = Watobo::Chats.get_by_id(chatid)
+           chat_selected(chat)
+        }
+
+        @chatTable.connect(SEL_KEYPRESS){ |sender, sel, event|
+          case event.code
+            when KEY_space
+             
+              if chat = @chatTable.current_chat
+               dlg = Watobo::Gui::EditCommentDialog.new(self, chat)
+               if dlg.execute != 0 then
+                 chat.comment = dlg.comment
+                 @chatTable.updateComment(@chatTable.currentRow, dlg.comment)
+                 Watobo::Utils.saveChat(chat, chat.file)
+               end
+               end
+              true
+            else
+              false
+            end
 
         }
+=end
+       @chatTable.subscribe(:edit_comment){|chat|
+         puts "#{self} EDIT COMMENT"
+         dlg = Watobo::Gui::EditCommentDialog.new(self, chat)
+               if dlg.execute != 0 then
+                 chat.comment = dlg.comment
+                 @chatTable.updateComment(@chatTable.currentRow, dlg.comment)
+                 Watobo::Utils.saveChat(chat, chat.file)
+               end
+         
+         }
 
         @chatTable.connect(SEL_RIGHTBUTTONRELEASE) do |sender, sel, event|
           @findings_tree.killSelection()
@@ -1445,7 +1475,7 @@ request_splitter.connect(SEL_COMMAND){
 
               @chatTable.selectRow(row, false)
               chatid = @chatTable.getRowText(row).to_i
-              chat = @project.getChat(chatid)
+              chat = Watobo::Chats.get_by_id(chatid)
 
               showChat(chat)
 
@@ -1472,7 +1502,7 @@ request_splitter.connect(SEL_COMMAND){
 
                 # EXCLUDE SUBMENU
                 exclude_submenu = FXMenuPane.new(self) do |sub|
-                  chat = @project.getChat(chatid)
+                  chat = Watobo::Chats.get_by_id(chatid)
 
                   target = FXMenuCheck.new(sub, "Chat (#{chatid})" )
 
@@ -1496,8 +1526,8 @@ request_splitter.connect(SEL_COMMAND){
 
                 # COPY SUBMENU
                 copy_submenu = FXMenuPane.new(self) do |sub|
-                  chat = @project.getChat(chatid)
-                  url = @project.getChat(chatid).request.url
+                  chat = Watobo::Chats.get_by_id(chatid)
+                  url = chat.request.url.to_s
                   #  puts url
                   url_string = "URL: #{url.slice(0,35)}"
                   url_string += "..." if url.length > 36
@@ -1511,9 +1541,9 @@ request_splitter.connect(SEL_COMMAND){
                     end
 
                   }
-                  target = FXMenuCommand.new(sub, "Site: #{@project.getChat(chatid).request.site}" )
+                  target = FXMenuCommand.new(sub, "Site: #{chat.request.site}" )
                   target.connect(SEL_COMMAND) {
-                    site = @project.getChat(chatid).request.site
+                    site = Watobo::Chats.get_by_id(chatid).request.site
 
                     types = [ FXWindow.stringType ]
                     if acquireClipboard(types)
@@ -1612,7 +1642,7 @@ request_splitter.connect(SEL_COMMAND){
         chat_frame = FXVerticalFrame.new(@chat_frame_splitter, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|LAYOUT_MIN_WIDTH|LAYOUT_MIN_HEIGHT, :padding => 0, :width=>400, :height => 400)
         #chat_frame = FXVerticalFrame.new(chat_frame_splitter, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|LAYOUT_MIN_WIDTH, :padding => 0, :width=>400)
         title_frame = FXHorizontalFrame.new(chat_frame, :opts => LAYOUT_FILL_X)
-        FXLabel.new(title_frame, "Request:")
+        FXLabel.new(title_frame, "Request").setFont(FXFont.new(getApp(), "helvetica", 9, FONTWEIGHT_BOLD, FONTENCODING_DEFAULT)) 
 
         @request_viewer = Watobo::Gui::RequestViewer.new(chat_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         #  @request_viewer = Watobo::Gui::ChatViewer.new(chat_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
@@ -1630,7 +1660,7 @@ request_splitter.connect(SEL_COMMAND){
         # FXHorizontalSeparator.new(chat_frame, :opts => SEPARATOR_GROOVE|LAYOUT_FILL_X)
         chat_frame = FXVerticalFrame.new(@chat_frame_splitter, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|LAYOUT_MIN_WIDTH, :padding => 0, :width=>400)
         title_frame = FXHorizontalFrame.new(chat_frame, :opts => LAYOUT_FILL_X)
-        FXLabel.new(title_frame, "Response:")
+        FXLabel.new(title_frame, "Response").setFont(FXFont.new(getApp(), "helvetica", 9, FONTWEIGHT_BOLD, FONTENCODING_DEFAULT))
         
         @save_response_btn = FXButton.new(title_frame, "Save", nil, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT)
         @save_response_btn.connect(SEL_COMMAND){ save_response }
@@ -1644,10 +1674,11 @@ request_splitter.connect(SEL_COMMAND){
         #===================================================================
         # L O G I N F O
         #===================================================================
-        logFrame = FXVerticalFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
-        FXLabel.new(logFrame, "Eventlist:", :opts => LAYOUT_FILL_X)
+        #logFrame = FXVerticalFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
+        #FXLabel.new(logFrame, "Eventlist:", :opts => LAYOUT_FILL_X)
        
-        @log_viewer = Watobo::Gui::LogViewer.new(logFrame, :opts => FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+       # @log_viewer = Watobo::Gui::LogViewer.new(logFrame, :opts => FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+       @log_viewer = Watobo::Gui::LogFileViewer.new(@switcher, :opts => FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
         # DASHBOARD#
         @dashboard = Dashboard.new(@switcher)
@@ -1664,9 +1695,12 @@ request_splitter.connect(SEL_COMMAND){
     #    if @foption_nojs.checked? then @doctype_TableFilter.concat(@fext_javascript);end
     #    if @foption_nocss.checked? then @doctype_TableFilter.concat(@fext_style);end
         
-        add_queue_timer(50)
+        add_queue_timer(250)
         #disable_menu
         update_menu
+        
+         
+
       end
 
       def create
@@ -1723,39 +1757,35 @@ request_splitter.connect(SEL_COMMAND){
         end
       end
       
-      def subscribeProject(project)
-
-        project.subscribe(:new_chat){ |c|
+      def subscribeProject()
+        Watobo::Chats.subscribe(:new){ |c|
           # Thread.new { addChat(c)}
+        # puts "Got New Chat (#{c.id})"
           @chat_lock.synchronize do
           @chat_queue << c
         end
         }
-
-        project.subscribe(:new_finding){ |f|
+       
+        Watobo::Findings.subscribe(:new){ |f|
           # Thread.new { addFinding(f) }
           @finding_lock.synchronize do
           @finding_queue << f
           end
         }
 
-        project.subscribe(:settings_changed){
-        #  saveProjectSettings(project)
-         # saveSessionSettings(project)
-          Watobo::Gui.save_settings()
-        }
+       
       end
 
       def subscribeSitesTree()
         @sites_tree.subscribe(:add_site_to_scope){ |site|
-          @project.addToScope(site)
+          Watobo::Scope.add(site)
           Watobo::Gui.save_settings()
         }
 
         @sites_tree.subscribe(:show_conversation){ |chat_list|
           showConversation()
-          puts "SHOW_CONVERSATION: #{chat_list.length} chats"
           @chatTable.showConversation(chat_list, :ignore_filter)
+          @conversation_table_ctrl.text = "Selected Chats (#{chat_list.length}/#{Watobo::Chats.length})"
         }
 
         @sites_tree.subscribe(:show_chat){ |chat|
@@ -1765,7 +1795,7 @@ request_splitter.connect(SEL_COMMAND){
 
       def subscribeFindingsTree()
         @findings_tree.subscribe(:add_site_to_scope){ |site|
-          @project.addToScope(site)
+          Watobo::Scope.add(site)
           Watobo::Gui.save_settings()
         }
 
@@ -1800,10 +1830,6 @@ request_splitter.connect(SEL_COMMAND){
         #  puts "! #{Thread.list.length} Threads running"
         response = FXMessageBox.question(self, MBOX_YES_NO, "Finished?", "Are you sure?")
         if response == MBOX_CLICKED_YES
-          puts "Remaining Threads"
-          Thread.list.each do |t|
-            p t
-          end
         return 0
         else
         return 1
@@ -1870,11 +1896,9 @@ request_splitter.connect(SEL_COMMAND){
           chatid = @chatTable.getRowText(row).to_i
           @chatTable.selectRow(row, false)
           # @logText.appendText("selected ID: (#{chatid})\n")
-          @project.chats.each do |chat|
-            if chat.id == chatid then
-               showChat(chat)
-            end
-          end
+          chat = Watobo::Chats.get_by_id chatid
+          showChat(chat) unless chat.nil?
+            
         rescue => bang
           puts "!!!ERROR: onTableClick"
           puts bang
@@ -1896,7 +1920,7 @@ request_splitter.connect(SEL_COMMAND){
          #Watobo::Conf::ForwardingProxy.save
          
          Watobo.save_proxy_settings
-          update_status_bar(@project)
+          update_status_bar()
           end
        
         #FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
@@ -1906,12 +1930,7 @@ request_splitter.connect(SEL_COMMAND){
       def update_menu
         [@client_cert_menu, @www_auth_menu, @target_scope_menu ].each do |m|
         Watobo.project.nil? ? m.disable : m.enable
-        end 
-
-       # @scanner_menu
-       # @interceptor_menu 
-       # @transcoder_menu
-        
+        end
       end
       
       def disable_menu_UNUSED
@@ -1938,24 +1957,24 @@ request_splitter.connect(SEL_COMMAND){
       end
       
       def purge_findings(findings)
-        return false if @project.nil?
         findings.each do |f|
-          @project.delete_finding(f)
+          Watobo::Findings.delete(f)
         end
+        @findings_tree.reload
       end
       
       def set_false_positive(findings)
-        return false if @project.nil?
         findings.each do |f|
-          @project.set_false_positive(f)
+          Watobo::Findings.set_false_positive(f)
         end
+        @findings_tree.reload
       end
       
       def unset_false_positive(findings)
-        return false if @project.nil?
         findings.each do |f|
-          @project.unset_false_positive(f)
+          Watobo::Findings.unset_false_positive(f)
         end
+        @findings_tree.reload
       end
     end # Class End
 

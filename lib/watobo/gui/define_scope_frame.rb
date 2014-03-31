@@ -1,7 +1,7 @@
 # .
 # define_scope_frame.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -23,7 +23,8 @@ require 'fox16'
 
 include Fox
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     
     
@@ -198,7 +199,7 @@ module Watobo
     class DefineScopeFrame < FXVerticalFrame
       
       def onDeselectAll(sender, sel, item)        
-        @dummy_scope.each do |site, val|        
+        @scope.each do |site, val|        
           @cb_sites[site].setCheck(false)  
           @edit_btns[site].disable
         end
@@ -209,7 +210,7 @@ module Watobo
       
       def onSelectAll(sender, sel, item)
         sites = []
-        @dummy_scope.each do |site, scope|
+        @scope.each do |site, scope|
           @cb_sites[site].setCheck(true)
           @edit_btns[site].enable
         end
@@ -218,10 +219,10 @@ module Watobo
       end
       
       def editSiteDetails(site)
-        dlg = EditScopeDetailsDialog.new(self, @dummy_scope[site])
+        dlg = EditScopeDetailsDialog.new(self, @scope[site])
         
         if dlg.execute != 0
-          @dummy_scope[site].update dlg.details
+          @scope[site].update dlg.details
           puts dlg.details.to_yaml
         end
       end
@@ -229,14 +230,14 @@ module Watobo
       def getScope()
         scope = Hash.new
         @cb_sites.keys.each do |site|
-          @dummy_scope.delete(site) if !@cb_sites[site].checked?
-          # scope[site] = @dummy_scope[site] if @cb_sites[site].checked?
+          @scope.delete(site) if !@cb_sites[site].checked?
+          # scope[site] = @scope[site] if @cb_sites[site].checked?
         end
-        return @dummy_scope
+        return @scope
       end
       
       def updateFrame()
-        @dummy_scope.each do |site, scope|
+        @scope.each do |site, scope|
           next if @cb_sites[site].nil? 
           @cb_sites[site].setCheck(scope[:enabled])
           @cb_sites[site].checked? ? @edit_btns[site].enable : @edit_btns[site].disable
@@ -246,18 +247,19 @@ module Watobo
       
       def setScope(scope)
         @scope = scope
-        @dummy_scope.keys.each do |site|         
-          @dummy_scope[site].update @scope[site] if !@scope[site].nil?         
+        Watobo::Scope.each do |site, scope_def|         
+          @scope[site].update @scope[site] if !@scope[site].nil?         
         end
         updateFrame()
       end
       
-      def initialize(owner, sites, scope, opts)
+      def initialize(owner, opts)
         super(owner, :opts => opts, :padding => 0)
         
-        @dummy_scope = Hash.new
-        @dummy_scope = YAML.load(YAML.dump(scope)) if scope.is_a? Hash
-        
+       # @scope = Hash.new
+       # @scope = YAML.load(YAML.dump(scope)) if scope.is_a? Hash
+       @scope = YAML.load(Watobo::Scope.to_yaml)
+       
         @cb_sites = Hash.new
         @edit_btns = Hash.new
         
@@ -288,8 +290,11 @@ EOF
           frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE, :padding => 0)
         sitesArea = FXScrollWindow.new(frame, SCROLLERS_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y)
         sitesFrame = FXVerticalFrame.new(sitesArea, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-        
-        sites.sort.each do |site|         
+        puts "list sites"
+        sites = Watobo::Chats.sites()
+        puts sites.length
+        sites.sort.each do |site|     
+          puts site    
           site_frame = FXHorizontalFrame.new(sitesFrame, :opts => LAYOUT_FILL_X)
           b = FXCheckButton.new(site_frame, site, nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
           eb = FXButton.new(site_frame, "edit..", nil, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT)
@@ -297,7 +302,7 @@ EOF
           
           b.connect(SEL_COMMAND){
             b.checked? ? @edit_btns[site].enable : @edit_btns[site].disable
-            @dummy_scope[site][:enabled] = true
+            @scope[site][:enabled] = true
           }
           
           
@@ -311,10 +316,10 @@ EOF
             #:exclude_pattern => []
           }
           
-          if !@dummy_scope[site]
-          @dummy_scope[site] = scope_details 
+          if !@scope[site]
+          @scope[site] = scope_details 
         else
-          @dummy_scope[site][:enabled] = true
+          @scope[site][:enabled] = true
           end
           
           

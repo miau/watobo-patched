@@ -1,7 +1,7 @@
 # .
 # sqli_timing.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -22,17 +22,15 @@
 require 'digest/md5'
 require 'digest/sha1'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Sqlinjection
         
         
         class Sqli_timing < Watobo::ActiveCheck
-          
-          def initialize(project, prefs={})
-            super(project, prefs)
-            @info.update(
+          @info.update(
                          :check_name => 'Time-based SQL Injection',    # name of check which briefly describes functionality, will be used for tree and progress views
             :check_group => AC_GROUP_SQL,
             :description => "Checking each parameter for SQL-Injection flaws using timing techniques.",   # description of checkfunction
@@ -63,6 +61,10 @@ EOF
                             :rating => VULN_RATING_CRITICAL,
                             :measure => measure
                             )
+            
+            
+          def initialize(project, prefs={})
+            super(project, prefs)
             
           end
           
@@ -173,15 +175,15 @@ EOF
                            end
                          rescue Timeout::Error
                            timeout_counter += 1
-                           puts "[#{self}] Hit Timeout after #{timeout_t} seconds (#{timeout_counter})."
-                           puts test
-                           puts 
-                           puts "... retry after #{max_t} seconds ..."
+                      #     puts "[#{self}] Hit Timeout after #{timeout_t} seconds (#{timeout_counter})."
+                      #     puts test
+                      #     puts 
+                      #     puts "... retry after #{max_t} seconds ..."
                            sleep max_t
                            retry unless timeout_counter > 2
                            sqli_stop = Time.now().to_i
                            output << "Hit Timeout after #{sqli_start - sqli_stop} seconds\n"
-                           puts "* redo request with sleep_time=0 to get an apropriate server response ..."
+                      #     puts "* redo request with sleep_time=0 to get an apropriate server response ..."
                            test = chat.copyRequest
                            test_value = CGI.escape("#{parm[:value]}#{sql.gsub(/SLEEP_TIME/, "0")}")     
                              case parm[:type]

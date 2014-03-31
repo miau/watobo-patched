@@ -1,7 +1,7 @@
 # .
 # conversation_table_ctrl.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class ConversationTableCtrl < FXVerticalFrame
 
@@ -77,6 +78,13 @@ module Watobo
 
         @table_option_hidetested_cb = FXCheckButton.new(options_frame, "hide tested", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
         @table_option_hidetested_cb.setCheck(false)
+        
+        @table_option_ok_only = FXCheckButton.new(options_frame, "200 only (Response)", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+        @table_option_ok_only.setCheck(false)
+        
+        @table_option_text_only = FXCheckButton.new(options_frame, "text content-type only (Response)", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+        @table_option_text_only.setCheck(false)
+
 
         @table_option_autoscroll.connect(SEL_COMMAND) {
           @table.autoscroll = @table_option_autoscroll.checked? unless @table.nil?
@@ -100,6 +108,22 @@ module Watobo
         }
 
         @info_txt = FXLabel.new( button_frame, "0/0", :opts => LAYOUT_RIGHT)
+        
+        @tabBook.connect(SEL_LEFTBUTTONRELEASE){
+           x = getApp.activeWindow.x + self.x + self.parent.x + self.parent.parent.x + self.parent.parent.parent.x
+    y = getApp.activeWindow.y + self.y + self.parent.y + self.parent.parent.y + self.parent.parent.parent.y + self.parent.parent.parent.parent.y
+      FXMenuPane.new(self) do |menu_pane|
+        frame = FXVerticalFrame.new(menu_pane, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        10.times do |i|
+          FXLabel.new(frame, "Label #{i}")
+        end
+        menu_pane.create
+        #menu_pane.popup(nil, x, y, 200, 200)
+        menu_pane.popup(nil, x, y)
+        app.runModalWhileShown(menu_pane)
+        puts "done!"
+      end
+        }
       end
 
       def subscribe(event, &callback)
@@ -123,7 +147,9 @@ module Watobo
           :response => @foption_res.checked?,
           :hide_tested => @table_option_hidetested_cb.checked?,
           :doc_filter => doctype_filter,
-          :unique => @table_option_unique.checked?
+          :unique => @table_option_unique.checked?,
+          :ok_only => @table_option_ok_only.checked?,
+          :text_only => @table_option_text_only.checked?
         }
         fs
       end
@@ -178,6 +204,13 @@ module Watobo
         doctype_filter.concat(Watobo::Conf::Gui.fext_style) if @foption_nocss.checked?
 
         text = @text_filter.enabled? ? @text_filter.text : ""
+        unless text.empty?
+          begin
+            "test for valid regex".match(/#{text}/)
+          rescue => bang
+            text = Regexp.quote(@text_filter.text)
+          end
+        end
 
         fs = {
           :show_scope_only => @table_option_scope.checked?,

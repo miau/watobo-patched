@@ -1,7 +1,7 @@
 # .
 # constants.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -24,7 +24,8 @@ $debug_active_check = false
 $debug_scanner = false
 
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Constants    
     CHAT_SOURCE_UNDEF = 0x00
     CHAT_SOURCE_INTERCEPT = 0x01

@@ -1,7 +1,7 @@
 # .
 # file_store.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   class FileSessionStore < SessionStore
     def num_chats
       get_file_list(@conversation_path, "*-chat*").length
@@ -149,10 +150,10 @@ module Watobo
       wsp = Watobo.workspace_path
       return false unless File.exist? wsp
       puts "* using workspace path: #{wsp}" if $DEBUG
-      
+
       @log_file = nil
       @log_lock = Mutex.new
-      
+
       @project_path = File.join(wsp, project_name)
       unless File.exist? @project_path
         puts "* create project path: #{@project_path}" if $DEBUG
@@ -197,7 +198,7 @@ module Watobo
           end
         end
       end
-      
+
       @log_file = File.join(@log_path, session_name + ".log")
 
     #     @chat_files = get_file_list(@conversation_path, "*-chat")
@@ -255,21 +256,29 @@ module Watobo
       s
 
     end
-    
+
+    def logs
+      l = ''
+      @log_lock.synchronize do
+        l = File.open(@log_file).read
+      end
+      l
+    end
+
     def logger( message, prefs = {} )
       opts = { :sender => "unknown", :level => Watobo::Constants::LOG_INFO }
       opts.update prefs
       return false if @log_file.nil?
       begin
-         t = Time.now
+        t = Time.now
         now = t.strftime("%m/%d/%Y @ %H:%M:%S")
         log_message = [ now ]
         log_message << "#{opts[:sender]}"
         if message.is_a? Array
           log_message << message.join("\n| ")
           log_message << "\n-"
-        else        
-          log_message << message
+        else
+        log_message << message
         end
         @log_lock.synchronize do
           File.open(@log_file,"a") do |lfh|
@@ -279,8 +288,7 @@ module Watobo
       rescue => bang
         puts bang
       end
-      
-      
+
     end
 
     private

@@ -1,7 +1,7 @@
 # .
 # crypto.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -24,7 +24,8 @@ require 'digest/sha1'
 require 'base64'
 
 # Thanks to : http://rails.brentsowers.com/2007/12/aes-encryption-and-decryption-in-ruby.html
-module Watobo
+# @private 
+module Watobo#:nodoc: all
 module Crypto
   
   def Crypto.encryptPassword(plain_password, secret)

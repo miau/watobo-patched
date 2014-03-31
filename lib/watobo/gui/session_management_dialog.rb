@@ -1,7 +1,7 @@
 # .
 # session_management_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class SidTable < FXTable
       def subscribe(event, &callback)
@@ -30,7 +31,7 @@ module Watobo
         @event_dispatcher_listener[event].clear
       end
 
-      def updateSID(new_sids = {})
+      def updateSID_UNUSED(new_sids = {})
         initTable()
         new_sids.each_key do |site|
           addSID(site, new_sids[site])
@@ -45,16 +46,12 @@ module Watobo
 
         self.connect(SEL_COMMAND, method(:onTableClick))
 
-        # KEY_Return
-        # KEY_Control_L
-        # KEY_Control_R
-        # KEY_s
-        @ctrl_pressed = false
-
-        #       addKeyHandler(self)
-
         self.columnHeader.connect(SEL_COMMAND) do |sender, sel, index|
           self.fitColumnsToContents(index)
+        end
+        
+        Watobo::SIDCache.acquire(Thread.current.object_id).sids.each_key do |site|
+           addSID(site, new_sids[site])
         end
       end
 
@@ -400,7 +397,7 @@ module Watobo
           @requestCombo.clearItems()
 
           req_id_list.each do |id|
-            chat = @project.getChat(id)
+            chat = Watobo::Chats.get_by_id(id)
             text = "[#{id}] #{chat.request.first}"
             @requestCombo.appendItem(text.slice(0..60), chat)
           end
@@ -467,7 +464,7 @@ module Watobo
         @response_viewer = SidPreview.new(sunken, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
         
-        Watobo::Conf::Scanner.sid_patterns.each do |p|
+        Watobo::Conf::SidCache.patterns.each do |p|
             item = @pattern_list.appendItem("#{p}")
             @pattern_list.setItemData(item, p)
           end
@@ -483,10 +480,9 @@ module Watobo
       #  refresh_btn = FXButton.new(button_frame, "Refresh")
 
         @sidTable = SidTable.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-
-        @session = Watobo::Session.new(@project.object_id)
-
-        @sidTable.updateSID @session.sidCache()
+       # sid_cache = Watobo::SIDCache.acquire(Thread.current.object_id)
+        
+        #@sidTable.updateSID @session.sidCache()
       end
     end
 
@@ -521,7 +517,7 @@ module Watobo
             chatid = @scriptTable.getRowText(item.row).to_i
             # @logText.appendText("selected ID: (#{chatid})\n")
             if chatid >= 0
-              chat = @project.getChat(chatid)
+              chat = Watobo::Chats.get_by_id(chatid)
               showChat(chat) if chat
               @sel_row = row
               @rem_button.enable
@@ -546,13 +542,13 @@ module Watobo
 
       def startSelectChatDialog(sender, sel, item)
         begin
-          dlg = Watobo::Gui::SelectChatDialog.new(self, "Select Login Chat", @project.chats)
+          dlg = Watobo::Gui::SelectChatDialog.new(self, "Select Login Chat")
           if dlg.execute != 0 then
 
             chats_selected = dlg.selection.value.split(",")
 
             chats_selected.each do |chatid|
-              chat = @project.getChat(chatid.strip)
+              chat = Watobo::Chats.get_by_id(chatid.strip)
               addRequest(chat) if chat
             end
           end
@@ -611,7 +607,7 @@ module Watobo
 
         if @project.respond_to? :getLoginChatIds then
           @project.getLoginChatIds.each do |id|
-            chat = @project.getChat(id)
+            chat = Watobo::Chats.get_by_id(id)
             addRequest(chat)
           end
         end
@@ -662,10 +658,10 @@ module Watobo
         logout_tab = FXTabItem.new(tabBook, "Logout Signatures", nil)
         @logoutSettings = LogoutSettings.new(tabBook)
 
-        unless Watobo.project.nil?
-        sidcache_tab = FXTabItem.new(tabBook, "SID-Cache", nil)
-        SIDCacheFrame.new(tabBook)
-        end
+#        unless Watobo.project.nil?
+#        sidcache_tab = FXTabItem.new(tabBook, "SID-Cache", nil)
+#        SIDCacheFrame.new(tabBook)
+#        end
         
         tabBook.connect(SEL_COMMAND) do |sender, sel, tabItem|
 

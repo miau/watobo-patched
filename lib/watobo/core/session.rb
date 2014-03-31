@@ -1,7 +1,7 @@
 # .
 # session.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,43 +19,26 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
     
-
     class Session
 
-include Watobo::Constants
+      include Watobo::Constants
+      include Watobo::Subscriber
 
       @@settings = Hash.new
       @@proxy = Hash.new
 
       @@session_lock = Mutex.new
-      @@csrf_lock = Mutex.new
 
       @@login_mutex = Mutex.new
       @@login_cv = ConditionVariable.new
       @@login_in_progress = false
-      def subscribe(event, &callback)
-        (@event_dispatcher_listeners[event] ||= []) << callback
-        puts "#{self} : #subscriptions -> #{event} :" + @event_dispatcher_listeners[event].length.to_s
-        puts @event_dispatcher_listeners[event].first
-      end
-
-      def clearEvents(event)
-        @event_dispatcher_listeners[event] ||= []
-        @event_dispatcher_listeners[event].clear
-      end
-
-      def notify(event, *args)
-        if @event_dispatcher_listeners[event]
-          # puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
-          @event_dispatcher_listeners[event].each do |m|           
-            m.call(*args) if m.respond_to? :call
-          end
-        end
-      end
+     
 
       def runLogin(chat_list, prefs={})
+        #puts @session.object_id
         @@login_mutex.synchronize do
           begin
             @@login_in_progress = true
@@ -67,7 +50,7 @@ include Watobo::Constants
             unless chat_list.empty?
               #  puts login_prefs.to_yaml
               chat_list.each do |chat|
-                print "! LoginRequest: #{chat.id}" if $DEBUG
+                puts "! LoginRequest: #{chat.id}" if $DEBUG
                 test_req = chat.copyRequest
                 request, response = doRequest(test_req, login_prefs)
               end
@@ -80,15 +63,10 @@ include Watobo::Constants
           ensure
             @@login_in_progress = false
             @@login_cv.signal
-            # exit
-            #  print "L]"
+           
           end
         end
       end
-
-      #     def sessionSettings=(prefs)
-      #       applySessionSettings(prefs)
-      #     end
 
       def sessionSettings()
         @@settings
@@ -101,8 +79,6 @@ include Watobo::Constants
         begin
           @lasterror = nil
           response_header = nil
-          
-      
           
           site = request.site
        #   proxy = getProxy(site)
@@ -123,11 +99,11 @@ include Watobo::Constants
             current_prefs[k] = prefs[k].nil? ? @session[k] : prefs[k]
           end
 
-          updateSession(request) if current_prefs[:update_session] == true
+          @sid_cache.update_request(request) if current_prefs[:update_session] == true
 
           #---------------------------------------
           request.removeHeader("^Proxy-Connection") #if not use_proxy
-          request.removeHeader("^Connection") #if not use_proxy
+          #request.removeHeader("^Connection") #if not use_proxy
           request.removeHeader("^Accept-Encoding")
           # If-Modified-Since: Tue, 28 Oct 2008 11:06:43 GMT
           # If-None-Match: W/"3975-1225192003000"
@@ -168,9 +144,6 @@ include Watobo::Constants
                   when AUTH_TYPE_NTLM
                   #  puts "* found NTLM credentials for site #{site}"
                     socket, response_header = wwwAuthNTLM(socket, request, current_prefs[:www_auth][site])
-
-                    response_header.extend Watobo::Mixin::Parser::Url
-                    response_header.extend Watobo::Mixin::Parser::Web10
 
                   else
                     puts "* Unknown Authentication Type: #{current_prefs[:www_auth][site][:type]}"
@@ -218,9 +191,8 @@ include Watobo::Constants
             uri_cache = nil
             uri_cache = request.removeURI #if proxy.nil?
 
-            # puts "========== Add Headers"
-           # request.addHeader("Connection", "Close") #if not use_proxy
-            request.addHeader("Proxy-Connection", "Close") unless proxy.nil?
+            
+           # request.addHeader("Proxy-Connection", "Close") unless proxy.nil?
            # request.addHeader("Accept-Encoding", "gzip;q=0;identity; q=0.5, *;q=0") #don't want encoding
             
 
@@ -230,31 +202,36 @@ include Watobo::Constants
                 # puts "* found NTLM credentials for site #{site}"
                 socket, response_header = wwwAuthNTLM(socket, request, current_prefs[:www_auth][site])
                 request.restoreURI(uri_cache)
-                response_header.extend Watobo::Mixin::Parser::Url
-                response_header.extend Watobo::Mixin::Parser::Web10
-
+              
               else
                 puts "* Unknown Authentication Type: #{current_prefs[:www_auth][site][:type]}"
               end
             else
+              # puts "========== Add Headers"
+             # request.addHeader("Connection", "Close") #if not use_proxy
 
-              data = request.join 
-              data << "\r\n" unless request.has_body?
+              data = request.join
+              unless request.has_body? 
+                data << "\r\n" unless data =~ /\r\n\r\n$/ 
+              end
+             # puts "= SESSION ="
+             # puts data
+             # puts data.unpack("H*")[0].gsub(/0d0a/,"0d0a\n")
               
               unless socket.nil?                
                 socket.print data
-             #   if socket.is_a? OpenSSL::SSL::SSLSocket
-             #     socket.io.shutdown(0)
-             #   else
-             #     socket.shutdown(0)
-             #   end
+               # if socket.is_a? OpenSSL::SSL::SSLSocket
+               #   socket.io.shutdown(Socket::SHUT_WR)
+               # else
+               #   socket.shutdown(Socket::SHUT_WR)
+               # end
                 response_header = readHTTPHeader(socket, current_prefs)
               end
               # RESTORE URI FOR HISTORY/LOG
               request.restoreURI(uri_cache)
 
             end
-            return socket, request, response_header
+            return socket, Watobo::Request.new(request), Watobo::Response.new(response_header)
           end
 
         rescue Errno::ECONNREFUSED
@@ -307,45 +284,41 @@ include Watobo::Constants
       #
       def doRequest(request, opts={} )
         begin
+          ott_cache = Watobo::OTTCache.acquire(request)
           @session.update opts
+        #  puts "[doRequest] #{@session.to_yaml}"
           # puts "#[#{self.class}]" + @session[:csrf_requests].first.object_id.to_s
-          unless @session[:csrf_requests].empty? or @session[:csrf_patterns].empty?
-            csrf_cache = Hash.new
-            @session[:csrf_requests].each do |req|
-              copy = YAML.load(YAML.dump(req))
-              copy.map!{|l|
-                x = l.strip + "\r\n"
-                x = l if l == copy.last
-                x
-              }
-              # now extend the new request with the Watobo mixins
-              copy.extend Watobo::Mixin::Parser::Url
-              copy.extend Watobo::Mixin::Parser::Web10
-              copy.extend Watobo::Mixin::Shaper::Web10
+          # unless @session[:csrf_requests].empty? or @session[:csrf_patterns].empty?
+          unless Watobo::OTTCache.requests(request).empty? or @session[:update_otts] == false
+            Watobo::OTTCache.requests(request).each do |req|
+              copy = Watobo::Request.new YAML.load(YAML.dump(req))
 
-              # p copy.first
-
-              updateCSRFToken(csrf_cache, copy)
+              #updateCSRFToken(csrf_cache, copy)
+              ott_cache.update_request(copy)
               socket, csrf_request, csrf_response = sendHTTPRequest(copy, opts)
               next if socket.nil?
             #  puts "= Response Headers:"
             #  puts csrf_response
             #  puts "==="
-              update_sids(csrf_request.host, csrf_response.headers)
+              #update_sids(csrf_request.host, csrf_response.headers)
+              @sid_cache.update_sids(csrf_request.site, csrf_response.headers) if @session[:update_sids] == true
               next if socket.nil?
               #  p "*"
               #    csrf_response = readHTTPHeader(socket)
               readHTTPBody(socket, csrf_response, csrf_request, opts)
 
               next if csrf_response.body.nil?
-              update_sids(csrf_request.host, [csrf_response.body])
+              @sid_cache.update_sids(csrf_request.site, [csrf_response.body]) if @session[:update_sids] == true
 
-              updateCSRFCache(csrf_cache, csrf_request, [csrf_response.body]) if csrf_response.content_type =~ /text\//
+              # updateCSRFCache(csrf_cache, csrf_request, [csrf_response.body]) if csrf_response.content_type =~ /text\//
+              ott_cache.update_tokens( [csrf_response.body]) if csrf_response.content_type =~ /text\//
 
-              socket.close
+              # socket.close
+              closeSocket(socket)
             end
             #p @session[:csrf_requests].length
-            updateCSRFToken(csrf_cache, request)
+            #updateCSRFToken(csrf_cache, request)
+            ott_cache.update_request(request)
           end
 
           socket, request, response = sendHTTPRequest(request, opts)
@@ -354,7 +327,7 @@ include Watobo::Constants
             return request, response
           end
 
-          update_sids(request.host, response.headers) if @session[:update_sids] == true
+          @sid_cache.update_sids(request.site, response.headers) if @session[:update_sids] == true
           
           if @session[:follow_redirect]
  # puts response.status
@@ -369,10 +342,8 @@ include Watobo::Constants
     end
     
     notify(:follow_redirect, new_location)
-    nr = YAML.load(YAML.dump(request))
-    nr.extend Watobo::Mixin::Parser::Url
-    nr.extend Watobo::Mixin::Parser::Web10
-    nr.extend Watobo::Mixin::Shaper::Web10
+    nr = Watobo::Request.new YAML.load(YAML.dump(request))
+    
     # create GET request for new location
     nr.replaceMethod("GET")
     nr.removeHeader("Content-Length")
@@ -392,10 +363,11 @@ end
           readHTTPBody(socket, response, request, opts)
 
           unless response.body.nil?
-            update_sids(request.host, [response.body]) if @session[:update_sids] == true and response.content_type =~ /text\//
+            @sid_cache.update_sids(request.site, [response.body]) if @session[:update_sids] == true and response.content_type =~ /text\//
           end
 
-          socket.close
+          #socket.close
+          closeSocket(socket)
 
         rescue  => bang
           #  puts "! Error in doRequest"
@@ -457,18 +429,16 @@ end
 
         session = ( session_id.is_a? Fixnum ) ? session_id : session_id.object_id
         session = Digest::MD5.hexdigest(Time.now.to_f.to_s) if session_id.nil?
+        
+        @sid_cache = Watobo::SIDCache.acquire(session)
 
         unless @@settings.has_key? session
           @@settings[session] = {
-            :valid_sids => Hash.new,
-            :sid_patterns => [],
-            # :valid_csrf_tokens => Hash.new,
-            :csrf_patterns => [],
-            :csrf_requests => [],
             :logout_signatures => [],
             :logout_content_types => Hash.new,
             :update_valid_sids => false,
             :update_sids => false,
+            :update_otts => false,           
             :update_session => true,
             :update_contentlength => true,
             :login_chats => [],
@@ -501,19 +471,19 @@ end
       
         begin
           if response.is_chunked?
-            Watobo::HTTP.readChunkedBody(socket) { |c|
+            Watobo::HTTPSocket.readChunkedBody(socket) { |c|
               data += c
             }
           elsif  clen > 0
             #  puts "* read #{clen} bytes for body"
-            Watobo::HTTP.read_body(socket, :max_bytes => clen) { |c|
+            Watobo::HTTPSocket.read_body(socket, :max_bytes => clen) { |c|
               data += c
               break if data.length == clen
             }
           elsif clen < 0
             # puts "* no content-length information ... mmmmmpf"
            # eofcount = 0
-            Watobo::HTTP.read_body(socket) do |c|
+            Watobo::HTTPSocket.read_body(socket) do |c|
               data += c
             end
 
@@ -524,7 +494,7 @@ end
             notify(:logout, self) if loggedOut?(response)
           end
 
-          update_sids(request.host, response) if prefs[:update_sids] == true
+          @sid_cache.update_sids(request.site, response) if prefs[:update_sids] == true
           return true
    
         rescue => e
@@ -542,10 +512,7 @@ end
       def wwwAuthNTLM(socket, request, ntlm_credentials)
         response_header = nil
         begin
-          auth_request = Watobo::Utils::copyObject(request)
-          auth_request.extend Watobo::Mixin::Parser::Url
-          auth_request.extend Watobo::Mixin::Parser::Web10
-          auth_request.extend Watobo::Mixin::Shaper::Web10
+          auth_request = request.copy
 
           ntlm_challenge = nil
           t1 = Net::NTLM::Message::Type1.new()
@@ -597,18 +564,18 @@ end
             return socket, response_header if ntlm_challenge.nil?
           elsif rcode == 200 # Ok
             puts "[NTLM] seems request doesn't need authentication" if $DEBUG
-            return socket, response_header
+            return socket, Watobo::Response.new(response_header)
           else
         if $DEBUG
               puts "[NTLM] ... !#*+.!*peep* ...."
               puts response_header
       end
-            return socket, response_header
+            return socket, Watobo::Response.new(response_header)
           end
 
           # reading rest of response
       rest = ''
-          Watobo::HTTP.read_body(socket, :max_bytes => clen){ |d| 
+          Watobo::HTTPSocket.read_body(socket, :max_bytes => clen){ |d| 
          rest += d
       }
 
@@ -653,9 +620,7 @@ end
           end
 
           if rcode == 200 # Ok
-            if $DEBUG
-       puts "[NTLM] Authentication Successfull" if $DEBUG
-      end
+             puts "[NTLM] Authentication Successfull" if $DEBUG
           elsif rcode == 401 # Authentication Required
             # TODO: authorization didn't work -> do some notification
             # ...
@@ -663,7 +628,7 @@ end
             puts ntlm_credentials.to_yaml
           end
 
-          return socket, response_header
+          return socket, Watobo::Response.new(response_header)
         rescue => bang
           puts "!!! ERROR: in ntlm_auth"
           puts bang
@@ -704,6 +669,7 @@ end
           #}
 
           socket = OpenSSL::SSL::SSLSocket.new(tcp_socket, ctx)
+          socket.sync_close = true
 
           socket.connect
           socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
@@ -791,7 +757,7 @@ end
 
     
               if cl > 0
-              Watobo::HTTP.read_body(tcp_socket) { |d|
+              Watobo::HTTPSocket.read_body(tcp_socket) { |d|
                 # puts d
               }
               end
@@ -875,12 +841,13 @@ end
       # proxyAuthNTLM
       # returns: ResponseHeaders
       def proxyAuthNTLM(tcp_socket, orig_request, proxy)
-
-        request = Watobo::Utils::copyObject(orig_request)
-        request.extend Watobo::Mixin::Parser::Url
-        request.extend Watobo::Mixin::Parser::Web10
-        request.extend Watobo::Mixin::Shaper::Web10
-
+        
+        if orig_request.respond_to? :copy
+          request = orig_request.copy
+        else
+          request = Watobo::Response.new YAML.load(YAML.dump(orig_request))
+        end
+        
         request.removeHeader("Proxy-Authorization")
         request.removeHeader("Proxy-Connection")
 
@@ -928,7 +895,7 @@ end
           return response_header
         end
 
-        Watobo::HTTP.read_body(tcp_socket, :max_bytes => clen){ |d|
+        Watobo::HTTPSocket.read_body(tcp_socket, :max_bytes => clen){ |d|
           #puts d
         }
 
@@ -962,7 +929,7 @@ end
           end
           break if line.strip.empty?
         end
-        #  Watobo::HTTP.read_body(tcp_socket, :max_bytes => clen){ |d|
+        #  Watobo::HTTPSocket.read_body(tcp_socket, :max_bytes => clen){ |d|
         #puts d
         #  }
         return response_header
@@ -1026,8 +993,8 @@ end
               # puts "* found NTLM credentials for site #{site}"
               socket, response_header = wwwAuthNTLM(tcp_socket, request, prefs[:www_auth][site])
 
-              response_header.extend Watobo::Mixin::Parser::Url
-              response_header.extend Watobo::Mixin::Parser::Web10
+              #response_header.extend Watobo::Mixin::Parser::Url
+              #response_header.extend Watobo::Mixin::Parser::Web10
               return socket, response_header
             else
               puts "* Unknown Authentication Type: #{prefs[:www_auth][site][:type]}"
@@ -1066,7 +1033,7 @@ end
 
       def error_response(msg, comment=nil)
         er = []
-      er << "HTTP/1.1 504 Gateway Timeout\r\n"
+      er << "HTTP/1.1 555 Watobo Error\r\n"
       er << "WATOBO: #{msg.gsub(/\r?\n/," ").strip}\r\n"
       er << "Content-Length: 0\r\n"
       er << "Connection: close\r\n"
@@ -1088,13 +1055,13 @@ end
         msg = nil
         begin
           # signal finished sending before reading
-          if socket.is_a? OpenSSL::SSL::SSLSocket
+         # if socket.is_a? OpenSSL::SSL::SSLSocket
             # socket.io.close_write
-          else
-             socket.close_write
-          end                
+         # else
+         #    socket.close_write
+         # end                
                 
-          Watobo::HTTP.read_header(socket) do |line|
+          Watobo::HTTPSocket.read_header(socket) do |line|
             #puts line
             # puts line.unpack("H*")
             header.push line
@@ -1110,109 +1077,38 @@ end
          
          header = [ "HTTP/1.1 200 OK\r\n", "Server: WATOBO\r\n", "Content-Length: #{msg.length.to_i}\r\n", "Content-Type: text/html\r\n", "\r\n", "#{msg}" ] unless msg.nil?
 
-        header.extend Watobo::Mixin::Parser::Url
-        header.extend Watobo::Mixin::Parser::Web10
+        response = Watobo::Response.new header
         #  update_sids(header)
 
         #  update_sids(request.site, response) if prefs[:update_sids] == true
 
-        unless prefs[:ignore_logout]==true or @session[:logout_signatures].empty?
-           notify(:logout, self) if loggedOut?(header)
+        unless prefs[:ignore_logout] == true or @session[:logout_signatures].empty?
+           notify(:logout, self) if loggedOut?(response)
         end
 
-        return header
+        return response
       end
 
-      #     def read_response(socket)
-
-      #       return response
-      #    end
-
-      def update_sids(host, response)
-        #   p "* update sids"
-        Thread.new{
-          begin
-            #site = request.site
-            @@session_lock.synchronize do
-              response.each do |line|
-                # puts line
-                @session[:sid_patterns].each do |pat|
-                  if line =~ /#{pat}/i then
-                    sid_key = Regexp.quote($1.upcase)
-                    sid_value = $2
-                    #print "U"
-                    #   puts "GOT NEW SID (#{sid_key}): #{sid_value}"
-                    @session[:valid_sids][host] = Hash.new if @session[:valid_sids][host].nil?
-                    @session[:valid_sids][host][sid_key] = sid_value
-                  end
-                end
-
-              end
-            end
-          rescue => bang
-            puts bang
-            puts bang.backtrace if $DEBUG
-
-          end
-        }
-      end
-
-      def updateCSRFCache(csrf_cache, request, response)
-         puts "=UPDATE CSRF CACHE" if $DEBUG
-        # Thread.new{
-        begin
-          #   site = request.site
-          @@csrf_lock.synchronize do
-            response.each do |line|
-              # puts line
-              @session[:csrf_patterns].each do |pat|
-                puts pat if $DEBUG
-                if line =~ /#{pat}/i then
-                  token_key = Regexp.quote($1.upcase)
-                  token_value = $2
-                  #print "U"
-                    puts "GOT NEW TOKEN (#{token_key}): #{token_value}" if $DEBUG
-                  #   @session[:valid_csrf_tokens][site] = Hash.new if @session[:valid_csrf_tokens][site].nil?
-                  #   @session[:valid_csrf_tokens][site][token_key] = token_value
-                  csrf_cache[token_key] = token_value
-                end
-              end
-
-            end
-          end
-        rescue => bang
-          puts bang
-          if $DEBUG
-          puts bang.backtrace 
-          puts "= Request"
-          puts request 
-          puts "= Response"
-          puts response
-          puts "==="
-          end
-
-        end
-        # }
-      end
-
+   
       def closeSocket(socket)
-        #puts socket.class
-        begin
-          #puts socket.class
-          #if socket.class.to_s =~ /SSLSocket/
-          if socket.is_a? OpenSSL::SSL::SSLSocket
-           # socket.io.shutdown(2)
-           socket.sysclose
-          else
-            socket.shutdown(2)
-          end
-          socket.close if socket.respond_to? :close  
-        rescue => bang
-          puts bang
-          puts bang.backtrace if $DEBUG        
+      return false if socket.nil?
+      begin
+        if socket.respond_to? :sysclose
+        #socket.io.shutdown(2)
+      #  puts "sysclose"
+        socket.sysclose
+        elsif socket.respond_to? :shutdown
+        socket.shutdown(2)
+        elsif socket.respond_to? :close
+        socket.close
         end
-        
+        return true 
+      rescue => bang
+        puts bang
+        puts bang.backtrace if $DEBUG
       end
+      false
+    end
 
       def updateSessionSettings(settings={})
         [
@@ -1235,83 +1131,7 @@ end
         end
       end
 
-      def updateSession(request)
-        @@session_lock.synchronize do
-          if @session[:valid_sids].has_key?(request.host)
-            valid_sids = @session[:valid_sids][request.host] 
-            puts "* found sid for site: #{request.site}" if $DEBUG
-            request.map!{ |line|
-              res = line
-              @session[:sid_patterns].each do |pat|
-                begin
-                  if line =~ /#{pat}/i then
-                    next if $~.length < 3
-                    sid_key = Regexp.quote($1.upcase)
-                    old_value = $2
-
-                    if valid_sids.has_key?(sid_key) then
-                      if not old_value =~ /#{@session[:valid_sids][request.host][sid_key]}/ then # sid value has changed and needs update
-                        Watobo.print_debug("update session", "#{old_value} - #{@session[:valid_sids][request.host][sid_key]}") if $DEBUG
-                        
-                        unless old_value.empty?
-                        res = line.gsub!(/#{Regexp.quote(old_value)}/, valid_sids[sid_key])
-                        end
-                        if not res then puts "!!!could not update sid (#{sid_key})"; end
-
-                      end
-                    end
-                  end
-                rescue => bang
-                  puts bang
-                  puts bang.backtrace if $DEBUG
-                  # puts @session.to_yaml
-                end
-              end
-              res
-            }
-          end
-        end
-      end
-
-      def updateCSRFToken(csrf_cache, request)
-        # puts "=UPDATE CSRF TOKEN"
-        # @session[:valid_csrf_tokens].to_yaml
-        # puts request if request.site.nil?
-        # puts "= = = = = = "
-        @@csrf_lock.synchronize do
-          #  if @session[:valid_csrf_tokens].has_key?(request.site)
-          #    puts "* found token for site: #{request.site}"
-
-          request.map!{ |line|
-            res = line
-            @session[:csrf_patterns].each do |pat|
-              begin
-                if line =~ /#{pat}/i then
-                  key = Regexp.quote($1.upcase)
-                  old_value = $2
-                  # if @session[:valid_csrf_tokens][request.site].has_key?(key) then
-                  if csrf_cache.has_key?(key) then
-                    res = line.gsub!(/#{Regexp.quote(old_value)}/, csrf_cache[key])
-                    if res.nil? then
-                      res = line
-                      puts "!!!could not update token (#{key})"
-                    end
-                    #     puts "->#{line}"
-
-                    #end
-                  end
-                end
-              rescue => bang
-                puts bang
-                puts bang.backtrace if $DEBUG
-                # puts @session.to_yaml
-              end
-            end
-            res
-          }
-        end
-        # end
-      end
+     
 
       # this function updates specific patterns of a request, e.g. CSRF Tokens
       # Parameters:

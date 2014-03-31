@@ -1,7 +1,7 @@
 # .
 # checks_policy_frame.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class ChecksPolicyFrame < FXVerticalFrame
      # attr :policy_name
@@ -46,7 +47,7 @@ module Watobo
           puts "unknown policy or unknown test [#{@policy}] - [#{check.class.to_s}"
           end
           a = {
-            :name => "#{check.info[:check_group]}|#{check.info[:check_name]}",
+            :name => "#{check.check_group}|#{check.check_name}",
             :enabled => status,
             :data => check
           }
@@ -59,11 +60,8 @@ module Watobo
       def set_checks(elements, policy={})
         tree_elements = []
         @checks.each do |check|
-          puts "--"
-          puts check.class
-                    
           a = {
-            :name => "#{check.info[:check_group]}|#{check.info[:check_name]}",
+            :name => "#{check.check_group}|#{check.check_name}",
             :enabled => false,
             :data => check
           }
@@ -87,11 +85,11 @@ module Watobo
       #sel.map { |i| p i.class }
       end
 
-      def initialize(parent, checks, policy=nil)
+      def initialize(parent, policy=nil)
         # Invoke base class initialize function first
         super(parent, :opts => LAYOUT_FILL_X| LAYOUT_FILL_Y, :padding => 0)
 
-         @checks = checks
+         @checks = Watobo::ActiveModules.to_a
         #@checks = Watobo.active_checks
 =begin        
         @policy_list = policy.is_a?(Hash) ? policy : default_policy(checks)         # policy settings
@@ -141,7 +139,7 @@ module Watobo
         #applyPolicy(@current_policy)
         #end
         #applyPolicy()
-        set_checks checks
+        set_checks @checks
       end
 
       private

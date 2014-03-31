@@ -1,7 +1,7 @@
 # .
 # cipher_table.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Plugin
     module Sslchecker
       module Gui
@@ -111,7 +112,7 @@ module Watobo
 
           def add_cipher( cipher )
 
-            [ :name, :bits, :result ].each do |k|
+            [ :method, :algo, :bits, :support ].each do |k|
               return false unless cipher.has_key? k
             end
 
@@ -146,9 +147,10 @@ module Watobo
             @min_bit_length = 128
 
             @columns = Hash.new
-            @columns[:cipher] = { :label => "Cipher", :pos => 0, :width => 250 }
-            @columns[:bits] = { :label => "Bits", :pos => 1, :width => 100 }
-            @columns[:result] = { :label => "Result", :pos => 2, :width => 50 }
+             @columns[:method] = { :label => "Method", :pos => 0, :width => 50 }
+            @columns[:algo] = { :label => "Cipher", :pos => 1, :width => 250 }
+            @columns[:bits] = { :label => "Bits", :pos => 2, :width => 100 }
+            @columns[:support] = { :label => "Result", :pos => 3, :width => 50 }
 
             @filter = CTF_ALL
 
@@ -212,7 +214,7 @@ module Watobo
           def add_cipher_row(cipher)
             add_cipher = ( @filter == CTF_ALL ) ? true : false
 
-            if cipher[:result] == false
+            if cipher[:support] == false
               # @result_viewer.appendStyledText("checked: #{cipher} - #{bits} - #{result}\n",0)
               text = "N/A"
               icon = @icon_na
@@ -234,15 +236,20 @@ module Watobo
               lastRowIndex = self.getNumRows
               self.appendRows(1)
 
-              index = @columns[:cipher][:pos]
-              self.setItemText(lastRowIndex, index, cipher[:name])
+
+ index = @columns[:method][:pos]
+              self.setItemText(lastRowIndex, index, cipher[:method].to_s)
+              self.getItem(lastRowIndex, index).justify = FXTableItem::LEFT
+              
+              index = @columns[:algo][:pos]
+              self.setItemText(lastRowIndex, index, cipher[:algo])
               self.getItem(lastRowIndex, index).justify = FXTableItem::LEFT
 
               index = @columns[:bits][:pos]
               self.setItemText(lastRowIndex, index, cipher[:bits].to_s)
               self.getItem(lastRowIndex,index).justify = FXTableItem::LEFT
 
-              index = @columns[:result][:pos]
+              index = @columns[:support][:pos]
               
               
               self.setItemIcon(lastRowIndex, index, icon)

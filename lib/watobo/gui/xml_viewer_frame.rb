@@ -1,7 +1,7 @@
 # .
 # xml_viewer_frame.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -25,7 +25,8 @@
 # http://calagenda.berkeley.edu/help_training/developer/calendar-ws/sample-code/ruby-soap4r/geteventsbyrange.rb
 # http://www.service-repository.com/
 #
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     
     class XmlTree < FXTreeList

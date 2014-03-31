@@ -1,3 +1,65 @@
+Version 0.9.13
+===
+News
+---
+**Core**
+
+ * Faster socket communication!! Now client sockets are reused 
+ * Big big changes on core modules, e.g. Watobo::Chats or Watobo::Findings.
+ * PassiveScanner - passive checks now run in background
+ * New DSL-like Plugin Style - digging into Metaprogramming ... check out WShell Plugin!
+
+**Modules**
+
+ * XSS-NG supports "Parameter Prefetching" - using form fields of response as test parameters 
+ * Hidden Field Spotter
+ * Improved boolean SQLi detection
+ * added some .NET Checks for well-known files, e.g. Trace.adx and Error Pages /w Stack-Trace
+ * XXE (Xml eXternal Entity) check
+ * Check html password fields for autocomplete attribute
+
+**Plugins**
+
+ * SSL Checker now also shows the tested method (SSLv3, TLS, ..)
+ * WShell - Watobo Shell; With WShell you can execute ruby commands in the context of WATOBO. Very useful for advanced analysis, debugging purposes or simply to explore WATOBO. 
+
+**GUI**
+
+  * Parameter names in Table view are now automatically en-/decoded
+  * Right-Click on a plugin to get some information about it - only works on new plugins at the moment ...
+  * Introduced a new chat viewer with HTML highlighting (based on FXScintilla)
+  * ConversationTable: added 'space' hotkey to open "Edit Comment" dialog
+  * ConversationTable: added hotkeys for "goto url" navigation
+  * ChatViewer: xml/html content gets prettyfied for text- and html-viewer
+  * FindingsTree: added counter to finding class
+  * FindingsTree: memorize expanded nodes
+  * Conversation table filter now opens as a dialog and displays more information
+
+Fixes
+---
+**Core**
+
+ * Bug in parsing multipart requests caused by incorrect boundary handling 
+ * conversation text filter now works on responses without content-type header
+
+**Fuzzer**
+
+ * fixed generator in fuzzer engine
+
+**GUI**
+
+ * crash after selecting client certs
+ * no more swallowing a space-char at the end of a string when b64decoding with short-cuts
+
+**Plugins**
+
+ * Catalog-Scanner: now all placeholders will be replaced
+ * SSLChecker now supports more methods and ciphers, incl. SSLv2
+
+**Passive Modules**
+
+ * FormSpotter: now using nokogiri for parsing/extracting <form> information
+
 = Version 0.9.12
 == NEW
 * [Module] Siebel Checks: Enumeration of default apps and files, e.g. base.txt

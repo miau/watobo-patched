@@ -1,7 +1,7 @@
 # .
 # save_default_settings.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
 
   module Gui
     def self.save_settings()
@@ -40,10 +41,11 @@ module Watobo
 
         Watobo.save_proxy_settings( :save_passwords => save_pws, :key => mp )
 
-        Watobo::Gui.save_scanner_settings()
+        Watobo::Gui.save_scanner_settings
         unless Watobo.project.nil?
-          Watobo::Conf::General.save_project(Watobo.project.session_store)
-          Watobo::Conf::Interceptor.save_project(Watobo.project.session_store)
+          Watobo::Conf::General.save_project
+          Watobo::Conf::Interceptor.save_project
+          Watobo::Conf::SidCache.save_project
         end
         # also save global settings here
         Watobo::Conf::General.save

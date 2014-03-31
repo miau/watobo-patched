@@ -1,7 +1,7 @@
 # .
 # jboss_basic.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Jboss
@@ -27,13 +28,7 @@ module Watobo
         
         class Jboss_basic < Watobo::ActiveCheck
           
-          def reset()
-            @checked_dirs.clear  
-          end
-          
-          def initialize(project, prefs={})
-            super(project, prefs)
-            @info.update(
+          @info.update(
                          :check_name => 'Basic JBoss enumeration',    # name of check which briefly describes functionality, will be used for tree and progress views
             :check_group => AC_GROUP_JBOSS,
             :description => "Check every parameter for SQL-Injection flaws.",   # description of checkfunction
@@ -47,6 +42,14 @@ module Watobo
                             :class => "JBoss-AS (critical)",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_VULN         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
             )
+          
+          def reset()
+            @checked_dirs.clear  
+          end
+          
+          def initialize(project, prefs={})
+            super(project, prefs)
+            
             
             measure = "Remove all unnecessary JBoss-Interfaces like JMX-Console."
             

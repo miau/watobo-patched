@@ -1,7 +1,7 @@
 # .
 # page_tree.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -21,7 +21,8 @@
 # .
  #require 'qcustomize.rb'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class PageTree < FXTreeList
 

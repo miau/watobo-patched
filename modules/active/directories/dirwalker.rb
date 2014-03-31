@@ -1,7 +1,7 @@
 # .
 # dirwalker.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Directories
@@ -28,15 +29,17 @@ module Watobo
         class Dirwalker < Watobo::ActiveCheck
           @@tested_directories = Hash.new
           
-          def initialize(project, prefs={})
-            super(project, prefs)
-            
-            @info.update(
+           @info.update(
                          :check_name => 'Directory Walker',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Do request on each directory and run passive checks on result.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
             :version => "1.0"   # check version
             )
+          
+          def initialize(project, prefs={})
+            super(project, prefs)
+            
+           
             
             
           end
@@ -55,23 +58,14 @@ module Watobo
                   begin
                       test_request = nil
                       test_response = nil
-                      # !!! ATTENTION !!!
-                      # MAKE COPY BEFORE MODIFIYING REQUEST 
                       test = chat.copyRequest
                       test.strip_path()
-                     # puts "!Dirwalker"
-                     # puts test.first
-                      # fire it up!
                       test_request, test_response = doRequest(test, :default => true)
-                      #nc = Qchat.new(test_request, test_response, chat.id)
-                      #@project.runPassiveChecks(nc)
-                      [ test_request, test_response ]
-
                   rescue => bang
                     puts bang
                     puts bang.backtrace if $DEBUG
                   end
-                  [ nil, nil ]
+                  [ test_request, test_response ]
                   
                 }
                 yield checker

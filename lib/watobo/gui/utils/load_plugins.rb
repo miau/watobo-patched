@@ -1,7 +1,7 @@
 # .
 # load_plugins.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     @plugin_list = []
     def self.add_plugin(p)
@@ -43,8 +44,6 @@ module Watobo
             pgf = File.join(sub, "gui.rb")
             if File.exist? pgf
               puts "Loading Plugin GUI #{pgf} ..."
-
-              
 
               group = File.basename(sub)
               plugin = File.basename(pgf).sub(/\.rb/,'')
@@ -76,7 +75,7 @@ module Watobo
 
                   Watobo::Gui.add_plugin class_constant.new(Watobo::Gui.application, project)
                 rescue => bang
-                  puts bang
+                  puts bang if $DEBUG
                   puts bang.backtrace if $DEBUG
                 #   notify(:logger, LOG_INFO, "problems loading plugin: #{plugin_file}")
                 end
@@ -99,10 +98,28 @@ module Watobo
                   class_constant = Watobo.class_eval(class_name)
 
                   Watobo::Gui.add_plugin class_constant.new(Watobo::Gui.application, project)
+                  
                 rescue => bang
                   puts bang
                   puts bang.backtrace if $DEBUG
                 #   notify(:logger, LOG_INFO, "problems loading plugin: #{plugin_file}")
+                end
+              end
+              #
+
+              Watobo::Plugin.constants.each do |pc|
+                puts ">> PLUGIN >> #{pc.to_s}"
+                
+                pclass = Watobo::Plugin.class_eval(pc.to_s)
+                
+                if pclass.respond_to? :create_gui
+                  puts "ADD NEW PLUGIN #{pc.upcase}"
+                  # TODO: In later versions - if all plugins are switched to the new style - this will not be necessary here
+                  gui = pclass.create_gui()
+                  # puts gui.class
+                  Watobo::Gui.add_plugin pclass
+
+                # exit
                 end
               end
             end

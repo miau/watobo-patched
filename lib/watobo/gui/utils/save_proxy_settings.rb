@@ -1,7 +1,7 @@
 # .
 # save_proxy_settings.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   def self.save_proxy_settings(prefs={})
 
     c_prefs = {
@@ -30,7 +31,7 @@ module Watobo
     c_prefs.update prefs
 
     unless Watobo.project.nil?
-      Watobo::Conf::ForwardingProxy.save_project(Watobo.project.session_store) do |s|
+      Watobo::Conf::ForwardingProxy.save_project() do |s|
         s.each do |name, proxy|
           next unless proxy.is_a? Hash
           unless c_prefs[:save_passwords] == false

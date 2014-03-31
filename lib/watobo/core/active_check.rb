@@ -1,7 +1,7 @@
 # .
 # active_check.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,8 +19,10 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   class ActiveCheck  < Watobo::Session    # Base Class for Passive Checks
+    include Watobo::CheckInfoMixin
 
     attr :info
     attr :numChecks
@@ -35,6 +37,37 @@ module Watobo
     @@status = :running # :running, :paused, :canceled
     @@lock = Mutex.new
     
+     @info = {
+        :check_name => '',    # name of check which briefly describes functionality, will be used for tree and progress views
+        :check_group => 'Misc',   # groupname of check, will be used to group checks, e.g. :Generic, SAP, :Enumeration
+        :description => '',   # description of checkfunction
+        :author => "not modified", # author of check
+        :version => "unversioned",   # check version
+        :target => nil               # reserved
+
+      }
+
+      @finding = {
+        :title => 'untitled',          # [String] title name, used for finding tree
+        :check_pattern => nil,         # [String] regex of vulnerability check if possible, will be used for highlighting
+        :proof_pattern => nil,         # [String] regex of finding proof if possible, will be used for highlighting
+        :threat => '',        # threat of vulnerability, e.g. loss of information
+        :measure => '',       # measure
+        :class => "undefined",# [String] vulnerability class, e.g. Stored XSS, SQL-Injection, ...
+        :subclass => nil,     # reserved
+        :type => FINDING_TYPE_UNDEFINED,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
+        :chat => nil,         # related chat must be linked
+        :rating=> VULN_RATING_UNDEFINED,  #
+        :cvss => "n/a",       # CVSS Base Vector
+        :icon => nil,     # Icon Type
+        :timestamp => nil         # timestamp
+      }
+    
+    def self.inherited(subclass)
+        subclass.instance_variable_set("@info", YAML.load(YAML.dump(@info)))
+        subclass.instance_variable_set("@finding", YAML.load(YAML.dump(@finding)))
+    end
+           
     def addFinding(request, response, details)
       @@lock.synchronize {
 
@@ -42,7 +75,9 @@ module Watobo
         now = t.strftime("%m/%d/%Y@%H:%M:%S")
 
         new_details = Hash.new
-        new_details.update(@finding)
+        finding_info = self.class.instance_variable_get("@finding")
+        #puts finding_info.to_yaml
+        new_details.update(finding_info)
 
         new_details.update(details)
         new_details[:tstamp] = now
@@ -57,8 +92,10 @@ module Watobo
         if id_string == '' then
         id_string = (Time.now.to_i + rand(10000)).to_s
         end
+        puts id_string
         #
         new_details[:fid] = Digest::MD5.hexdigest(id_string)
+        puts new_details[:fid]
         puts new_details[:fid] if $DEBUG
 
         new_details[:module] = self.class.to_s
@@ -69,7 +106,8 @@ module Watobo
 
         new_finding = Watobo::Finding.new(request, response, new_details)
       #  puts new_finding
-        notify(:new_finding, new_finding)
+        Watobo::Findings.add new_finding
+       # notify(:new_finding, new_finding)
       }
     end
 
@@ -86,10 +124,11 @@ module Watobo
 
     def updateCounters(chat, *prefs)
       @settings[:excluded_parms] = prefs[:excluded_parms] if prefs.is_a? Hash and prefs[:excluded_parms]
-      @counters[chat.id] = getCheckCount(chat)
+      c = getCheckCount(chat)
+      @counters[chat.id] = c
       @numChecks += @counters[chat.id]
 
-    #puts "#{chat.id} : #{@numChecks}"
+      puts "#{chat.id} : #{c}"
     end
 
     def urlParmNames(chat)
@@ -172,12 +211,12 @@ module Watobo
       raise "Missing method generateChecks()!!!"
     end
 
-    def waitLogin(state)
+    def waitLogin_UNUSED(state)
       @@login_in_progress = state
       @inner_pool_cv.signal if state == false
     end
 
-    def continue()
+    def continue_UNUSED()
       @@pool.each do |thr|
       #  puts "Stopping #{thr}"
         begin
@@ -188,7 +227,7 @@ module Watobo
       end
     end
 
-    def cancel()
+    def cancel_UNUSED()
       @@status = :stopped
       @inner_pool.each do |thr|
         begin
@@ -223,7 +262,7 @@ module Watobo
         return true, t_request, t_response if status =~ /^403/
         return false, t_request, t_response if status =~ /^40\d/
 
-        puts @settings[:custom_error_patterns] if $debug_active_check
+        #puts @settings[:custom_error_patterns] 
 
         if @settings.has_key? :custom_error_patterns
           @settings[:custom_error_patterns].each do |pat|
@@ -250,7 +289,7 @@ module Watobo
     end
     
     def log_console(msg)
-      puts "[#{Module.nesting[0].name}] #{msg}"
+      puts "[#{self}] #{msg}"
     end
 
     # +++ run_checks  +++
@@ -259,7 +298,7 @@ module Watobo
     # :run_passive_checks false,
     # :do_login
 
-    def run_checks(chat, opts={})
+    def run_checks_UNUSED(chat, opts={})
       begin
       # reset() # reset variables first
         @@status = :running
@@ -281,7 +320,7 @@ module Watobo
               if check_opts[:run_passive_checks] then
 
               nc = Watobo::Chat.new(request, response, :id => 0)
-              #   @project.runPassiveChecks(nc)
+              #   @project.runPassiveModules(nc)
 
               end
 
@@ -300,8 +339,9 @@ module Watobo
       end
 
     end
+    
 
-    def do_test(chat, &block)
+    def do_test_UNUSED(chat, &block)
       # puts chat.request.site
       tlist = []
       @inner_pool = []
@@ -346,11 +386,17 @@ module Watobo
       @inner_pool.each {|t| t.join }
       puts ">>>>  #{self.class} on chat[#{chat.id}] ... finished!\n"
     end
+    
+    def check_name
+      info = self.class.instance_variable_get("@info")
+      return nil if info.nil?
+      return info[:check_name]
+    end
 
     def initialize(session_name=nil, prefs={})
       #@project = project
       super(session_name, prefs)
-
+      
       @enabled = true
       # @status = "ready"
       @counters = Hash.new
@@ -376,31 +422,7 @@ module Watobo
       @checks_cv = ConditionVariable.new
       @checks_mutex = Mutex.new
 
-      @info = {
-        :check_name => '',    # name of check which briefly describes functionality, will be used for tree and progress views
-        :check_group => 'Misc',   # groupname of check, will be used to group checks, e.g. :Generic, SAP, :Enumeration
-        :description => '',   # description of checkfunction
-        :author => "not modified", # author of check
-        :version => "unversioned",   # check version
-        :target => nil               # reserved
-
-      }
-
-      @finding = {
-        :title => 'untitled',          # [String] title name, used for finding tree
-        :check_pattern => nil,         # [String] regex of vulnerability check if possible, will be used for highlighting
-        :proof_pattern => nil,         # [String] regex of finding proof if possible, will be used for highlighting
-        :threat => '',        # threat of vulnerability, e.g. loss of information
-        :measure => '',       # measure
-        :class => "undefined",# [String] vulnerability class, e.g. Stored XSS, SQL-Injection, ...
-        :subclass => nil,     # reserved
-        :type => FINDING_TYPE_UNDEFINED,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
-        :chat => nil,         # related chat must be linked
-        :rating=> VULN_RATING_UNDEFINED,  #
-        :cvss => "n/a",       # CVSS Base Vector
-        :icon => nil,     # Icon Type
-        :timestamp => nil         # timestamp
-      }
+     
 
     end
   end

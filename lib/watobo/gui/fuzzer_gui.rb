@@ -1,7 +1,7 @@
 # .
 # fuzzer_gui.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -20,7 +20,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
 require 'watobo/gui/request_editor.rb'
-module Watobo
+# @private 
+module Watobo#:nodoc: all
 
 
    module Gui
@@ -63,10 +64,10 @@ module Watobo
          def generateChecks(chat)
             unless @fuzzer_list.empty?
                fuzzels(@fuzzer_list) do |fuzzle|
-                  checker = proc{
-                     test_fuzzle = Hash.new
-                     test_fuzzle.update fuzzle
-
+                 test_fuzzle = Hash.new
+                 test_fuzzle.update YAML.load(YAML.dump(fuzzle))
+                  checker = proc{                     
+                     #puts test_fuzzle
                      fuzz_request = @requestEditor.parseRequest(test_fuzzle)
                      fuzz_request.extend Watobo::Mixin::Shaper::Web10
                      fuzz_request.extend Watobo::Mixin::Parser::Web10
@@ -1000,8 +1001,9 @@ module Watobo
                scan_prefs[:scanlog_name] = @log_dir_dt.value unless @log_dir_dt.value.empty?
           end
           
-            @scanner = Watobo::Scanner2.new(chat_list, check_list, @project.passive_checks, scan_prefs)
-            @pbar.total = @scanner.numTotalChecks
+          #  @scanner = Watobo::Scanner2.new(chat_list, check_list, @project.passive_checks, scan_prefs)
+           @scanner = Watobo::Scanner3.new(chat_list, check_list , [], scan_prefs)
+            @pbar.total = @scanner.sum_total
             @pbar.progress = 0
             @pbar.barColor = 'red'
 
@@ -1015,7 +1017,7 @@ module Watobo
 
             }
 
-            Thread.new {
+           # Thread.new {
                begin
                   m = "start fuzzing..."
                   @log_viewer.log(LOG_INFO,m)
@@ -1027,17 +1029,17 @@ module Watobo
                   puts scan_prefs.to_yaml
 puts "run scanner"
                   @scanner.run(scan_prefs)
-                  @fuzz_button.text = "Start"
-                  @pbar.total = 0
-                  @pbar.progress = 0
-                  @pbar.barColor = 'grey'
-                  m = "finished fuzzing!"
-                  @log_viewer.log(LOG_INFO,m)
+                  #@fuzz_button.text = "Start"
+                  #@pbar.total = 0
+                  #@pbar.progress = 0
+                  #@pbar.barColor = 'grey'
+                  #m = "finished fuzzing!"
+                  #@log_viewer.log(LOG_INFO,m)
                rescue => bang
                   puts bang
                   puts bang.backtrace if $DEBUG
                end
-            }
+           # }
 
          end
 
@@ -1051,6 +1053,7 @@ puts "run scanner"
             @request = chat.request.dup
             @fuzzing_paused = false
             @fuzzing_started = false
+            @scan_status_lock = Mutex.new
 
             #  @scan_prefs = @project.getScanPreferences()
 
@@ -1210,8 +1213,38 @@ puts "run scanner"
             FXLabel.new(log_frame_header, "Logs:" )
             log_text_frame = FXVerticalFrame.new(log_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_GROOVE, :padding=>0)
             @log_viewer = LogViewer.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+            
+            add_update_timer(250)
 
          end
+         
+         def add_update_timer(ms)
+          @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
+            unless @scanner.nil?
+              @scan_status_lock.synchronize do
+
+              if @pbar.total > 0
+                sum_progress = 0
+                @scanner.progress.each_value do |v|
+                  sum_progress += v[:progress]
+                end
+                @pbar.progress = sum_progress
+              end
+        
+             if @scanner.finished?
+              @scanner = nil
+              #logger("Scan Finished!")
+               @log_viewer.log(LOG_INFO,"Done fuzzing!")
+              @pbar.progress = 0
+              @pbar.total = 0
+              @pbar.barColor = 'grey' #FXRGB(255,0,0)
+             # @btn_quickscan.text = "QuickScan"
+             end
+           end
+         
+    end
+    }
+    end
       end
 
       class FuzzerTree < FXTreeList

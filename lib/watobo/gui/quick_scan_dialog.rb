@@ -1,7 +1,7 @@
 # .
 # quick_scan_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,15 +19,19 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class QuickScanOptionsFrame < FXVerticalFrame
       def options()
+        csrf_requests = Watobo::OTTCache.requests(@target_chat)
+        
         o = Hash.new
         o[:enable_logging] = @logScanChats.checked?
         o[:scanlog_name] = @scanlog_name_dt.value
         o[:csrf_tokens] = @csrf_patterns
         o[:csrf_request_ids] = @csrf_ids
+        o[:csrf_requests] = csrf_requests
         o[:update_csrf_tokens] = @csrfToken.checked?
         o[:use_orig_request] = @useOriginalRequest.checked?
         o[:detect_logout] = @detectLogout.checked?
@@ -36,8 +40,7 @@ module Watobo
         o
       end
 
-      def initialize(owner, project=nil, prefs = {} )
-        @project = project
+      def initialize(owner, prefs = {} )
 
         super(owner, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
@@ -46,14 +49,14 @@ module Watobo
         @target_chat = prefs[:target_chat]
 
         # scan_opt_frame= FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-        @useOriginalRequest = FXCheckButton.new(self, "Use Original Request", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+        @useOriginalRequest = FXCheckButton.new(self, "Use original request", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
         @useOriginalRequest.checkState = true
         
-        @followRedirects = FXCheckButton.new(self, "Follow Redirects", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+        @followRedirects = FXCheckButton.new(self, "Follow redirects", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
         @followRedirects.checkState = false
         
-        @detectLogout = FXCheckButton.new(self, "Detect Logout & Re-Login", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
-               @detectLogout.checkState = false
+        @detectLogout = FXCheckButton.new(self, "Autom. login when logged out", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+        @detectLogout.checkState = false
 
         frame = FXGroupBox.new(self, "Logging", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
         @logScanChats = FXCheckButton.new(frame, "Log Scan", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
@@ -111,31 +114,13 @@ module Watobo
       private
 
       def openCSRFTokenDialog(sender, sel, item)
-        csrf_dlg = CSRFTokenDialog.new(self, @project, @target_chat)
+        csrf_dlg = CSRFTokenDialog.new(self, @target_chat)
         if csrf_dlg.execute != 0 then
           @csrf_ids = csrf_dlg.getTokenScriptIds()
           @csrf_patterns = csrf_dlg.getTokenPatterns()
 
-          # puts "* update CSRF Settings"
-          puts @csrf_ids
-          puts @csrf_patterns
-          puts @target_chat
+          Watobo.project.setCSRFRequest(@target_chat.request, @csrf_ids, @csrf_patterns)
 
-          @project.setCSRFRequest(@target_chat.request, @csrf_ids, @csrf_patterns)
-
-          # puts csrf_ids.to_yaml
-          # puts "= = ="
-          # puts csrf_patterns.to_yaml
-
-          # if @project
-          #   @csrf_requests = []
-          #   csrf_ids.each do |id|
-          #     chat = @project.getChat(id)
-          #     @csrf_requests.push chat.copyRequest
-          #   end
-
-          #end
-        
         end
       end
 
@@ -159,21 +144,21 @@ module Watobo
       attr :selectedModules
       attr :options
       
-      def initialize(parent, project=nil, prefs={} )
+      def initialize(parent, prefs={} )
         super(parent, "Quick Scan", DECOR_ALL, :width => 300, :height => 400)
         # @active_policy = 'Default'
         @selectedModules = []
-        @project = project
+        
         
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
 
         base_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         @switcher = FXSwitcher.new(base_frame,LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-        @quickScanOptionsFrame = QuickScanOptionsFrame.new(@switcher, @project, prefs)
+        @quickScanOptionsFrame = QuickScanOptionsFrame.new(@switcher, prefs)
 
       #  @policyFrame = ChecksPolicyFrame.new(@switcher, project.active_checks, project.settings[:policy])
-       @policyFrame = ChecksPolicyFrame.new(@switcher, project.active_checks)
+       @policyFrame = ChecksPolicyFrame.new(@switcher)
 
         # BUTTONS
         buttons_frame = FXHorizontalFrame.new(base_frame, :opts => LAYOUT_FILL_X)

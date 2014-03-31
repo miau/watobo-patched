@@ -1,7 +1,7 @@
 # .
-# subscriber.rb
+# url.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,28 +19,27 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
-  module Gui
-    module Subscriber
-      def subscribe(event, &callback)
-        @event_dispatcher_listeners ||= Hash.new
-        (@event_dispatcher_listeners[event] ||= []) << callback
-      end
-
-      def clearEvents(event)
-        @event_dispatcher_listeners ||= Hash.new
-        @event_dispatcher_listeners[event] ||= []
-        @event_dispatcher_listeners[event].clear
-      end
-
-      def notify(event, *args)
-        @event_dispatcher_listeners ||= Hash.new
-        if @event_dispatcher_listeners[event]
-          puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
-          @event_dispatcher_listeners[event].each do |m|
-            m.call(*args) if m.respond_to? :call
+# @private 
+module Watobo#:nodoc: all
+  module Utils
+    module URL
+      def self.create_url(chat, path)
+        url = path
+        # only expand path if not url
+        unless path =~ /^http/
+          # check if path is absolute
+          if path =~ /^\//
+            url = File.join("#{chat.request.proto}://#{chat.request.host}", path)
+          else
+            # it's relative
+            url = File.join(File.dirname(chat.request.url.to_s), path)
           end
         end
+        # resolve path traversals
+        while url =~ /(\/[^\.\/]*\/\.\.\/)/
+          url.gsub!( $1,"/")
+        end
+        url
       end
     end
   end

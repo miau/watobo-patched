@@ -1,7 +1,7 @@
 # .
 # siebel_apps.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,23 +19,17 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Siebel
         
-        
         class Siebel_apps < Watobo::ActiveCheck
+          check_group = File.dirname(File.expand_path(__FILE__)).split("/").last.capitalize!
+          @@tested_directories = Hash.new
           
-           @@tested_directories = Hash.new
-          
-          def initialize(project, prefs={})
-           
-            super(project, prefs)
-            
-            check_group = File.dirname(File.expand_path(__FILE__)).split("/").last.capitalize!
-            
-            @info.update(
+          @info.update(
                          :check_name => 'Siebel Applications',    # name of check which briefly describes functionality, will be used for tree and progress views
             :description => "Enumerate Siebel Applications And Default Files, e.g. base.txt",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
@@ -48,6 +42,10 @@ module Watobo
             :class => "Siebel: Default Applications",    # vulnerability class, e.g. Stored XSS, SQL-Injection, ...
             :type => FINDING_TYPE_INFO         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN 
             )
+          
+          def initialize(project, prefs={})
+           
+            super(project, prefs)
             
             @apps = %w( callcenter cgce cra eCommunicationsWireless eEnergyOilGasChemicals eaf eai eai_anon eauctionswexml eautomotive echannelaf echannelcg echannelcme eclinical ecommunications econsumer econsumerpharma econsumersector ecustomer ecustomercme edealer edealerscw eenergy eevents ehospitality eloyalty emarketing emedia emedical ememb epharma epharmace eprofessionalpharma epublicsector eretail erm ermadmin esales esalescme eservice esitesclinical etraining finesales fins finsconsole finscustomer finsebanking finsebrokerage finsechannel finseenenrollment finssalespam htim htimpim loyalty loyaltyscw marketing medicalce pimportal pmmanager prmmanager prmportal pseservice sales salesce service servicece siasalesce siaservicece sismarketing smc wpeserv wppm wpsales wpserv )
             @langs = %w( cat chs cht csy dan deu ell enu esn euq fin fra frc heb hun ita jpn kor nld nor plk pse psl ptb ptg rus shl sky slv sve tha trk )
@@ -89,7 +87,7 @@ module Watobo
                    #   test_chat = Chat.new(test,test_response, :id => chat.id)
                       
                         addFinding( test_request,test_response,
-                          :test_item => chat.request.url,
+                          :test_item => chat.request.url.to_s,
                           :check_pattern => "#{app_dir}",
                           :proof_pattern => "#{test_response.status}",
                           :chat => chat,
@@ -103,7 +101,7 @@ module Watobo
                     
                       if status == true and stats_response.has_body?
                          addFinding( stats_request,stats_response,
-                          :test_item => stats_request.url,
+                          :test_item => stats_request.url.to_s,
                           :check_pattern => "#{app_dir}",
                           :proof_pattern => "#{stats_response.status}",
                           :chat => chat,
@@ -126,7 +124,7 @@ module Watobo
                           version = $1
                         end
                          addFinding( base_request,base_response,
-                          :test_item => base_request.url,
+                          :test_item => base_request.url.to_s,
                           :check_pattern => "base.txt",
                           :proof_pattern => "#{base_response.status}",
                           :chat => chat,
@@ -145,7 +143,7 @@ module Watobo
                     
                       if status == true 
                          addFinding( default_request,default_response,
-                          :test_item => "#{default_request.url}",
+                          :test_item => "#{default_request.url.to_s}",
                           :check_pattern => "#{df}",
                           :proof_pattern => "#{default_response.status}",
                           :chat => chat,

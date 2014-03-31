@@ -1,7 +1,7 @@
 # .
 # gui.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -45,7 +45,8 @@ end
 
 include Fox
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     @application = nil
     @icon_path = File.expand_path(File.join(File.dirname(__FILE__),"..","..","icons"))
@@ -115,10 +116,11 @@ end
   require File.join("watobo","gui","utils", l)
 end
 
+
 Watobo::Gui.create_application
 
 require 'watobo/gui/utils/init_icons'
-require 'watobo/gui/mixins/subscriber'
+#require 'watobo/gui/mixins/subscriber'
 require 'watobo/gui/mixins/gui_settings'
 
 gui_path = File.expand_path(File.join(File.dirname(__FILE__), "gui"))
@@ -130,4 +132,5 @@ end
 
 require 'watobo/gui/templates/plugin'
 require 'watobo/gui/templates/plugin2'
+require 'watobo/gui/templates/plugin_base'
 require 'watobo/gui/main_window'

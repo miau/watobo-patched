@@ -1,7 +1,7 @@
 # .
 # data_store.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   class DataStore
     
     @engine = nil
@@ -28,7 +29,7 @@ module Watobo
       @engine
     end  
       
-    def self.acquire(project_name, session_name)
+    def self.connect(project_name, session_name)
       a = Watobo::Conf::Datastore.adapter
       store = case
       when 'file'
@@ -40,10 +41,31 @@ module Watobo
       store
     end
     
+    def self.method_missing(name, *args, &block)
+      super unless @engine.respond_to? name
+      @engine.send name, *args, &block
+    end
+    
         
   end
   
+  def self.logs
+    return "" if DataStore.engine.nil?
+    DataStore.engine.logs
+  end
+  
   def self.log(message, prefs={})
+    
+    text = message
+    if message.is_a? Array
+      text = message.join("\n| ")
+    end
+    
+    #clean up sender's name
+    if prefs.has_key? :sender
+      prefs[:sender].gsub!(/.*::/,'')
+    end
+    
     if DataStore.engine.respond_to? :logger
       DataStore.engine.logger message, prefs
     end

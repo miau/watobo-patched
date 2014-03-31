@@ -1,7 +1,7 @@
 # .
 # httpparser.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -36,9 +36,18 @@
 # fext = "php"
 # path_ext = "my/path/show.php?p=aaa&debug=true"
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Mixin
   module Parser
+    
+    module Parameters
+      def each(prefs, &block)
+        
+        
+      end  
+    end
+    
     module Url
       include Watobo::Constants
       def file
@@ -94,6 +103,18 @@ module Watobo
         else
           return nil
         end
+      end
+      
+      def method_get?
+        return false if method.nil?
+        return true if method =~ /^get$/i
+        return false
+      end
+      
+       def method_post?
+        return false if method.nil?
+        return true if method =~ /^post$/i
+        return false
       end
 
       #The path may consist of a sequence of path segments separated by a
@@ -199,15 +220,13 @@ module Watobo
         return false
       end
 
-      def url
-        #@url ||= nil
+      def url_string
+        url = ''        
         #return @url unless @url.nil?
         if self.first =~ /^[^[:space:]]{1,} (https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}.*) HTTP\//i then
-          @url = $1
-        else
-          @url = ''
+          url = $1
         end
-        @url
+        url
       end
 
       def site
@@ -297,7 +316,7 @@ module Watobo
 
       #################### doubles
 
-      def get_parm_names
+      def get_parm_names(&block)
 
         parm_names=[]
         parmlist=[]
@@ -306,7 +325,8 @@ module Watobo
         parmlist.each do |p|
           if p then
             p.gsub!(/=.*/,'')
-            parm_names.push p
+            yield p if block_given?
+            parm_names.push p            
           end
         end
 
@@ -355,9 +375,9 @@ module Watobo
           parmlist = self.last.split(/\&/)
         end
         rescue => bang
-          puts bang
-           puts self.last.unpack("C*").pack("C*").gsub(/[^[:print:]]/,".")
+          # puts self.last.unpack("C*").pack("C*").gsub(/[^[:print:]]/,".")
           if $DEBUG
+            puts bang
           puts bang.backtrace 
          
           end
@@ -387,7 +407,7 @@ module Watobo
 
       end
 
-      def post_parm_names
+      def post_parm_names(&block)
 
         parm_names=[]
         parmlist=[]
@@ -396,7 +416,9 @@ module Watobo
         parmlist.each do |p|
           if p then
             p.gsub!(/=.*/,'')
-            parm_names.push p
+            p.strip!
+            yield p if block_given?
+            parm_names << p
           end
         end
 
@@ -439,12 +461,24 @@ module Watobo
         return header_values
       end
 
-      def content_type
-        ct = "undefined"
+      def content_type(default_ct='undefined')
+        ct = default_ct
+        self.each do |line|
+          break if line.strip.empty?
+          if line =~ /^Content-Type: ([^;]*);?/i then
+            ct = $1
+            break
+          end
+        end
+        return ct.strip
+      end
+      
+      def content_type_ex(default_ct='undefined')
+        ct = default_ct
         self.each do |line|
           break if line.strip.empty?
           if line =~ /^Content-Type: (.*)/i then
-            ct = $1
+            ct = $1.strip
             break
           end
         end
@@ -570,10 +604,35 @@ def content_encoding
 
       def body
         begin
-          #return nil if self.nil?
+          return nil if self.nil? or self.length < 3
           return self.last if self[-2].strip.empty?
         rescue
           return nil
+        end
+      end
+      
+      def body_is_text?
+        ct = self.content_type(nil) 
+        if ct.nil?
+          return true if self.body_encoded.ascii_only?
+          return false
+        else
+          return true if ct =~ /text/
+          return false
+        end
+      end
+      
+      def body_encoded
+        b = self.body
+        cs = self.charset
+        return nil if b.nil?
+        return b.unpack("C*").pack("C*") if cs.nil?
+        begin
+            return  b.encode(cs, :invalid => :replace, :undef => :replace, :replace => '').unpack("C*").pack("C*")
+        rescue => bang
+          puts bang
+          puts bang.backtrace if $DEBUG
+          return b.unpack("C*").pack("C*")
         end
       end
 
@@ -592,8 +651,9 @@ def new_cookies(&b)
   headers("Set-Cookie") do |h|
     cookie = Watobo::Cookie.new(h)
     yield cookie if block_given?
-    nc.push cookie
+    nc << cookie
   end
+  nc
 end
 
       def status
@@ -614,6 +674,18 @@ end
           end 
           return nil
         end
+      end
+      
+      def charset
+        cs = nil
+        self.each do |line|
+          break if line.strip.empty?
+          if line =~ /^Content-Type: .*charset=([^;]*)/i then
+            cs = $1
+            break
+          end
+        end
+        return cs
       end
 
       def headers(filter=nil, &b)
@@ -659,7 +731,7 @@ end
         return cookie_list
       end
 
-      def data
+      def data_UNUSED
         return self.last.strip if self.last =~ /\=.*\&?/i
         return ""
       end

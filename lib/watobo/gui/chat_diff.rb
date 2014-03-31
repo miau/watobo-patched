@@ -1,7 +1,7 @@
 # .
 # chat_diff.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     DIFF_TYPE_ORIG = 0
     DIFF_TYPE_NEW = 1
@@ -182,8 +183,8 @@ module Watobo
           
           
           unless data.body.nil?
-            puts "> clean up body #{data.body.length}"
-            body =  data.body.unpack("C*").pack("C*")
+          #  puts "> clean up body #{data.body.length}"
+            body =  data.body_encoded
             body.split("\n").each do |l|
              # puts "[#{i}] #{l}"
               dummy.concat adjustLine(l)
@@ -264,9 +265,6 @@ module Watobo
         context_lines = 3
         raw_chunks = []
         collections = []
-        puts "[#{self}]"
-        puts "#{data_old.length} #{data_old.class}"
-        puts "#{data_new.length} #{data_new.class}"
                 
         return collections if diffs.empty?
         oldhunk = hunk = nil
@@ -404,13 +402,7 @@ module Watobo
         @normRequestNew = normalizeData(chat_new.request)
         @normResponseNew = normalizeData(chat_new.response)
         
-        puts "= normalized response (new)"
-        puts "#{@normResponseNew.length} #{@normResponseNew.class}"
-        
-        puts "= normalized response (new)"
-        puts "#{@normResponseOrig.length} #{@normResponseOrig.class}"
-        
-        
+             
         # diff normalized data
         @requestDiffs = Diff::LCS.diff( @normRequestOrig, @normRequestNew )
         @responseDiffs = Diff::LCS.diff( @normResponseOrig, @normResponseNew )

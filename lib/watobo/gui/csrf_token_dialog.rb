@@ -1,7 +1,7 @@
 # .
 # csrf_token_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class TokenSettings < FXHorizontalFrame
       include Watobo::Gui::Utils
@@ -91,13 +92,11 @@ module Watobo
         return sids
       end
 
-      def updateRequests(req_id_list)
-
-        if @project then
+      def updateRequests(req_id_list)        
           @requestCombo.clearItems()
 
           req_id_list.each do |id|
-            chat = @project.getChat(id)
+            chat = Watobo::Chats.get_by_id(id)
             text = "[#{id}] #{chat.request.first}"
             @requestCombo.appendItem(text.slice(0..60), chat)
           end
@@ -119,7 +118,7 @@ module Watobo
             @request_viewer.setText(cleanupHTTP(chat.request))
             @response_viewer.setText(cleanupHTTP(chat.response))
           end
-        end
+        
       end
 
       private
@@ -135,6 +134,7 @@ module Watobo
       def onRequestChanged(sender, sel, item)
         begin
           chat = @requestCombo.getItemData(@requestCombo.currentItem)
+          puts "selected #{chat.class}"
           @request_viewer.setText(cleanupHTTP(chat.request))
           @response_viewer.setText(cleanupHTTP(chat.response))
         rescue => bang
@@ -191,8 +191,8 @@ module Watobo
         end
       end
 
-      def initialize(parent, project, target_chat=nil)
-        @project = project
+      def initialize(parent, target_chat=nil)
+      
         @pattern = FXDataTarget.new('')
         @target_chat = target_chat
 
@@ -240,11 +240,14 @@ module Watobo
         sunken = FXVerticalFrame.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN, :padding => 0)
         @response_viewer = SidPreview.new(sunken, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-        if @project then
-          @project.getCSRFPatterns.each do |p|
+        Watobo::Conf::Scanner.csrf_patterns.each do |p|
             item = @pattern_list.appendItem("#{p}")
             @pattern_list.setItemData(item, p)
           end
+          
+        unless @target_chat.nil?
+        @request_viewer.text = cleanupHTTP(@target_chat.request)
+        @response_viewer.text = cleanupHTTP(@target_chat.response)
         end
       end
     end
@@ -283,7 +286,7 @@ module Watobo
             chatid = @scriptTable.getRowText(item.row).to_i
             # @logText.appendText("selected ID: (#{chatid})\n")
             if chatid >= 0
-              chat = @project.getChat(chatid)
+              chat = Watobo::Chats.get_by_id(chatid)
               showChat(chat) if chat
               @sel_row = row
               @rem_button.enable
@@ -308,13 +311,13 @@ module Watobo
 
       def startSelectChatDialog(sender, sel, item)
         begin
-          dlg = Watobo::Gui::SelectChatDialog.new(self, "Select Login Chat", @project.chats, @project)
+          dlg = Watobo::Gui::SelectChatDialog.new(self, "Select Login Chat")
           if dlg.execute != 0 then
 
             chats_selected = dlg.selection.value.split(",")
 
             chats_selected.each do |chatid|
-              chat = @project.getChat(chatid.strip)
+              chat = Watobo::Chats.get_by_id(chatid.strip)
               addRequest(chat) if chat
             end
           end
@@ -324,26 +327,16 @@ module Watobo
         end
       end
 
-      def  addRequest(chat)
+      def addRequest(chat)
         @scriptTable.addChat(chat)
       end
 
-      def initialize(parent, project, target_chat)
-        @project = project
+      def initialize(parent, target_chat)
         @request = target_chat.request
         @table_filter = FXDataTarget.new('')
         @sel_row = -1
         super(parent, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-        # main_splitter = FXSplitter.new(self, LAYOUT_SIDE_TOP|LAYOUT_FILL_X|SPLITTER_HORIZONTAL|LAYOUT_FILL_Y|SPLITTER_TRACKING)
-        # left_frame = FXVerticalFrame.new(main_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE, :width => 400, :padding => 0)
-        #  right_frame = FXVerticalFrame.new(main_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :width => 200, :padding => 0)
-
-        #chat_filter_frame = FXHorizontalFrame.new(left_frame, :opts => LAYOUT_FILL_X)
-        #FXLabel.new(chat_filter_frame, "Filter")
-        #@filter_text_field = FXTextField.new(chat_filter_frame, 20, @table_filter, FXDataTarget::ID_VALUE, FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X)
-
-        #chat_table_frame = FXVerticalFrame.new(left_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
         splitter = FXSplitter.new(self, LAYOUT_SIDE_TOP|LAYOUT_FILL_X|SPLITTER_VERTICAL|LAYOUT_FILL_Y|SPLITTER_TRACKING)
         script_frame = FXVerticalFrame.new(splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE, :height => 300,:padding => 0)
 
@@ -372,9 +365,9 @@ module Watobo
         frame = FXVerticalFrame.new(tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
         @response_viewer = Watobo::Gui::SimpleTextView.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN, :padding => 0)
 
-        if @project and @request then
-          @project.getCSRFRequestIDs(@request).each do |id|
-            chat = @project.getChat(id)
+        if @request then
+          Watobo.project.getCSRFRequestIDs(@request).each do |id|
+            chat = Watobo::Chats.get_by_id(id)
             addRequest(chat)
           end
         end
@@ -397,8 +390,7 @@ module Watobo
         get_token_chat_ids = @tokenScriptSettings.getTokenScriptIds()
       end
 
-      def initialize(owner, project, target_chat=nil)
-        @project = project
+      def initialize(owner, target_chat=nil)
         @target_chat = target_chat
         # Invoke base class initialize function first
         #  super(owner, "LoginScript Wizzard", DECOR_TITLE|DECOR_BORDER,:width=>800, :height=>600)
@@ -409,11 +401,11 @@ module Watobo
         tabBook = FXTabBook.new(main_frame, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
 
         login_tab = FXTabItem.new(tabBook, "Token Script", nil)
-        @tokenScriptSettings = TokenScriptSettings.new(tabBook, @project, @target_chat)
+        @tokenScriptSettings = TokenScriptSettings.new(tabBook, @target_chat)
 
         sid_tab = FXTabItem.new(tabBook, "Token Patterns", nil)
         # @sidFrame = FXVerticalFrame.new(tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-        @tokenSettings = TokenSettings.new(tabBook, @project, @target_chat)
+        @tokenSettings = TokenSettings.new(tabBook, @target_chat)
 
         #  logout_tab = FXTabItem.new(tabBook, "Logout Signatures", nil)
         #  @logoutSettings = LogoutSettings.new(tabBook, @project)

@@ -1,7 +1,7 @@
 # .
 # edit_scope_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class EditScopeDialog < FXDialogBox
 
@@ -28,17 +29,17 @@ module Watobo
       attr :scope
       def onAccept(sender, sel, event)
 
-        @scope = @defineScopeFrame.getScope()
+        Watobo::Scope.set @defineScopeFrame.getScope()
 
         getApp().stopModal(self, 1)
         self.hide()
         return 1
       end
 
-      def initialize(owner, project, prefs)
+      def initialize(owner, prefs)
         #super(owner, "Edit Target Scope", DECOR_TITLE|DECOR_BORDER, :width => 300, :height => 425)
         super(owner, "Edit Target Scope", DECOR_ALL, :width => 300, :height => 425)
-        @project = project
+        
         @scope = Hash.new
 
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
@@ -47,7 +48,7 @@ module Watobo
 
         #  puts "create scopeframe with scope:"
         # @project.scope
-        @defineScopeFrame = DefineScopeFrame.new(base_frame, @project.listSites(), YAML.load(YAML.dump(@project.scope)), prefs)
+        @defineScopeFrame = DefineScopeFrame.new(base_frame, prefs)
 
         buttons_frame = FXHorizontalFrame.new(base_frame,
         :opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)

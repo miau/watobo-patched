@@ -1,7 +1,7 @@
 # .
 # intercept_carver.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Interceptor
     class CarverRule
       def action_name
@@ -53,20 +54,20 @@ module Watobo
       def content_name
         content
       end
-
+      
+      
+      # rewrite options
+      # item
+      # location
+      # pattern
+      # content
       def rewrite(item, l, p, c)
         res = false
         case l
         when :replace_all
           if File.exist? c
             begin
-              puts "REPLACING RESPONSE"
-              puts "OLD >>"
-              puts item
-              puts "NEW >>"
-              item.replace Watobo::Utils.string2response(File.open(c,"rb").read)
-              
-              puts item 
+             item.replace Watobo::Utils.string2response(File.open(c,"rb").read)              
             rescue => bang
               puts bang
               puts bang.backtrace
@@ -92,8 +93,15 @@ module Watobo
           if item.respond_to? :url
             item.first.gsub!(/#{p}/, c)
           end
-        when :http_header
-          1
+        when :header
+          puts "REPLACE HEADER"
+          item.each_with_index do |line, index|
+            if line =~ /#{p}/
+              item[index] = "#{c.strip}\r\n"
+            end
+            break if line.strip.empty?
+          end
+          res = item  
         end
         res
       end
@@ -111,6 +119,10 @@ module Watobo
           when :inject
             inject_content(item, location, pattern, content)
           when :rewrite
+            puts "REWRITE"
+            puts "Location: #{location}"
+            puts "Pattern: #{pattern}"
+            puts "Content: #{content}"
             rewrite(item, location, pattern, content)
           else
             true

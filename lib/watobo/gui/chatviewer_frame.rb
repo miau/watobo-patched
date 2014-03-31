@@ -1,7 +1,7 @@
 # .
 # chatviewer_frame.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
 
     SEL_TYPE_GREP = 0
@@ -36,9 +37,27 @@ module Watobo
       end
 
       def setText(text, prefs={})
-        @text = text
+        normalized_text = text
+        if text.is_a? String
+           normalized_text = text.gsub(/[^[:print:]]/,".")
+        elsif text.respond_to? :has_body?
+          if text.content_type =~ /(html|xml)/
+            doc = Nokogiri::XML(text.body, &:noblanks)
+            fbody = doc.to_xhtml( indent:3, indent_text:" ")
+            normalized_text = text.headers.map{|h| h.strip }.join("\n")
+            normalized_text << "\n\n"
+            unless fbody.to_s.empty?
+            normalized_text << fbody.to_s
+            else
+              normalized_text = text
+            end
+          end
+        end
+        
+         @text = normalized_text
+        #@text = text
         @simple_text_view.max_len = @max_len
-        @simple_text_view.setText(text, prefs)
+        @simple_text_view.setText(@text, prefs)
         @match_pos_label.text = "0/0"
         @match_pos_label.textColor = 'grey'
 
@@ -348,12 +367,13 @@ module Watobo
 
       attr_accessor :max_len, :auto_filter
       def setText(text, prefs={})
-
+        
         @text = text
         @textviewer.max_len = @max_len
         index = @tabBook.current
 
         @viewers[index].setText(text)
+     #  @viewers.map{|v| v.setText(text)}
       # @textviewer.applyFilter if cp[:filter] == true
 
       end
@@ -419,6 +439,11 @@ module Watobo
         tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
         @hexViewer = HexViewer.new(tab_frame)
         @viewers << @hexViewer
+        
+         FXTabItem.new(@tabBook, "HTML", nil)
+       
+        @html_viewer = HTMLViewerFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
+        @viewers << @html_viewer
       end
 
     end

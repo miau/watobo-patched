@@ -1,7 +1,7 @@
 # .
 # confirm_scan_dialog.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -21,7 +21,8 @@
 # .
 require 'watobo/gui/conversation_table'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class ConfirmScanDialog < FXDialogBox
 
@@ -44,7 +45,8 @@ module Watobo
         FXLabel.new(base_frame, "The following #{chatlist.length} chats will be scanned:")
 
         # @chatTable = ConversationTable.new(base_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-@chatTable = ConversationTable.new(base_frame)
+        puts chatlist.length
+        @chatTable = ConversationTable.new(base_frame)
         @chatTable.showConversation(chatlist)
 
         buttons_frame = FXHorizontalFrame.new(base_frame,

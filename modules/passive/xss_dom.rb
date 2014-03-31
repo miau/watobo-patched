@@ -1,7 +1,7 @@
 # .
 # xss_dom.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -21,7 +21,8 @@
 # .
 require 'cgi'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Passive
       
@@ -36,7 +37,7 @@ module Watobo
                        :check_name => 'DOM XSS',    # name of check which briefly describes functionality, will be used for tree and progress views
           :description => "Checks for suspcious javascript functions which manipulate the Browsers DOM and may be misused for Cross-Site-Scripting-Attacks.",   # description of checkfunction
           :author => "Andreas Schmidt", # author of check
-          :version => "0.9"   # check version
+          :version => "1.0"   # check version
           )
           
           @finding.update(
@@ -46,14 +47,16 @@ module Watobo
           )
           
             @dom_functions = [ 'document\.write',
-                               'document\.body',
+                               'document\.url',
                                'document\.location',
-                               'document\.execCommand',
+                               #'document\.execCommand',
                                'document\.attachEvent',
                                'eval\(',
                                'window\.open',
                                'window\.location',
-                               'document\.create']
+                               #'document\.create',
+                               "\.innerHTML",
+                               "\.outerHTML"]
         end
         
         def showError(chatid, message)
@@ -68,13 +71,17 @@ module Watobo
             return true unless chat.response.content_type =~ /(text|script)/ 
             
             @dom_functions.each do |pattern|
-              if chat.response.body =~ /#{pattern}/i then
-               
+              if chat.response.body =~ /(#{pattern})/i then
+               match = $1.strip
+               match.gsub!(/^[\.\(\)]+/,'')
+               match.gsub!(/[\.\(\)]+$/,'')
                 addFinding(
                            :check_pattern => "#{pattern}", 
                 :proof_pattern => "#{pattern}",
                 :chat=>chat,
-                :title =>"[#{pattern}] - #{chat.request.path}"              
+                # :title =>"[#{pattern}] - #{chat.request.path}",
+                :title =>"[ #{match} ]"
+                #:class => "DOM XSS"            
                 )
                 
               end

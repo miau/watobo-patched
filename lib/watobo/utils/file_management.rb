@@ -1,7 +1,7 @@
 # .
 # file_management.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Utils
     # e.g, save_settings("test-settings.test", 0, "@saved_settings", @saved_settings) 
     
@@ -49,12 +50,15 @@ module Watobo
     end 
     
     def Utils.saveChat(chat, filename)
+      return false if filename.nil?
+      return false if chat.nil?
       chat_data = {
         :request => chat.request.map{|x| x.inspect},
         :response => chat.response.map{|x| x.inspect},
       }
       
-      chat_data.update(chat.settings)                
+      chat_data.update(chat.settings)  
+                    
       if File.exists?(filename) then
         puts "Updating #{filename}"
         File.open(filename, "w") { |fh| 

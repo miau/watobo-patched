@@ -1,7 +1,7 @@
 # .
 # passive_check.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,28 +19,16 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
     class PassiveCheck
       include Watobo::Constants
+      extend Watobo::Subscriber
+      
       @@lock = Mutex.new
       attr :info
      
-      def subscribe(event, &callback)
-        (@event_dispatcher_listeners[event] ||= []) << callback
-      end
-
-      def clear_event(event)
-        @event_dispatcher_listeners[event].clear
-      end
-
-      def notify(event, *args)
-        if @event_dispatcher_listeners[event]
-          @event_dispatcher_listeners[event].each do |m|
-            m.call(*args) if m.respond_to? :call
-          end
-        end
-      end
-     
+           
       def addFinding(details)
         t = Time.now
 
@@ -52,19 +40,22 @@ module Watobo
           new_details.update(details)
 
           new_details[:tstamp] = now
+          
+          unless new_details.has_key?(:fid)
 
           id_string = ''
 
-          id_string << new_details[:chat].request.url if new_details[:chat]
+          id_string << new_details[:chat].request.url.to_s if new_details[:chat]
           id_string << new_details[:class] if new_details[:class]
           id_string << new_details[:title]  if new_details[:title]
           id_string << new_details[:unique]  if new_details[:unique]
 
-          if id_string == '' then
+          if id_string.empty? then
             id_string = rand(10000)
           end
           #puts "Finding #{id_string}"
           new_details[:fid] = Digest::MD5.hexdigest(id_string)
+          end 
 
           new_details[:module] = self.class.to_s
 
@@ -80,9 +71,11 @@ module Watobo
           new_details.delete(:chat)
 
           new_finding = Watobo::Finding.new(request, response, new_details)
+          
+          Watobo::Findings.add new_finding
 
           #@project.addFinding(new_finding)
-          notify(:new_finding, new_finding)
+         # notify(:new_finding, new_finding)
         }
       end
 
@@ -109,7 +102,7 @@ module Watobo
         @project = project
         @enabled = true
 
-@event_dispatcher_listeners = Hash.new
+#@event_dispatcher_listeners = Hash.new
 
         @info = {
           :check_name => '',    # name of check which briefly describes functionality, will be used for tree and progress views

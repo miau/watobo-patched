@@ -1,7 +1,7 @@
 # .
 # intercept_filter.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Interceptor
     class Filter
 
@@ -144,7 +145,7 @@ module Watobo
 
         if url_filter != ''
           match_url = false
-          if request.url =~ /#{url_filter}/i
+          if request.url.to_s =~ /#{url_filter}/i
           match_url = true
           end
           if negate_url_filter == true

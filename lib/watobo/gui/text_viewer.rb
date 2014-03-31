@@ -1,7 +1,7 @@
 # .
 # text_viewer.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class TextView2 < FXText
 
@@ -59,6 +60,43 @@ module Watobo
         new_font.create
         self.font = new_font
       end
+      
+      def highlight_code(pattern=nil)
+        # remove all styles
+        self.changeStyle(0, self.length-1, 0)
+        mark = pattern.nil? ? @code_pattern : pattern
+        sindex = nil
+        pos = 0
+        match = []
+        text = self.to_s
+        mark = "%%"
+
+        loop do
+          sindex = text.index(mark, pos)
+          nli = text.index("\n", pos)
+          break if sindex.nil?
+          puts pos
+          
+          unless nli.nil?
+            match = [] if nli < sindex
+          end
+          
+          match << sindex
+          
+          if match.length == 2          
+            start = match[0]
+            len = match[1] - match[0] + mark.length
+            
+            self.changeStyle(start, len, @code_style)
+            match = []
+            pos = sindex + mark.length - 1
+          else
+            pos = sindex + mark.length            
+          end
+          
+          break if pos >= self.length-1 + mark.length
+        end
+      end
 
       def initialize(owner, opts)
 
@@ -66,8 +104,10 @@ module Watobo
         @raw_text = ""
         @match_index = 0
         @event_dispatcher_listeners = Hash.new
+        @parse_code = true
+        @code_pattern = "%%"
+        @code_style = 1
 
-puts opts.to_yaml
         super(owner, opts)
 
         # Construct some hilite styles
@@ -89,6 +129,12 @@ puts opts.to_yaml
         self.editable = false
 
         self.textStyle |= TEXT_WORDWRAP
+        
+        self.connect(SEL_CHANGED){
+          if @parse_code
+            highlight_code()
+          end
+        }
 
       end
 

@@ -1,7 +1,7 @@
 # .
 # sites_tree.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -21,7 +21,8 @@
 # .
 #require 'qcustomize.rb'
 
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Gui
     class SitesTree < FXTreeList
       attr_accessor :project
@@ -35,7 +36,7 @@ module Watobo
       def reload()
         self.clearItems
 
-        @project.chats.each do |chat|
+        Watobo::Chats.each do |chat|
           addChat(chat)
         end
 
@@ -45,7 +46,7 @@ module Watobo
       def refresh_tree()
         self.clearItems
 
-        @project.chats.each do |chat|
+        Watobo::Chats.each do |chat|
           addChat(chat)
         end
 

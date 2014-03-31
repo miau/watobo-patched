@@ -1,7 +1,7 @@
 # .
 # cookie.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,12 +19,13 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   
   
 #Set-Cookie: mycookie=b41dc9e55d6163f78321996b10c940edcec1b4e55a76464c4e9d25e160ac0ec5b769806b; path=/; secure
 
-  class Cookie
+  class Cookie < Parameter
     
     attr :name
     attr :value
@@ -37,33 +38,16 @@ module Watobo
     end
     
     def initialize(prefs)
-      @value = nil
-      @name = nil
-      @secure = false
-      @http_only = false
-      @path = nil
+      @secure = prefs.has_key?(:secure) ? prefs[:secure] : false
+      @http_only = prefs.has_key?(:http_only) ? prefs[:http_only] : false
+      @location = :cookie
       
-      if prefs.is_a? String
-        # remove Set-Cookie: from string
-      #  puts "* create new Cookie"
-      #  puts ">> #{prefs}"
-        cs = prefs.gsub(/^Set-Cookie:/,'').strip.split(";").map{ |c| c.strip }
-        @name, @value = cs.shift.split("=") 
-        cs.each do |o|
-          if o =~ /^path=(.*)/
-            @path = $1
-          end
-          
-          @secure = true if o =~ /secure/i
-          @http_only = true if o =~ /httponly/i
-        end
-      elsif prefs.is_a? Hash
+      if prefs.is_a? Hash
         #TODO: create cookie with hash-settings
       else
         raise ArgumentError, "Need hash (:name, :value, ...) or string (Set-Cookie:...)"
       end
     end
+  
   end
-  
-  
 end

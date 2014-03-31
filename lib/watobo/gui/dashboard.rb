@@ -1,7 +1,7 @@
 # .
 # dashboard.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
 
    module Gui
 
@@ -27,22 +28,33 @@ module Watobo
         
         def increment(i)
            @lock.synchronize do
-             @progress += i
+             @pbar.progress += i
              #@total += i
            end  
         end
         
         def progress(i)
            @lock.synchronize do
-             @progress = i
-             #@total += i
+             @pbar.progress = i
+             update_bar_color
            end  
+        end
+        
+        def update_bar_color          
+          if @pbar.total == 0 then
+            @pbar.barColor = 'grey'
+          else
+            @pbar.barColor = FXRGB(255,0,0)
+          end
+          if @pbar.progress == @pbar.total
+               @pbar.barColor = 'green' 
+          end
         end
         
         def total(i)
            @lock.synchronize do
              #@progress = i
-             @total = i
+             @pbar.total = i
            end  
         end
         
@@ -52,21 +64,10 @@ module Watobo
            end  
         end
         
-        def update_progress
-          @lock.synchronize do
-            @pbar.increment(@progress)
-            @progress = 0
-            @pbar.barColor = 'green' if @pbar.progress >= @pbar.total
-            @label.text = "#{@check_name} #{@pbar.progress}/#{@pbar.total}"
-          end
-        end
-        
         def initialize(owner, check_name, num_checks)
         begin
                super(owner, :opts => LAYOUT_FILL_X|FRAME_GROOVE|LAYOUT_TOP)
                @lock = Mutex.new
-               @progress = 0
-               @total = 0
                @check_name = check_name
                @label = FXLabel.new(self, check_name, :opts => LAYOUT_LEFT)
 
@@ -75,12 +76,7 @@ module Watobo
                @pbar.progress = 0
                @pbar.total = num_checks
                 puts "#{check_name} has #{num_checks} Checks"
-               @pbar.barColor = 0
-               if num_checks == 0 then
-                  @pbar.barColor = 'grey'
-               else
-                  @pbar.barColor = FXRGB(255,0,0)
-               end
+               update_bar_color
             rescue => bang
                puts "!!!ERROR: could not add progress info"
                puts bang
@@ -106,7 +102,7 @@ module Watobo
             #@progress_bars = Hash.new
             modules.each do |check_name, num_checks|
                puts "* new ProgressInfo: #{check_name} - #{num_checks}"
-               pi = ProgressInfo.new(@progress_frame, check_name, num_checks)
+               pi = ProgressInfo.new(@progress_frame, check_name, num_checks[:total])
                pi.create
 
                @progress_bars[check_name] = pi
@@ -135,16 +131,16 @@ module Watobo
       end
 
       class ProjectInfo < FXVerticalFrame
-         def update(project)
-            if project then
-               @project_name.text = project.settings[:project_name]
-               @session_name.text = project.settings[:session_name]
-               @project_path.text = project.settings[:project_path]
-               @session_path.text = project.settings[:session_path]
+         def update()
+            if Watobo.project then
+               @project_name.text = Watobo.project.settings[:project_name]
+               @session_name.text = Watobo.project.settings[:session_name]
+               @project_path.text = Watobo.project.settings[:project_path]
+               @session_path.text = Watobo.project.settings[:session_path]
 
-               @number_active_checks.text = project.active_checks.length.to_s
-               @number_passive_checks = project.passive_checks.length.to_s
-               @number_total_chats.text = project.chats.length.to_s
+               @number_active_checks.text = Watobo::ActiveModules.length.to_s
+               @number_passive_checks = Watobo::PassiveModules.length.to_s
+               @number_total_chats.text = Watobo::Chats.length.to_s
             end
 
          end
@@ -168,11 +164,11 @@ module Watobo
             @session_path = FXLabel.new(frame,"-")
 
             frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X)
-            FXLabel.new(frame, "Number available ActiveChecks:")
+            FXLabel.new(frame, "Number available ActiveModules:")
             @number_active_checks = FXLabel.new(frame,"-")
 
             frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X)
-            FXLabel.new(frame, "Number of PassiveChecks:")
+            FXLabel.new(frame, "Number of PassiveModules:")
             @number_passive_checks = FXLabel.new(frame,"-")
 
             frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X)
@@ -201,8 +197,11 @@ module Watobo
       class Dashboard < FXVerticalFrame
          include Watobo::Gui::Icons
 
-         def setupScanProgressFrame(scan_modules)
-            @scan_progress_frame.setup(scan_modules)
+         def setupScanProgressFrame(scanner)
+           @progress_lock.synchronize do
+           @scanner = scanner
+            @scan_progress_frame.setup(scanner.progress)
+          end
          end
 
          def setScanStatus(status)
@@ -238,9 +237,8 @@ module Watobo
             end
          end
 
-         def updateProjectInfo(project)
-            @project = project
-            @project_info_frame.update(@project)
+         def updateProjectInfo()           
+            @project_info_frame.update()
          end
 
          def update_status(check_module, progress_index)
@@ -295,8 +293,12 @@ module Watobo
 
 def start_update_timer
          @timer = FXApp.instance.addTimeout( 50, :repeat => true) {
-           @scan_progress_frame.progress_bars.each_value do |p|
-             p.update_progress
+           unless @scanner.nil?
+             progress = @scanner.progress
+             progress.each do |m, info|
+               @scan_progress_frame.progress_bars[m].progress info[:progress]
+               
+             end
            end
           }
       end
@@ -306,7 +308,7 @@ def start_update_timer
 
                super(parent, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
                #db_title = FXLabel.new(self, "DASHBOARD", :opts => LAYOUT_LEFT)
-               @project = nil
+               @scanner = nil
                @progress_lock = Mutex.new
 
                main = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_GROOVE)
@@ -341,7 +343,7 @@ def start_update_timer
                   case tabItem.to_i
                   when 0
                      #  puts "Login Script Selected"
-                     @project_info_frame.update(@project)
+                     @project_info_frame.update()
                   when 1
                      # puts "Session IDs Selected"
 

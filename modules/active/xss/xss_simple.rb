@@ -1,7 +1,7 @@
 # .
 # xss_simple.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Modules
     module Active
       module Xss
@@ -27,10 +28,7 @@ module Watobo
         
         class Xss_simple < Watobo::ActiveCheck
           
-          def initialize(project, prefs={})
-            super(project, prefs)
-            
-            threat =<<'EOF'
+          threat =<<'EOF'
 Cross-site Scripting (XSS) is an attack technique that involves echoing attacker-supplied code into a user's browser instance. 
 A browser instance can be a standard web browser client, or a browser object embedded in a software product such as the browser 
 within WinAmp, an RSS reader, or an email client. The code itself is usually written in HTML/JavaScript, but may also extend to 
@@ -63,6 +61,11 @@ EOF
             :rating => VULN_RATING_HIGH,
             :measure => measure
             )
+          
+          def initialize(project, prefs={})
+            super(project, prefs)
+            
+            
             
             @xss_checks=[ 
             ["<script>watobo</script>", "<script>watobo</script>"],

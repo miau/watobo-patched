@@ -1,7 +1,7 @@
 # .
 # check.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,17 +19,14 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Plugin
     module Sslchecker
       class Check < Watobo::ActiveCheck
         attr :cipherlist
-        def initialize(project)
-          super(project)
-
-          @result = Hash.new
-
-          @info.update(
+        
+         @info.update(
           :check_name => 'SSL-Checker',    # name of check which briefly describes functionality, will be used for tree and progress views
           :description => "Test applikation for supportes SSL Ciphers.",   # description of checkfunction
           :author => "Andreas Schmidt", # author of check
@@ -42,18 +39,38 @@ module Watobo
           :type => FINDING_TYPE_VULN,         # FINDING_TYPE_HINT, FINDING_TYPE_INFO, FINDING_TYPE_VULN
           :rating => VULN_RATING_LOW
           )
+          
+          
+        def initialize(project)
+          super(project)
 
-          ctx = OpenSSL::SSL::SSLContext.new()
+          @result = Hash.new
           @cipherlist = Array.new
-          ctx.ciphers="eNULL" # because ALL don't include Null-Ciphers!!!
+          
+          
+          OpenSSL::SSL::SSLContext::METHODS.each do |method|
+            next if method =~ /(client|server)/
+            next if method =~ /23/
+          #%w( TLSv1_server SSLv2_server SSLv3_server ).each do |method|
+            puts ">> #{method}"
+            begin
+          ctx = OpenSSL::SSL::SSLContext.new(method)
+          ctx.ciphers="ALL::COMPLEMENTOFALL::eNull"
           ctx.ciphers.each do |c|
-            @cipherlist.push c[0]
+            @cipherlist.push [ method, c[0]]
           end
+          #ctx.ciphers="eNULL" # because ALL don't include Null-Ciphers!!!
+          #ctx.ciphers.each do |c|
+          #  @cipherlist.push [ method, c[0]]
+          #end
 
-          ctx.ciphers="ALL"
-          ctx.ciphers.each do |c|
-            @cipherlist.push c[0]
+          
+          rescue => bang
+            puts bang
           end
+          
+          end
+         # puts @cipherlist.to_yaml
         end
 
         def reset()
@@ -62,7 +79,7 @@ module Watobo
 
         def generateChecks(chat)
           begin
-            @cipherlist.each do |c|
+            @cipherlist.each do |method, c|
             checker = proc {
 
               test_request = nil
@@ -72,17 +89,24 @@ module Watobo
               request = chat.copyRequest
 
               
-                ctx = OpenSSL::SSL::SSLContext.new()
+                ctx = OpenSSL::SSL::SSLContext.new(method)
                 ctx.ciphers = c
                 cypher = ctx.ciphers.first
                 bits = cypher[2].to_i
                 algo = cypher[0]
               
                 test_request, test_response = doRequest( request, :ssl_cipher => c )
+                result = {
+                    :method => method, 
+                    :algo => algo, 
+                    :bits => bits, 
+                    :support => true
+                  }
               
                 if test_request and test_response
+                  
               
-                  notify( :cipher_checked, algo, bits, true)
+                  notify( :cipher_checked, result)
                   if bits < 128
 
                   addFinding(  test_request, test_response,
@@ -93,7 +117,8 @@ module Watobo
                   )
                   end
                 else
-                notify(:cipher_checked, algo, bits, false)
+                  result[:support] = false
+                notify(:cipher_checked, result)
                 #              puts "!!! ERROR: #{c}"
                 end
               

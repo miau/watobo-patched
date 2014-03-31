@@ -1,7 +1,7 @@
 # .
 # shapers.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Mixin
     module Shaper
       module Web10
@@ -43,8 +44,9 @@ module Watobo
         def replaceFileExt(new_file)
           #   puts "replace element #{new_element}"
           begin
-            new_file.gsub!(/^\//, "")
-            self.first.gsub!(/([^\?]*\/)(.*) (HTTP.*)/i,"\\1#{new_file} \\3")
+            file = new_file.strip
+            file.gsub!(/^\//, "")
+            self.first.gsub!(/([^\?]*\/)(.*) (HTTP.*)/i,"\\1#{file} \\3")
           rescue => bang
             puts bang
           end
@@ -66,12 +68,7 @@ module Watobo
         end
 
         def strip_path()
-          if self.first =~ /(^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/).* (HTTP.*)/i then
-            new_line = "#{$1} #{$2}"
-          self.shift
-          self.unshift(new_line)
-          end
-        # puts "* StripPath: #{self.first}"
+          self.first.gsub!(/([^\?]*\/)(.*) (HTTP.*)/i,"\\1# \\3")
         end
 
         def setDir(dir)
@@ -121,6 +118,8 @@ module Watobo
           self.replace(self_copy)
 
         end
+        
+        alias_method :add_header, :addHeader
 
         def removeURI
           if self.first =~ /(^[^[:space:]]{1,}) (https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/)/ then
@@ -139,7 +138,7 @@ module Watobo
           self.pop if self[-2].strip.empty?
         end
 
-        def set_header(header, value)
+        def set_header_UNUSED(header, value)
           self.each do |h|
             break if h.strip.empty?
             if h =~ /^#{header}:/
@@ -198,6 +197,8 @@ module Watobo
             puts "====="
           end
         end
+        
+        alias_method :remove_header, :removeHeader
 
         # removeUrlParms
         # Function: Remove all parameter within the URL
@@ -354,6 +355,33 @@ module Watobo
             end
           }
         end
+        
+        def set_content_length(length)
+          set_header("Content-Length", length)     
+        end
+        
+        def set_content_type(ctype)
+          set_header("Content-Type", ctype)
+        end
+        
+        def set_header(header, value)
+          begin
+            new_header = "#{header}: #{value}\r\n"
+          self.each_with_index do |h, i|
+            if h =~ /^#{Regexp.quote(header)}:/
+              h.replace(new_header)
+              return true
+            end
+            if h.strip.empty? or i == self.length-1
+              self.insert(i, new_header)
+              return true
+            end
+          end
+          rescue => bang
+            puts bang
+          end
+         return false      
+        end
 
         # sets post data
         def setData(data)
@@ -370,6 +398,8 @@ module Watobo
         def setMethod(method)
           self.first.gsub!(/(^[^[:space:]]{1,}) /, "#{method} ")
         end
+        
+        alias_method :set_method, :setMethod
 
         def setHTTPVersion(version)
           self.first.gsub!(/HTTP\/(.*)$/, "HTTP\/#{version}")
@@ -397,6 +427,7 @@ module Watobo
             new_body = ''
 
             body_orig = self.body
+            return true if body_orig.nil?
             # puts body_orig.class
             puts body_orig.length
             pattern = '[0-9a-fA-F]{1,6}\r?\n'

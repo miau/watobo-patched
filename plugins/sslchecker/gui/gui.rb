@@ -1,7 +1,7 @@
 # .
 # gui.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,8 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+# @private 
+module Watobo#:nodoc: all
   module Plugin
     module Sslchecker
       module Gui
@@ -33,11 +34,11 @@ module Watobo
         
         def createChat(site)
           chat = nil
-          u = URI.parse site
-          if u.scheme.nil?
+         
+          unless site =~ /^http/
             url = "https://#{site}/"
           else
-            url = u.to_s
+            url = site
           end
           request = []
           request << "GET #{url} HTTP/1.1\r\n"
@@ -47,6 +48,8 @@ module Watobo
           request << "Proxy-Connection: close\r\n"
           request << "User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)\r\n"
           request << "\r\n"
+          
+          puts request
 
           chat = Watobo::Chat.new(request, [], :id => 0)
 
@@ -71,7 +74,7 @@ module Watobo
             #@dir_combo.clearItems()
             unless Watobo.project.nil? then
               count = 0
-              Watobo.project.listSites(:ssl => true, :in_scope => Watobo.project.has_scope? ).each do |site|
+              Watobo::Chats.sites(:ssl => true, :in_scope => Watobo::Scope.exist? ).each do |site|
               #puts "Site: #{site}"
                 count += 1
                 @sites_combo.appendItem(site, site)
@@ -82,62 +85,57 @@ module Watobo
                 @sites_combo.numVisible = ( @sites_combo.numItems > 15 ) ? 15 : @sites_combo.numItems
              # else
              #   @log_viewer.log(LOG_INFO,"No SSL Sites available - you need to visit a SSL Site first!")
+              elsif Watobo::Scope.exist?
+                 @sites_combo.appendItem("no site for defined scope", nil)
               end
             end
 
+          end
+          
+          def create
+            super
+            
+            updateView()
           end
 
         def start(sender, sel, item)
           unless @site.nil?
    @cipher_table.clear_ciphers
 
-            #puts "Site: #{site}"
+            puts "Site: #{@site}"
+            puts @site.class
             #puts "Directory: #{@dir}"
             chat = createChat(@site)
             checklist = []
             checklist.push @check
             chatlist = []
             chatlist.push chat
-            scan_prefs = @project.getScanPreferences
-            scanner = Watobo::Scanner2.new(chatlist, checklist, nil, scan_prefs)
+            scan_prefs = Watobo::Conf::Scanner.to_h
+            @scanner = Watobo::Scanner3.new(chatlist, checklist, nil, scan_prefs)
 
-             @pbar.total = scanner.numTotalChecks
-               #@pbar.progress = 0
-               #@pbar.barColor = FXRGB(255,0,0)
-
-               scanner.subscribe(:progress) { |m|
-                           print "="
-                  @pbar.increment(1)
-               }
-            
-            #@pbar.total = @check.cipherlist.length
+            @pbar.total = @scanner.sum_total
             @pbar.progress = 0
             @pbar.barColor = 'red'
+            
             unless @project.getCurrentProxy().nil?
                @log_viewer.log(LOG_INFO,"!!! WARNING FORWARDING PROXY IS SET !!! - SSL-Check running against proxy may not make sense!")
             end
              @update_lock.synchronize do 
                   @status = :running
                 end
-           
-           #  add_update_timer(50)
              
-            @log_viewer.log LOG_INFO, "Scan started ..."
-            @scan_thread = Thread.new(scanner) { |scan|
+            @log_viewer.log LOG_INFO, "Scan started with #{@check.cipherlist.length} ciphers ..."
+          #  @scan_thread = Thread.new(scanner) { |scan|
               begin
 
-                scan.run(:default => true)
-                @log_viewer.log LOG_INFO, "Scan finished."
-                @update_lock.synchronize do 
-                  @status = :idle
-                end
+               @scanner.run()
                # sleep 1 # to let the update_timer finish its work
                # getApp().removeTimeout(@update_timer) 
               rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG
               end
-            }
+            #}
 
           end
         end
@@ -150,6 +148,8 @@ module Watobo
           @site = nil
           @dir = nil
           @scan_thread = nil
+          @pbar = nil
+          @scanner = nil
           
           @results = []
           @results_lock = Mutex.new
@@ -203,15 +203,15 @@ module Watobo
             @pbar.barColor=0
             @pbar.barColor = 'grey' #FXRGB(255,0,0)
 
-            button = FXButton.new(@settings_frame, "start")
-            button.connect(SEL_COMMAND, method(:start))
+            @start_button = FXButton.new(@settings_frame, "start")
+            @start_button.connect(SEL_COMMAND, method(:start))
 
             @check = Check.new(@project)
 
-            @check.subscribe(:cipher_checked) { |cipher, bits, result|
+            @check.subscribe(:cipher_checked) { |result|
               begin
                 @results_lock.synchronize do
-                @results << { :name => cipher, :bits => bits, :result => result}
+                @results << result
                 end
                #  FXApp.instance.forceRefresh
               rescue => bang
@@ -221,10 +221,6 @@ module Watobo
             #puts "#{@pbar.progress} of #{@pbar.total}"
             #     logger
 
-            }
-
-            @check.subscribe(:new_finding) { |f|
-              @project.addFinding(f)
             }
 
             log_frame_header = FXHorizontalFrame.new(log_frame, :opts => LAYOUT_FILL_X)
@@ -244,34 +240,41 @@ module Watobo
         end
         
         private
+        def reset_pbar
+           @pbar.progress = 0
+           @pbar.total = 0
+           @pbar.barColor = 'grey' #FXRGB(255,0,0)
+        end
+        
         def on_update_timer
-          unless @status == :idle
+           unless @scanner.nil?
+             progress = @scanner.progress
+             sum_progress = progress.values.inject(0){|i, v|  i += v[:progress] }
+                     
+            @pbar.progress = sum_progress
+            
+            if @scanner.finished?             
+              msg = "Scan Finished!"              
+              @log_viewer.log(LOG_INFO, msg)
+              Watobo.log(msg, :sender => "Catalog")              
+              @scanner = nil
+              reset_pbar()
+            
+            @start_button.text = "Start"
+            end
+           end
+         
+         
           @results_lock.synchronize do             
                @results.each do |r|
                  @cipher_table.add_cipher(r)
                end
                @results.clear               
            end
-         else          
-          @pbar.barColor = 'grey' unless @pbar.barColor == 'grey'
-          end
-         
+
         end
         
-        def add_update_timer_UNUSED(ms)
-         @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) do
-           @results_lock.synchronize do             
-               @results.each do |r|
-                 @cipher_table.add_cipher(r)
-               end
-               @results.clear               
-           end
-         
-           @update_lock.synchronize do 
-             @pbar.barColor = 'grey' if @status == :idle
-           end
-         end
-        end
+        
         
       end
       end

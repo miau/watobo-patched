@@ -1,7 +1,7 @@
 # .
 # conversation_table.rb
 # 
-# Copyright 2012 by siberas, http://www.siberas.de
+# Copyright 2013 by siberas, http://www.siberas.de
 # 
 # This file is part of WATOBO (Web Application Tool Box)
 #        http://watobo.sourceforge.com
@@ -19,7 +19,52 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-module Watobo
+class CustomTableItem < FXTableItem
+  attr_accessor :color
+  attr_accessor :backcolor
+  def drawContent table, unusable_dc, x, y, w, h
+    FXDCWindow.new(table) {|dc|
+      if @color and not selected?
+
+        if @backcolor
+        dc.foreground = @backcolor
+        hg = table.horizontalGridShown? ? 1 : 0
+        vg = table.verticalGridShown? ? 1 : 0
+        dc.fillRectangle(x + vg, y + hg, w - vg, h - hg)
+        end
+
+        dc.foreground = @color
+
+        def dc.setForeground color
+          1 # stop super from setting color back
+        end
+      end
+
+      dc.setFont unusable_dc.getFont
+      super table, dc, x, y, w, h
+    }
+  end
+end
+
+class FXColoredTable < FXTable
+  def createItem *parameters
+    CustomTableItem.new(*parameters)
+  end
+
+  def setItemTextColor row, column, color
+    getItem(row, column).color = color
+    updateItem row, column
+  end
+
+  def setCellBackground row, column, color
+    getItem(row, column).backcolor = color
+  # puts getItem(row, column).methods.sort
+  #  updateItem row, column
+  end
+end
+
+# @private 
+module Watobo#:nodoc: all
   module Gui
     TABLE_COL_METHOD = 0x0001
     TABLE_COL_HOST = 0x0002
@@ -30,6 +75,9 @@ module Watobo
     TABLE_COL_COMMENT = 0x0040
     TABLE_COL_SSL = 0x0100
     class ConversationTable < FXTable
+      #    class ConversationTable < FXColoredTable
+      
+      attr :filter
 
       attr_accessor :autoscroll
       attr_accessor :url_decode
@@ -46,7 +94,7 @@ module Watobo
 
       def notify(event, *args)
         if @event_dispatcher_listeners[event]
-          puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
+          #  puts "NOTIFY: #{self}(:#{event}) [#{@event_dispatcher_listeners[event].length}]" if $DEBUG
           @event_dispatcher_listeners[event].each do |m|
             m.call(*args) if m.respond_to? :call
           end
@@ -61,41 +109,27 @@ module Watobo
         self.numRows
       end
 
-      def reset_filter
-        @filter = {
-          :show_scope_only => false,
-          :text => '',
-          :url => false,
-          :request => false,
-          :response => false,
-          :hide_tested => false,
-          :doc_filter => []
-        }
-      end
-
-      # :show_scope_only => false,
-      # :text => '',
-      # :url => false,
-      # :request => false,
-      # :response => false,
-      # :hide_tested => false
+    
       def apply_filter(filter={})
-
-        @filter.update filter
-        @uniq_chats.clear
+        @filter = filter      
         puts @filter.to_yaml if $DEBUG
         update_table
       end
 
+      def current_chat
+        # puts currentRow
+        if currentRow >= 0
+          chatid = getRowText(currentRow).to_i
+          chat = Watobo::Chats.get_by_id(chatid)
+        return chat
+        end
+        return nil
+      end
+
       def chat_visible?(chat)
         begin
-        #if @active_project and @active_project.settings[:site_filter]
-        #  #puts chat.request.url
-        #puts @active_project.settings[:site_filter]
-        #  return false if @active_project.settings[:site_filter] != '' and chat.request.url =~ /^http(s)?:\/\/#{Regexp.quote(@active_project.settings[:site_filter])}/
-        #  return true
-        # end
-
+          return false if @filter[:ok_only] == true and chat.response.responseCode !~ /200/ 
+           
           if @filter[:unique]
             unless Watobo::Gui.project.nil?
               uniq_hash = Watobo::Gui.project.uniqueRequestHash chat.request
@@ -106,7 +140,7 @@ module Watobo
 
           if @filter[:show_scope_only]
             unless Watobo::Gui.project.nil?
-              return false unless Watobo::Gui.project.siteInScope?(chat.request.site)
+              return false unless Watobo::Scope.match_site?(chat.request.site)
             end
           end
           # puts "* passed scope"
@@ -117,12 +151,15 @@ module Watobo
           unless @filter[:doc_filter].include?(chat.request.doctype)
             return true if @filter[:text].empty?
 
-            return true if @filter[:url] and chat.request.first =~ /#{@filter[:text]}/i
+            return true if @filter[:url] == true and chat.request.first =~ /#{@filter[:text]}/i
 
-            return true if @filter[:request] and chat.request.join =~ /#{@filter[:text]}/i
+            return true if @filter[:request] == true and chat.request.join =~ /#{@filter[:text]}/i
+            # puts @filter.to_yaml
+            # puts chat.response.responseCode
 
-            if chat.response.content_type =~ /(text|javascript|xml)/
-              return true if @filter[:response] and chat.response.join.unpack("C*").pack("C*") =~ /#{@filter[:text]}/i
+            if @filter[:response] == true 
+              return false if @filter[:text_only] == true and chat.response.content_type !~ /(text|javascript|xml|json)/ 
+              return true if chat.response.join.unpack("C*").pack("C*") =~ /#{@filter[:text]}/i
             end
 
           end
@@ -135,10 +172,16 @@ module Watobo
         false
       end
 
-      def showConversation( chat_list = [], prefs = {} )
+      def showConversation( chat_list = nil, prefs = {} )
         clearConversation()
-        chat_list.each do |chat|
-          addChat(chat, prefs)
+        if chat_list.nil?
+          Watobo::Chats.each do |chat|
+            addChat(chat, prefs)
+          end
+        else
+          chat_list.each do |chat|
+            addChat(chat, prefs)
+          end
         end
         adjustCellWidth()
       end
@@ -176,9 +219,9 @@ module Watobo
         @current_chat_list.push chat unless chat.nil?
         if prefs.include? :ignore_filter
           add_chat_row(chat)
-          return true
+        return true
         end
-        add_chat_row(chat) if chat_visible?(chat)
+        add_chat_row(chat) # if chat_visible?(chat)
         return true
 
       end
@@ -200,6 +243,8 @@ module Watobo
         @event_dispatcher_listeners = Hash.new
 
         super(owner, :opts => TABLE_COL_SIZABLE|TABLE_ROW_SIZABLE|LAYOUT_FILL_X|LAYOUT_FILL_Y|TABLE_READONLY|LAYOUT_SIDE_TOP, :padding => 2)
+        
+         @filter = {}
 
         @url_decode = true
 
@@ -209,7 +254,7 @@ module Watobo
         self.setCellColor(1, 0, FXRGB(240, 255, 240))
         self.setCellColor(1, 1, FXRGB(240, 240, 255))
 
-        reset_filter
+      #  reset_filter
         #   FXMAPFUNC(SEL_CLICKED, FXTable::ID_SELECT_CELL, :onSelectCell)
         @current_chat_list = []
         @uniq_chats = Hash.new
@@ -281,8 +326,38 @@ module Watobo
 
           adjustCellWidth()
         end
+        
+        self.connect(SEL_CHANGED){ |sender, sel, item|
+         # puts "SEL_CHANGED #{item.row}"
+          self.selectRow(item.row, false)
+           chat = self.getItemData(item.row, 0)
+           notify(:chat_selected, chat) if chat.respond_to? :request
+        }
+        
+        self.connect(SEL_COMMAND){ |sender, sel, item|
+         # puts "SEL_COMMAND #{item.row}"
+          self.selectRow(item.row, false)
+           chat = self.getItemData(item.row, 0)
+           notify(:chat_selected, chat) if chat.respond_to? :request
+        }
+        
+        self.connect(SEL_DOUBLECLICKED){ |sender, sel, item|
+          #   puts "SEL_DOUBLECLICKED #{item.row}"
+          self.selectRow(item.row, false)
+           chat = self.getItemData(item.row, 0)
+           notify(:chat_doubleclicked, chat) if chat.respond_to? :request
+        }
+        
+        self.connect(SEL_SELECTED){ |sender, sel, item|
+           #  puts "SEL_SELECTED #{item.row}"
+          self.selectRow(item.row, false)
+           chat = self.getItemData(item.row, 0)
+           notify(:chat_selected, chat) if chat.respond_to? :request
+        }
 
         adjustCellWidth()
+
+        addHotkeyHandler(self)
       end
 
       def scrollUp()
@@ -303,6 +378,7 @@ module Watobo
       private
 
       def add_chat_row(chat)
+        return false unless chat.respond_to? :request
         lastRowIndex = self.getNumRows
         self.appendRows(1)
 
@@ -330,17 +406,18 @@ module Watobo
         rup = chat.request.urlparms
         unless rup.nil?
         ps << rup
-        end     
-       
+        end
+
         post_parms_string = ''
-        post_parms_string << chat.request.post_parms.join("&")   
-        
+        post_parms_string << chat.request.post_parms.join("&")
+
         if chat.request.method =~ /POST/ and !post_parms_string.empty? then
           ps << "&&" unless ps.empty?
-          ps << post_parms_string         
+        ps << post_parms_string
         end
-        
-        
+
+        ps = "*MULTIPART*" if chat.request.content_type =~ /multipart/i
+
         parms = ""
         unless ps.nil?
           #   parms = ps[0..50]
@@ -375,6 +452,8 @@ module Watobo
           self.setItemText(lastRowIndex, index, cc)
           self.getItem(lastRowIndex, index).justify = FXTableItem::LEFT
         end
+        
+        self.setItemData(lastRowIndex, 0, chat)
 
         self.makePositionVisible(self.numRows-1, 0) if @autoscroll == true
       end
@@ -383,11 +462,20 @@ module Watobo
         self.clearItems
         initColumns()
         adjustCellWidth()
-        @current_chat_list.each do |chat|
+        Watobo::Chats.filtered(@filter) do |chat|
+          add_chat_row(chat)
+        end
+      end
+      
+      def update_table_UNUSED()
+        self.clearItems
+        initColumns()
+        adjustCellWidth()
+        Watobo::Chats.each do |chat|
           add_chat_row(chat) if chat_visible? chat
         end
       end
-
+      
       def adjustCellWidth()
         begin
           self.rowHeader.width = 40
@@ -400,6 +488,155 @@ module Watobo
           puts "!!!ERROR: adjustCellWidth"
         end
 
+      end
+
+      def addHotkeyHandler(widget)
+        @ctrl_pressed = false
+
+        widget.connect(SEL_KEYPRESS) { |sender, sel, event|
+        # puts event.code
+        cont = false
+          @ctrl_pressed = true if event.code == KEY_Control_L or event.code == KEY_Control_R
+          #  @shift_pressed = true if @ctrl_pressed and ( event.code == KEY_Shift_L or event.code == KEY_Shift_R )
+          if event.code == KEY_Return             
+           chat = current_chat 
+           notify(:chat_doubleclicked, chat) if chat.respond_to? :request
+          cont = true # special handling of KEY_Return, because we don't want a linebreak in textbox.
+          end
+
+          case event.code
+          when KEY_F1
+
+            unless event.moved?
+              FXMenuPane.new(self) do |menu_pane|
+                FXMenuCaption.new(menu_pane, "Hotkeys:")
+                FXMenuSeparator.new(menu_pane)
+                [ "G - Goto",
+                  "<ctrl-n> - Goto Next",
+                  "<ctrl-N> - Goto Prev"
+                ].each do |hk|
+                  FXMenuCaption.new(menu_pane, hk).backColor = 'yellow'
+                end
+
+                menu_pane.create
+                menu_pane.popup(nil, event.root_x, event.root_y)
+                app.runModalWhileShown(menu_pane)
+              end
+
+            end
+
+          when KEY_space
+            chat = current_chat
+            notify(:edit_comment, chat) if chat
+          when KEY_G
+            open_goto_url_dialog
+            cont = true
+          end
+
+          if @ctrl_pressed
+            case event.code
+            when KEY_n
+              show_next
+            when KEY_N
+              show_prev
+            end
+            cont = false
+          end
+          cont
+        }
+
+        widget.connect(SEL_KEYRELEASE) { |sender, sel, event|
+          @ctrl_pressed = false if event.code == KEY_Control_L or event.code == KEY_Control_R
+          false
+        }
+      end
+
+      def open_goto_url_dialog
+        @url_pattern ||= ""
+        dlg = Watobo::Gui::GotoUrlDialog.new(self, @url_pattern)
+        if dlg.execute != 0 then
+          @url_pattern = dlg.url_pattern
+          show_nearest()
+        end
+        true
+      end
+      
+      def show_next()
+        i = get_next_match
+        if i >= 0
+        selectRow(i, false) 
+         setCurrentItem(i, 2)
+         end
+      end
+      
+      def show_prev()
+        i = get_prev_match
+        if i >= 0
+        selectRow(i, false) 
+         setCurrentItem(i, 2)
+         end
+      end
+      
+      
+      def show_nearest()
+        sel = -1
+        pi = get_prev_match()
+        ni = get_next_match()
+       
+        sel = pi
+        if ( ni >= 0 ) and ( pi >= 0 )
+          sel = ( currentRow - pi ) > ( ni - currentRow ) ? ni : pi
+        elsif pi >= 0
+          sel = pi
+        else 
+          sel = ni
+        end
+        puts "neares: #{sel}"
+        if sel >= 0
+        selectRow(sel, false)
+       
+       setCurrentItem(sel, 2)
+        
+        end
+        false
+      end
+      
+      
+      
+      def get_next_match()
+        return -1 if @url_pattern.nil?
+        return -1 if @url_pattern.empty?
+      
+        row = currentRow + 1
+        match = -1
+        while row < numRows
+          chat = self.getItemData(row, 0)
+          if chat.request.url.to_s =~ /#{@url_pattern}/i
+            match = row 
+            #puts chat.request.url.to_s
+          end
+          return match if match >= 0
+          row += 1
+        end
+        match
+      end
+      
+      def get_prev_match()
+        return -1 if @url_pattern.nil?
+        return -1 if @url_pattern.empty?
+     
+        row = currentRow - 1
+        match = -1
+        while row >= 0
+          chat = self.getItemData(row, 0)
+          if chat.request.url.to_s =~ /#{@url_pattern}/i
+            match = row 
+            #puts chat.request.url.to_s
+          end
+          return match if match >= 0
+          row -= 1
+        end
+        match
       end
 
     end
