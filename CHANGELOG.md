@@ -1,7 +1,15 @@
-Version 0.9.15
-==
+Version 0.9.16
+===
 Fixes
---
+---
+**General**
+ * double insert of Content-Length header
+ * bad markdown format of CHANGELOG
+ 
+Version 0.9.15
+===
+Fixes
+---
 **General**
  * improved socket handling
  * fixed some UTF-8 issues in passive modules

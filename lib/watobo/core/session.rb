@@ -219,7 +219,7 @@ module Watobo#:nodoc: all
             else
               # puts "========== Add Headers"
              
-              request.addHeader("Connection", "Close") #if not use_proxy
+              request.set_header("Connection", "close") #if not use_proxy
 
               data = request.join
               unless request.has_body? 
@@ -602,7 +602,7 @@ end
           #auth_request.removeHeader("Authorization")
           #auth_request.removeHeader("Connection")
 
-          auth_request.set_header("Connection", "Close")
+          auth_request.set_header("Connection", "close")
 
           msg = "NTLM " + t3.encode64
           auth_request.addHeader("Authorization", msg)

@@ -365,20 +365,21 @@ module Watobo#:nodoc: all
         def set_header(header, value)
           begin
             new_header = "#{header}: #{value}\r\n"
-          self.each_with_index do |h, i|
-            if h =~ /^#{Regexp.quote(header)}:/i
-              h.replace(new_header)
-              return true
+            self.each_with_index do |h, i|
+              if h =~ /^#{Regexp.quote(header)}:/i
+                h.replace(new_header)
+                return true
+              end
+            
+              if h.strip.empty? or i == self.length-1
+                self.insert(i, new_header)
+                return true
+              end
             end
-            if h.strip.empty? or i == self.length-1
-              self.insert(i, new_header)
-              return true
-            end
-          end
           rescue => bang
             puts bang
           end
-         return false      
+          return false      
         end
 
         # sets post data
