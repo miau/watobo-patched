@@ -153,12 +153,14 @@ module Watobo#:nodoc: all
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
 
         base_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-        @switcher = FXSwitcher.new(base_frame,LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        @switcher = FXSwitcher.new(base_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
-        @quickScanOptionsFrame = QuickScanOptionsFrame.new(@switcher, prefs)
+         @quickScanOptionsFrame = QuickScanOptionsFrame.new(@switcher, prefs)
+        #@quickScanOptionsFrame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
 
       #  @policyFrame = ChecksPolicyFrame.new(@switcher, project.active_checks, project.settings[:policy])
-       @policyFrame = ChecksPolicyFrame.new(@switcher)
+        @policyFrame = ChecksPolicyFrame.new(@switcher)
+       #@policyFrame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
 
         # BUTTONS
         buttons_frame = FXHorizontalFrame.new(base_frame, :opts => LAYOUT_FILL_X)
@@ -170,8 +172,8 @@ module Watobo#:nodoc: all
         @nextButton = FXButton.new(buttons_frame, "Next" ,  nil, nil, :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
         @nextButton.enable
         @nextButton.connect(SEL_COMMAND) do |sender, sel, item|
-          if @switcher.current < @switcher.numChildren-1
-            @switcher.current = @switcher.current+1
+          if @switcher.current < @switcher.numChildren - 1
+            @switcher.current = @switcher.current + 1
 
           end
           setButtons(@switcher.current)
@@ -201,7 +203,7 @@ module Watobo#:nodoc: all
         @selectedModules = @policyFrame.getSelectedModules()
         getApp().stopModal(self, 1)
         self.hide()
-        return 1
+        1
       end
 
       def setButtons(index)

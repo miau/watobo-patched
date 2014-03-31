@@ -72,7 +72,7 @@ module Watobo#:nodoc: all
           @settings_tabbook.setCurrent index
         end
 
-        def initialize(owner, project=nil)
+        def initialize(owner, project=nil, chat=nil)
           super(owner, "Crawler", project, :opts => DECOR_ALL, :width=>800, :height=>600)
           @plugin_name = "Crawler"
           @project = project
@@ -83,13 +83,14 @@ module Watobo#:nodoc: all
             :link_size => 0,
             :skipped_domains => 0
           }
+          @cookie_jar = nil
 
           main = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
           FXLabel.new(main, "Start URL, e.g. http://my.target.to/scan/:")
           frame = FXHorizontalFrame.new(main, :opts => LAYOUT_FILL_X)
           #  FXLabel.new(frame, "http://")
           @url_txt = FXTextField.new(frame, 60, nil, 0, :opts => TEXTFIELD_NORMAL|LAYOUT_SIDE_RIGHT|LAYOUT_FILL_X)
-
+          
           @start_button = FXButton.new(frame, "start", :opts => BUTTON_DEFAULT|BUTTON_NORMAL )
           @start_button.disable
 
@@ -101,13 +102,7 @@ module Watobo#:nodoc: all
           }
 
           @url_txt.connect(SEL_CHANGED){
-            if url_valid?
-              
-            @start_button.enable
-            else
-              @start_button.disable
-             # Watobo::Plugin::Crawler.start_url = nil
-            end
+           update_url_state
           }
 
           @start_button.connect(SEL_COMMAND){ |sender, sel, item|
@@ -125,6 +120,42 @@ module Watobo#:nodoc: all
           @settings_tabbook.general.set @crawler.settings
           @settings_tabbook.auth.crawler = @crawler
           @settings_tabbook.scope.set @crawler.settings
+          
+          unless chat.nil?
+            begin
+            url = chat.request.url
+            @url_txt.text = "#{url}"
+            chat.request.headers("Authorization"){ |h|            
+              if h =~ /Basic (.*)/i
+                user, pw = Base64.decode64($1).strip.split(":")
+                auth = { :username => user,
+                         :password => pw,
+                         :auth_type => :basic
+                         }
+               @settings_tabbook.auth.set(auth)
+              end
+            }
+            unless chat.request.cookies.empty?
+              @cookie_jar = Mechanize::CookieJar.new
+              domain = chat.request.host
+              
+              chat.request.cookies.each do |c|
+                name, value = c.split("=")
+                cprefs = { :domain => domain,
+                           :name => name,
+                           :value => value,
+                           :path => '/',
+                           :expires => (Date.today+1).to_s
+                         }
+                 cookie = Mechanize::Cookie.new cprefs
+                 @cookie_jar << cookie
+              end
+            end
+            rescue => bang
+              puts bang
+              puts bang.backtrace
+            end
+          end
 
           @log_viewer = @settings_tabbook.log_viewer
 
@@ -142,10 +173,22 @@ module Watobo#:nodoc: all
               @log_viewer.log(LOG_INFO, msg)
             }
           end
+          
+          update_url_state
 
         end
 
         private
+        
+        def update_url_state
+           if url_valid?
+              
+            @start_button.enable
+            else
+              @start_button.disable
+             # Watobo::Plugin::Crawler.start_url = nil
+            end
+        end
 
         def remove_update_timer
           app = FXApp.instance
@@ -265,6 +308,10 @@ module Watobo#:nodoc: all
           prefs.update scope_settings
           prefs.update general_settings
           prefs.update hook_settings
+          
+          unless @cookie_jar.nil?
+            prefs[:cookie_jar] = @cookie_jar
+          end
 
           add_update_timer(250)
 

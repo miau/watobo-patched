@@ -37,11 +37,12 @@ module Watobo#:nodoc: all
       end
 
       def setText(text, prefs={})
+        
         normalized_text = text
         if text.is_a? String
            normalized_text = text.gsub(/[^[:print:]]/,".")
         elsif text.respond_to? :has_body?
-          if text.content_type =~ /(html|xml)/
+          if text.content_type =~ /(xml)/
             doc = Nokogiri::XML(text.body, &:noblanks)
             fbody = doc.to_xhtml( indent:3, indent_text:" ")
             normalized_text = text.headers.map{|h| h.strip }.join("\n")
@@ -54,10 +55,10 @@ module Watobo#:nodoc: all
           end
         end
         
-         @text = normalized_text
+        @text = normalized_text
         #@text = text
         @simple_text_view.max_len = @max_len
-        @simple_text_view.setText(@text, prefs)
+        @simple_text_view.setText(text, prefs)
         @match_pos_label.text = "0/0"
         @match_pos_label.textColor = 'grey'
 
@@ -420,6 +421,7 @@ module Watobo#:nodoc: all
         textviewer_tab = FXTabItem.new(@tabBook, "Text", nil)
         tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
         @textviewer = TextViewer.new( tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
+       # @textviewer = TextView2.new( tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
 
         @textviewer.style = 2
         @textviewer.editable = false

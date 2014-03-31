@@ -5,6 +5,7 @@
   - application\/image
   - application\/pdf
   - application\/.*flash
+  - application\/octet-stream
   - image\/
   :content_length: 100000
 :port: 8081

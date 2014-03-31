@@ -35,7 +35,7 @@ module Watobo#:nodoc: all
             :description => "Enumeration of well known Domino DBs.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
             :check_group => AC_GROUP_DOMINO,
-            :version => "0.9"   # check version
+            :version => "1.0"   # check version
             )
             
             @finding.update(
@@ -69,16 +69,14 @@ module Watobo#:nodoc: all
           
           def generateChecks(chat)            
             begin              
-              if chat.request.url.to_s =~ /(.*)\/\w*\.nsf/ then
+             # if chat.request.url.to_s =~ /(.*)\/\w*\.nsf/ then
                 @domino_dbs.each do |db|
                   checker = proc{
                     test_request = nil
                     test_response = nil
                     test = chat.copyRequest
-                    line = test.shift
-                    line.gsub!(/(\w*\.nsf.*) (HTTP\/.*)/, "#{db} \\2")
-                   # puts line
-                    test.unshift line
+                    
+                    test.replaceFileExt db
                     
                     test_request,test_response = doRequest(test,:default => true)
                     
@@ -110,7 +108,7 @@ module Watobo#:nodoc: all
                   }
                   yield checker
                 end
-              end            
+              #end            
             rescue => bang
               puts bang
               puts "ERROR!! #{Module.nesting[0].name}"

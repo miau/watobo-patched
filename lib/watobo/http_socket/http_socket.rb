@@ -19,34 +19,33 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-# @private 
+# @private
 module Watobo#:nodoc: all
   module HTTPSocket
-    
     def self.close(socket)
-      def close
-        begin
-        #if socket.class.to_s =~ /SSLSocket/
-          if socket.respond_to? :sysclose
-          #socket.io.shutdown(2)
-          socket.sysclose
-          elsif @socket.respond_to? :shutdown
-            puts "SHUTDOWN"
+      #  def close
+      begin
+      #if socket.class.to_s =~ /SSLSocket/
+        if socket.respond_to? :sysclose
+        #socket.io.shutdown(2)
+        socket.sysclose
+        elsif socket.respond_to? :shutdown
+          #puts "SHUTDOWN"
           socket.shutdown(Socket::SHUT_RDWR)
-          end
-          # finally close it
-          if socket.respond_to? :close
-            socket.close
-          end
-          return true
-        rescue => bang
-          puts bang
-          puts bang.backtrace if $DEBUG
         end
-        false
+        # finally close it
+        if socket.respond_to? :close
+        socket.close
+        end
+        return true
+      rescue => bang
+        puts bang
+        puts bang.backtrace if $DEBUG
       end
+      false
+    # end
     end
-    
+
     def self.siteAlive?(chat)
       #puts chat.class
       site = nil
@@ -126,7 +125,7 @@ module Watobo#:nodoc: all
 
       return false
     end
-    
+
     def self.get_ssl_cert_cn( host, port)
       cn = ""
       begin
@@ -157,7 +156,6 @@ module Watobo#:nodoc: all
       end
       cn
     end
-
 
     def self.get_peer_subject(socket)
       begin
@@ -192,24 +190,32 @@ module Watobo#:nodoc: all
           bytes_read += buf.length
           #   end
         rescue EOFError
-          return
+          if $DEBUG
+            puts "#{buf.class} - #{buf}"
+          end
+          # unless buf.nil?
+          #   yield buf if block_given?
+          # end
+          #buf = nil
+          break
+          #return
         rescue Timeout::Error
           puts "!!! Timeout: read_body (max_bytes=#{max_bytes})"
           #puts "* last data seen on socket:"
           # puts buf
           puts $!.backtrace if $DEBUG
-          return
+          break
         rescue => bang
           print "E!"
           puts bang.backtrace if $DEBUG
-        return
+        break
         end
-        # puts bytes_read.to_s
+        break if buf.nil?
         yield buf if block_given?
-        return if max_bytes >= 0 and bytes_read >= max_bytes
+        break if max_bytes >= 0 and bytes_read >= max_bytes
         bytes_to_read -= bytes_read if max_bytes >= 0 && bytes_to_read >= bytes_read
       end
-    #  end
+      return
     end
 
     def self.readChunkedBody(socket)
@@ -279,8 +285,8 @@ module Watobo#:nodoc: all
         #return
           raise
         rescue => bang
-         # puts "!!! READING HEADER:"
-          # puts buf
+        # puts "!!! READING HEADER:"
+        # puts buf
           puts bang
           puts bang.backtrace
           raise
@@ -292,14 +298,14 @@ module Watobo#:nodoc: all
         return if buf.strip.empty?
       end
     end
-    
+
     def self.read_client_header(socket)
       buf = ''
 
       while true
         begin
-          #Timeout::timeout(1.5) do
-             buf = socket.gets
+        #Timeout::timeout(1.5) do
+          buf = socket.gets
           #end
         rescue EOFError => e
           puts "EOFError: #{e}"
@@ -308,9 +314,9 @@ module Watobo#:nodoc: all
           return true
         rescue Errno::ECONNRESET => e
           puts "ECONNRESET: #{e}"
-        #puts "!!! CONNECTION RESET: reading header"
-        #buf = nil
-        #return
+          #puts "!!! CONNECTION RESET: reading header"
+          #buf = nil
+          #return
           #raise
           return false
         rescue Errno::ECONNABORTED => e
@@ -321,14 +327,16 @@ module Watobo#:nodoc: all
           puts "TIMEOUT: #{e}"
           return false
         rescue => bang
-         # puts "!!! READING HEADER:"
-          # puts buf
+        # puts "!!! READING HEADER:"
+        # puts buf
           puts bang
           puts bang.backtrace
           raise
         end
 
         return false if buf.nil?
+        
+       # puts buf
 
         yield buf if block_given?
         return if buf.strip.empty?

@@ -70,10 +70,9 @@ module Watobo#:nodoc: all
             #   puts "body" + chat.response.body.join
             return if chat.response.nil? or chat.response.body.nil?
             if chat.response.content_type =~ /text/ then
-              
+                body = chat.response.body.unpack("C*").pack("C*")
                 @pattern_list.each do |pat|
-
-                  if chat.response.join =~ /(#{pat[1]})/i then
+                  if body =~ /(#{pat[1]})/i then
                     #   puts "!!! MATCH !!!"
                     match = $1
                     addFinding(

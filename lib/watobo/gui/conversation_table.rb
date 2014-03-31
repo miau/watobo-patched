@@ -518,7 +518,8 @@ module Watobo#:nodoc: all
                 FXMenuSeparator.new(menu_pane)
                 [ "G - Goto",
                   "<ctrl-n> - Goto Next",
-                  "<ctrl-N> - Goto Prev"
+                  "<ctrl-N> - Goto Prev",
+                  "<space>  - Edit Comment"
                 ].each do |hk|
                   FXMenuCaption.new(menu_pane, hk).backColor = 'yellow'
                 end
@@ -544,6 +545,8 @@ module Watobo#:nodoc: all
               show_next
             when KEY_N
               show_prev
+            when KEY_f
+              notify(:open_filter_dlg)
             end
             cont = false
           end
@@ -571,6 +574,7 @@ module Watobo#:nodoc: all
         if i >= 0
         selectRow(i, false) 
          setCurrentItem(i, 2)
+         makePositionVisible(i,2)
          end
       end
       
@@ -579,6 +583,7 @@ module Watobo#:nodoc: all
         if i >= 0
         selectRow(i, false) 
          setCurrentItem(i, 2)
+         makePositionVisible(i,2)
          end
       end
       
@@ -601,6 +606,7 @@ module Watobo#:nodoc: all
         selectRow(sel, false)
        
        setCurrentItem(sel, 2)
+       makePositionVisible(i,2)
         
         end
         false

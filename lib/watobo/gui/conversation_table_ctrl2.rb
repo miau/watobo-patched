@@ -172,6 +172,15 @@ module Watobo#:nodoc: all
       
         
         @text_filter = FXTextField.new(pattern_frame, 40, nil, 0, FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X)
+        @text_filter.setFocus()
+        @text_filter.setDefault()
+       
+        @text_filter.connect(SEL_COMMAND){
+           @accept_btn.setFocus()
+           @accept_btn.setDefault()
+        #  self.handle(self, FXSEL(SEL_COMMAND, ID_ACCEPT), nil)
+          true
+        }
         
         [ :url_pattern, :request_pattern, :response_pattern ].each do |k|
           if filter.has_key? k
@@ -179,23 +188,23 @@ module Watobo#:nodoc: all
           end
         end
         # filterOptionsFrame =FXHorizontalFrame.new(fbox, LAYOUT_FILL_X)
-        @foption_url = FXCheckButton.new(pattern_frame, "URL", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+        @foption_url = FXCheckButton.new(pattern_frame, "&URL", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
         state = ( filter.has_key?(:url_pattern) and not filter[:url_pattern].empty? )
         @foption_url.setCheck(state)
        # @foption_url.connect(SEL_COMMAND){ update_text_filter }
-        @foption_req = FXCheckButton.new(pattern_frame, "Request", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+        @foption_req = FXCheckButton.new(pattern_frame, "Re&quest", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
         state = ( filter.has_key?(:request_pattern) and not filter[:request_pattern].empty? )
         @foption_req.setCheck state
        # @foption_req .connect(SEL_COMMAND){ update_text_filter }
-        @foption_res = FXCheckButton.new(pattern_frame, "Response", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+        @foption_res = FXCheckButton.new(pattern_frame, "Res&ponse", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
         state = ( filter.has_key?(:response_pattern) and not filter[:response_pattern].empty? )
         @foption_res.setCheck state
        # @foption_res.connect(SEL_COMMAND){ update_text_filter }
          
        buttons = FXHorizontalFrame.new(main, :opts => LAYOUT_FILL_X)
-          accept = FXButton.new(buttons, "&Apply", nil, self, ID_ACCEPT,
+          @accept_btn = FXButton.new(buttons, "&Apply", nil, self, ID_ACCEPT,
         FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y)
-        accept.enable
+        @accept_btn.enable
         # Cancel
         FXButton.new(buttons, "&Cancel", nil, self, ID_CANCEL,
         FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y)

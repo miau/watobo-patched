@@ -48,42 +48,48 @@ module Watobo#:nodoc: all
         end
         
         def showError(chatid, message)
-          puts "!!! Error"  
+          puts "!!! Error #{Module.nesting[0].name}"  
           puts "Chat: [#{chatid}]"
           puts message
         end
         
         def do_test(chat)
           begin
-            parm_values = []
             minlen = 3
-            return true unless chat.response.content_type =~ /(text|script)/ 
-            chat.request.get_parm_names.each do |parm|              
-              pv = Regexp.quote(chat.request.get_parm_value(parm))
-              parm_values.push pv unless pv.strip.empty? or pv.strip.length < minlen
-            end
-            chat.request.post_parm_names.each do |parm|
-              pv = chat.request.post_parm_value(parm)
-              parm_values.push pv unless pv.strip.empty? or pv.strip.length < minlen
-            end
+            return true unless chat.response.content_type =~ /(text|script)/
+            return true unless chat.response.has_body?
             
-            parm_values.each do |parm_value|
-              
-              pattern = Regexp.quote(CGI.unescape(parm_value))
-              if chat.response.body =~ /<script[^<\/]*#{pattern}/i then
+            parm_list = chat.request.parameters(:data, :url)
+            return true if parm_list.empty?
+            body = chat.response.body.unpack("C*").pack("C*")
+            
+            doc = Nokogiri::HTML(body)
+            scripts = doc.css('script')
+            
+            parm_list.each do |parm|
+              next if parm.value.nil?
+              next if parm.value.empty?
+              next if parm.value.length <= minlen
+                            
+              pattern = Regexp.quote(CGI.unescape(parm.value))
+              scripts.each do |script|
+              if script.text =~ /#{pattern}/i then
                # puts "* Found: Parameter within script"
                 addFinding(
-                           :check_pattern => "#{parm_value}", 
-                :proof_pattern => "#{parm_value}",
-                :chat=>chat,
-                :title =>"[#{parm_value}] - #{chat.request.path}"
+                           :check_pattern => "#{parm.value}", 
+                           :proof_pattern => "#{parm.value}",
+                           :chat=>chat,
+                           :title =>"[#{parm.value}] - #{chat.request.path}"
                 )
+              end
                 
               end
             end
           rescue => bang
             # raise
             showError(chat.id, bang)
+            #puts bang.backtrace
+            
           end
         end
         

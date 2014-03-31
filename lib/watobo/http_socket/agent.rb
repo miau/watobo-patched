@@ -22,7 +22,7 @@
 # @private 
 module Watobo#:nodoc: all
   module HTTPSocket
-    class Agent     
+    class Agent_UNUSED     
 
       include Watobo::Constants
       extend Watobo::Subscriber  

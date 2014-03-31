@@ -51,18 +51,20 @@ module Watobo#:nodoc: all
         end
         
         def showError(chatid, message)
-          puts "!!! Error"  
+          puts "!!! Error #{Module.nesting[0].name}"  
           puts "Chat: [#{chatid}]"
           puts message
         end
         
         def do_test(chat)
           begin
-
+            return false if chat.response.nil?
+            return false unless chat.response.has_body?
             return true unless chat.response.content_type =~ /(text|script)/ 
             
             @fw_patterns.each do |pattern|
-              if chat.response.body =~ /#{pattern[:pattern]}/i then
+              body = chat.response.body.unpack("C*").pack("C*")
+              if body =~ /#{pattern[:pattern]}/i then
                version = $1.strip
                addFinding(
                            :check_pattern => "#{pattern[:pattern]}", 

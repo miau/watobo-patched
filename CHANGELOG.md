@@ -1,3 +1,32 @@
+Version 0.9.15
+==
+Fixes
+--
+**General**
+ * improved socket handling
+ * fixed some UTF-8 issues in passive modules
+ * added application/octet-stream to pass-through content-types
+ * `shapers.rb` didn't replace single quotes in `replace_post_parm`
+ * setting/replacing http-headers is now case-in-sensitive
+
+**Passive Modules**
+ * fixed `Disclosure_ipaddr`; now all IPs inside body are reported
+ 
+**Active Modules**
+ * Domino DB enumeration will now run on all requests
+ 
+**Crawler Plugin**
+ * extended allowed/excluded URL checks on full url path /w query
+
+News
+---
+ * Struts2 module for detecting CVE-2013-2251
+ * Struts2 module for detecting CVE-2013-1966
+ * conversation filter; added some shortcuts
+ * conversation table; added `send to->Crawler`
+ * client certificates; added PKCS12
+ * SAP passive module; extracts SAP headers, e.g. `sap-system`
+ 
 Version 0.9.14
 ===
 Fixes

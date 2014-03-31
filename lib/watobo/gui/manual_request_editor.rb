@@ -145,7 +145,6 @@ module Watobo#:nodoc: all
             end
 
             if dlg.execute != 0 then
-              puts "* Dialog Finished"
                scan_modules = []
                sender.text = "Cancel"
                quick_scan_options = dlg.options
@@ -210,8 +209,13 @@ module Watobo#:nodoc: all
                csrf_requests = []
 
                if quick_scan_options[:update_csrf_tokens] == true
+                 unless csrf_requests.empty?
                   csrf_requests = Watobo::OTTCache.requests(req)
-                  puts "* Got No CSRF Requests!!" if csrf_requests.empty?
+                 else
+                  puts "* No CSRF requests defined for request:"
+                  puts request
+                  puts "---"
+                 end 
                end
 
                run_prefs = {
@@ -482,6 +486,7 @@ module Watobo#:nodoc: all
 
                req_tab = FXTabItem.new(@tabBook, "Request", nil)
                @request_viewer = Watobo::Gui::RequestViewer.new(@tabBook, FRAME_THICK|FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y)
+              
 
                diff_tab = FXTabItem.new(@tabBook, "Differ", nil)
 
@@ -493,7 +498,7 @@ module Watobo#:nodoc: all
 
                @btn_send.connect(SEL_COMMAND, method(:onBtnSendClick))
 
-               add_update_timer(50)
+               add_update_timer(250)
 
             rescue => bang
                puts bang
@@ -510,11 +515,7 @@ module Watobo#:nodoc: all
       @scan_status_lock.synchronize do
 
       if @pbar.total > 0
-        sum_progress = 0
-        @scanner.progress.each_value do |v|
-          sum_progress += v[:progress]
-        end
-        @pbar.progress = sum_progress
+        @pbar.progress = @scanner.sum_progress
       end
       
       if @scanner.finished?
@@ -578,6 +579,7 @@ module Watobo#:nodoc: all
             prefs = Watobo::Conf::Scanner.to_h
           #  puts "= SCANNER PREFS ="
           #  puts prefs[:csrf_patterns]
+          puts prefs.to_yaml
             
 
             current_prefs = {:run_login => @updateSession.checked? ? @runLogin.checked? : false,

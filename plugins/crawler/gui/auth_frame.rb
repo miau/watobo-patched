@@ -113,6 +113,21 @@ module Watobo#:nodoc: all
           def clearEvents(event)
             @event_dispatcher_listener[event].clear
           end
+          
+          def set(settings)
+            return false unless settings.has_key? :auth_type
+            if settings[:auth_type] == :basic
+              @auth_type_dt.value = 1
+              @basic_auth_user_txt.text = settings.has_key?(:username) ? settings[:username] : ""
+              pw = settings.has_key?(:password) ? settings[:password] : ""
+              @basic_auth_passwd_txt.text = pw
+              @basic_auth_retype_txt.text = pw
+              
+            end
+             @switcher.current = @auth_type_dt.value
+             update_form
+             return true
+          end
 
           def to_h
             a = case @auth_type_dt.value
@@ -141,13 +156,13 @@ module Watobo#:nodoc: all
 
           end
 
-          def set(settings)
-            @form_auth_url_txt.text = settings[:form_auth_url].to_s if settings.has_key? :form_auth_url
-            update_form
-          end
+         # def set(settings)
+         #   @form_auth_url_txt.text = settings[:form_auth_url].to_s if settings.has_key? :form_auth_url
+         #   update_form
+         # end
 
           def update_form
-            [   @form_auth_url_txt ].each do |e|
+            [ @form_auth_url_txt, @no_auth_rb, @basic_auth_rb, @form_auth_rb ].each do |e|
               e.handle(self, FXSEL(SEL_UPDATE, 0), nil)
             end
           end

@@ -27,13 +27,11 @@ module Watobo#:nodoc: all
         include Watobo::Constants
         def replace_post_parm(parm,value)
           parm_quoted = Regexp.quote(parm)
-          self.last.gsub!(/([?&]{0,1})#{parm_quoted}=([0-9a-zA-Z\-\._,+<>\%!=]*)(&{0,1})/i, "\\1#{parm}=#{value}\\3")
+          self.last.gsub!(/([?&]{0,1})#{parm_quoted}=([^&]*)(&{0,1})/i, "\\1#{parm}=#{value}\\3")
         end
 
         def replace_get_parm(parm,value)
           parm_quoted = Regexp.quote(parm)
-          # puts "replacing parameter #{parm} with value #{value}"
-          # self.first.gsub!(/([?&]{0,1})#{parm}=([0-9a-zA-Z\-\._,+<>\%!=]*)(&{0,1})/i, "\\1#{parm}=#{value}\\3")
           self.first.gsub!(/([?&]{1})#{parm_quoted}=([^ &]*)(&{0,1})/i, "\\1#{parm}=#{value}\\3")
         end
 
@@ -42,7 +40,6 @@ module Watobo#:nodoc: all
         end
 
         def replaceFileExt(new_file)
-          #   puts "replace element #{new_element}"
           begin
             file = new_file.strip
             file.gsub!(/^\//, "")
@@ -53,9 +50,8 @@ module Watobo#:nodoc: all
         end
 
         def replaceElement(new_element)
-          #   puts "replace element #{new_element}"
           new_element.gsub!(/^\//, "")
-          self.first.gsub!(/(.*\/)(.*) (HTTP.*)/i,"\\1#{new_element} \\3")
+          self.first.gsub!(/([^\?]*\/)(.*) (HTTP.*)/i,"\\1#{new_element} \\3")
         end
 
         def replaceURL(new_url)
@@ -370,7 +366,7 @@ module Watobo#:nodoc: all
           begin
             new_header = "#{header}: #{value}\r\n"
           self.each_with_index do |h, i|
-            if h =~ /^#{Regexp.quote(header)}:/
+            if h =~ /^#{Regexp.quote(header)}:/i
               h.replace(new_header)
               return true
             end

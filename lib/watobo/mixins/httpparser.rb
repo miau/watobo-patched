@@ -53,7 +53,7 @@ module Watobo#:nodoc: all
       def file
         #@file ||= nil
         #return @file unless @file.nil?
-        if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/(.*) HTTP.*/
+        if self.first =~ /^[^[:space:]]{1,} [a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/(.*) HTTP.*/
           tmp = $1
           end_of_file_index = tmp.index(/\?/)
 
@@ -73,7 +73,7 @@ module Watobo#:nodoc: all
       def file_ext
         #@file_ext ||= nil
         #return @file_ext unless @file_ext.nil?
-        if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/(.*) HTTP.*/
+        if self.first =~ /^[^[:space:]]{1,} [a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}[^\?]*\/(.*) HTTP.*/
           @file_ext = $1
         else
           @file_ext = ''
@@ -98,7 +98,7 @@ module Watobo#:nodoc: all
       end
 
       def method
-        if self.first =~ /(^[^[:space:]]{1,}) http/i then
+        if self.first =~ /(^[^[:space:]]{1,}) [a-zA-Z]+:\/\//i then
           return $1
         else
           return nil
@@ -128,7 +128,7 @@ module Watobo#:nodoc: all
       # http://www.mysite.com:80/my/path/show.php?p=aaa&debug=true
       # path = "my/path/show.php"
       def path
-        if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/([^\?]*).* HTTP/i then
+        if self.first =~ /^[^[:space:]]{1,} [a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/([^\?]*).* HTTP/i then
           return $1
         else
           return ""
@@ -137,7 +137,7 @@ module Watobo#:nodoc: all
 
       # path_ext = "my/path/show.php?p=aaa&debug=true"
       def path_ext
-        if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/(.*) HTTP\//i then
+        if self.first =~ /^[^[:space:]]{1,} [a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/(.*) HTTP\//i then
           return $1
         else
           return ""
@@ -145,7 +145,7 @@ module Watobo#:nodoc: all
       end
 
       def dir
-        if self.first =~ /^[^[:space:]]{1,} https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/([^\?]*)\/.* HTTP/i then
+        if self.first =~ /^[^[:space:]]{1,} [a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}\/([^\?]*)\/.* HTTP/i then
           return $1
         else
           return ""
@@ -176,7 +176,7 @@ module Watobo#:nodoc: all
         cl = self.first.gsub(/\?+/,"?")
         cl.gsub!(/ HTTP.*/, '')
         dummy = cl.split('?').first
-        if dummy =~ /^[^[:space:]]{1,} (https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}).*\/(.*)/i then
+        if dummy =~ /^[^[:space:]]{1,} ([a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}).*\/(.*)/i then
           return $2
         else
           return ""
@@ -199,12 +199,11 @@ module Watobo#:nodoc: all
       end
 
       def proto
-       # @proto ||= nil
-       # return @proto unless @proto.nil?
-        @proto = "http" if self.first =~ /^[^[:space:]]{1,} http:\/\//i
-        #  puts dummy
-        @proto = "https" if self.first =~ /^[^[:space:]]{1,} https:\/\//i
-        @proto
+        proto = "unknown"
+        if self.first =~ /^[^[:space:]]{1,} ([a-zA-Z]+):\/\//i
+          proto = $1
+        end
+        proto
       end
 
       def is_ssl?
@@ -223,7 +222,7 @@ module Watobo#:nodoc: all
       def url_string
         url = ''        
         #return @url unless @url.nil?
-        if self.first =~ /^[^[:space:]]{1,} (https?:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}.*) HTTP\//i then
+        if self.first =~ /^[^[:space:]]{1,} ([a-zA-Z]+:\/\/[\-0-9a-zA-Z.]*[:0-9]{0,6}.*) HTTP\//i then
           url = $1
         end
         url
@@ -232,7 +231,7 @@ module Watobo#:nodoc: all
       def site
         #@site ||= nil
         #return @site unless @site.nil?
-        if self.first =~ /^[^[:space:]]{1,} (https?):\/\/([\-0-9a-zA-Z.]*)([:0-9]{0,6})/i then
+        if self.first =~ /^[^[:space:]]{1,} ([a-zA-Z]+):\/\/([\-0-9a-zA-Z.]*)([:0-9]{0,6})/i then
           host = $2
           port_extension = $3
           proto = $1
@@ -251,7 +250,8 @@ module Watobo#:nodoc: all
       def host
         #@host ||= nil
         #return @host unless @host.nil?
-        if self.first =~ /^[^[:space:]]{1,} https?:\/\/([\-0-9a-zA-Z.]*)[:0-9]{0,6}/i then
+        #if self.first =~ /^[^[:space:]]{1,} https?:\/\/([\-0-9a-zA-Z.]*)[:0-9]{0,6}/i then
+        if self.first =~ /^[^[:space:]]{1,} [a-zA-Z]+:\/\/([\-0-9a-zA-Z.]*)[:0-9]{0,6}/i then
           @host = $1
         else
           @host = ''
@@ -607,6 +607,7 @@ def content_encoding
         rescue
           return nil
         end
+        nil
       end
       
       def body_is_text?

@@ -45,22 +45,25 @@ module Watobo#:nodoc: all
             )
           
           @pattern = '[^\d\.](\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})[^(\d\.)]+?'
+          
           @known_ips = []
         end
         
         def do_test(chat)
           begin
             #  puts "running module: #{Module.nesting[0].name}"
+            return false if chat.response.nil?
+            return false unless chat.response.has_body?
             if chat.response.content_type =~ /text/ then
-              if chat.response.each do |line|
-                  if line =~ /#{@pattern}/ then
-                    ip_addr = $1
-                    octets = ip_addr.split('.')
-                    isIP = true
-                    octets.each do |o|
+               body = chat.response.body.unpack("C*").pack("C*")
+               body.scan(/#{@pattern}/) { |match|
+                  ip_addr = match.first
+                  octets = ip_addr.split('.')
+                  isIP = true
+                  octets.each do |o|
                       isIP = false if o.to_i > 255 
-                    end
-                    if isIP then
+                  end
+                  if isIP then
                     title = "IP: #{ip_addr}"
                     dummy = chat.request.site + ":" + ip_addr
                     if not @known_ips.include?(dummy)
@@ -69,11 +72,8 @@ module Watobo#:nodoc: all
                                   :title => title)  
                       @known_ips.push dummy
                     end
-                    end
-                  end
-                  
-                end
-              end
+                  end                  
+             }
             end
           rescue => bang
             #  raise

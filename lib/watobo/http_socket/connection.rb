@@ -22,7 +22,7 @@
 # @private 
 module Watobo#:nodoc: all
   module HTTPSocket
-    class Connection
+    class Connection_UNUSED
 
       include Watobo::Constants
       extend Watobo::Subscriber

@@ -60,18 +60,20 @@ module Watobo#:nodoc: all
         end
         
         def showError(chatid, message)
-          puts "!!! Error"  
+          puts "!!! Error #{Module.nesting[0].name}"  
           puts "Chat: [#{chatid}]"
           puts message
         end
         
         def do_test(chat)
           begin
-
+            return false if chat.response.nil?
+            return false unless chat.response.has_body?
             return true unless chat.response.content_type =~ /(text|script)/ 
             
             @dom_functions.each do |pattern|
-              if chat.response.body =~ /(#{pattern})/i then
+              body = chat.response.body.unpack("C*").pack("C*")
+              if body =~ /(#{pattern})/i then
                match = $1.strip
                match.gsub!(/^[\.\(\)]+/,'')
                match.gsub!(/[\.\(\)]+$/,'')

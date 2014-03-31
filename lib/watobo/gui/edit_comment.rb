@@ -29,7 +29,7 @@ module Watobo#:nodoc: all
 
       def initialize(owner, chat)
         #super(owner, "Edit Target Scope", DECOR_TITLE|DECOR_BORDER, :width => 300, :height => 425)
-        super(owner, "Edit Comment", DECOR_ALL, :width => 300, :height => 150)
+        super(owner, "Edit Comment - Chat #{chat.id}", DECOR_ALL, :width => 300, :height => 150)
 
         base_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
 

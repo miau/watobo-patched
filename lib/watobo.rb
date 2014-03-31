@@ -23,6 +23,7 @@
 #Encoding: UTF-8
 require 'rubygems'
 require 'yaml'
+require 'json'
 require 'thread'
 require 'socket'
 require 'timeout'
@@ -63,7 +64,7 @@ dont_know_why_REQUIRE_hangs = Mechanize.new
 # @private 
 module Watobo#:nodoc: all #:nodoc: all
 
-  VERSION = "0.9.14"
+  VERSION = "0.9.15"
 
   def self.base_directory
     @base_directory ||= ""

@@ -134,10 +134,6 @@ module Watobo#:nodoc: all
         @opts.update opts
         @opts[:head_request_pattern] = '' if @opts[:head_request_pattern].nil? 
         
-        if $DEBUG
-        puts "* initializing crawler engine"
-        puts @opts.to_yaml
-        end
         @stats = {
           :total_requests => 0
         }
@@ -184,7 +180,11 @@ false
         @engine_status = CRAWL_RUNNING
         
         @opts.update opts
-        @opts[:head_request_pattern] = '' if @opts[:head_request_pattern].nil? 
+        @opts[:head_request_pattern] = '' if @opts[:head_request_pattern].nil?
+        
+        puts "crawler settings:"
+        puts @opts.to_json
+ 
 
         @link_queue = Queue.new
         @page_queue = Queue.new
@@ -204,12 +204,8 @@ false
 
         @link_queue.enq LinkBag.new(start_link, 0)
 
-puts "[Crawler] Engine Settings:"
-@opts.each do |k,v|  
-    puts "#{k}: #{v}"
-end
-puts "---"
- notify(:log, "Crawling #{url} started ..." )
+
+        notify(:log, "Crawling #{url} started ..." )
 
         @opts[:max_threads].times do |i|
           g = Grabber.new(@link_queue, @page_queue, @opts )
@@ -295,7 +291,8 @@ end
         page.links.each do |l|
           begin
           link = l
-          
+          next if l.href.nil?
+           
           link = page.uri.merge l.uri unless l.href =~ /^http/
         #  puts "FOLLOW LINK #{link} ?"
           if follow_link? link
@@ -306,6 +303,7 @@ end
           end 
           rescue => bang
             puts bang
+            puts bang.backtrace if $DEBUG            
           end
         end
 
@@ -415,11 +413,11 @@ end
 def url_allowed?(uri)   
  # puts "* excluded_urls"
  # puts exluded_urls
-  return false if excluded_urls.select{ |url| uri.path =~ /#{url}/ }.length > 0
+  return false if excluded_urls.select{ |url| uri.path_ext =~ /#{url}/ }.length > 0
  # puts "* allowed_urls"
  # puts allowed_urls  
   return true if allowed_urls.empty?
-  return true if allowed_urls.select{ |url| uri.path =~ /#{url}/ }.length > 0
+  return true if allowed_urls.select{ |url| uri.path_ext =~ /#{url}/ }.length > 0
  # puts "> URL is NOT allowed"
   return false
 end

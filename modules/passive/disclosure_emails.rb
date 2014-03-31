@@ -45,29 +45,28 @@ module Watobo#:nodoc: all
           )
           
           valid = '[a-zA-Z\d\.+-]+'
-          @pattern = "#{valid}@#{valid}\\.(#{valid}){2}"
+          @pattern = "(#{valid}@#{valid}\\.(#{valid}){2})"
           @mail_list = []
         end
         
         def do_test(chat)
           begin
             #  puts "running module: #{Module.nesting[0].name}"
+            return false if chat.response.nil?
+            return false unless chat.response.has_body?
             if chat.response.content_type =~ /text/ and not chat.response.content_type =~ /text.csv/ then
-            if chat.response.each do |line|
-                if line =~ /(#{@pattern})/ then
-                  match = $1
-                  if not @mail_list.include?(match) then
+              body = chat.response.body.unpack("C*").pack("C*")
+              body.scan(/#{@pattern}/) { |m|
+                  match = m.first
+                  unless @mail_list.include?(match) then
                     @mail_list.push match
                     addFinding( 
-                                         :proof_pattern => "#{match}", 
-                                         :chat => chat,
-                                         :title => match
-                                         )
-                                         end
-                end
-                
-              end
-            end
+                                :proof_pattern => "#{match}", 
+                                :chat => chat,
+                                :title => match
+                                )
+                  end
+              }
             end
           rescue => bang
           #  raise

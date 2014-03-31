@@ -54,9 +54,12 @@ module Watobo#:nodoc: all
         def do_test(chat)
           begin
             #  puts "running module: #{Module.nesting[0].name}"
+            return false if chat.response.nil?
+            return false unless chat.response.has_body?
             if chat.response.content_type =~ /(text|script)/ and chat.response.status !~ /404/ then
-              if chat.response.each do |chunk|
-                  chunk.split(/\n/).each do |line|
+             
+              body = chat.response.body.unpack("C*").pack("C*")
+                body.split(/\n/).each do |line|
                     @pattern_list.each do |ext|
                       if line =~ /([\w%\/\\\.:-]*\.#{ext})[^\w]/ then
                         match = $1
@@ -71,8 +74,6 @@ module Watobo#:nodoc: all
                           @known_functions.push match
                         end
                       end                  
-                    end
-                  end
                 end
               end
             end
@@ -80,6 +81,7 @@ module Watobo#:nodoc: all
             #  raise
             puts "ERROR!! #{Module.nesting[0].name}"
             puts bang
+            puts bang.backtrace
           end
         end
       end

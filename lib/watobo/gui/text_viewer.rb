@@ -255,10 +255,12 @@ module Watobo#:nodoc: all
       end
 
       def normalizeText(text)
+        puts text
+        return "" if text.nil?
+        
         ntext = "#{text}"
         ntext.gsub!("\r",'')
-
-        return "" if text.nil?
+       
         #   t = text.join.gsub(/\r/,"") if text.is_a? Array
         last = 0
         while last < text.length
@@ -277,7 +279,7 @@ module Watobo#:nodoc: all
           end
         end
 
-        ntext
+        ntext        
       end
 
       def log(text)

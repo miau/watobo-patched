@@ -54,6 +54,7 @@ module Watobo#:nodoc: all
         end
         settings[:custom_error_patterns] = dummy
         
+      puts settings.to_json
         return settings
       end
       

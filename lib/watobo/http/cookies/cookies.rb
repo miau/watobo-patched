@@ -50,7 +50,9 @@ module Watobo#:nodoc: all
              puts "NEW COOKIE: #{name} - #{value}"
              cookie_prefs[:name] = name
              cookie_prefs[:value] = value
-             cookie_list << Watobo::CookieParameter.new(cookie_prefs)
+             cookie = Watobo::CookieParameter.new(cookie_prefs)
+             yield cookie if block_given?
+             cookie_list << cookie
             end
           end
         end

@@ -127,6 +127,10 @@ module Watobo#:nodoc: all
             @dbvars.each_key do |k| dummy << k; end
             pattern = "(#{dummy.join("|")})" if dummy.length > 0
             @catalog_checks.each do |dbid, osvdb, threat, uri, method, match, or_match, and_match, fail, or_fail, summary, post_data, headers|
+               next if uri =~ /\/$/
+               @catalog_checks << [ dbid, osvdb, threat, "#{uri}/", method, match, or_match, and_match, fail, or_fail, summary, post_data, headers ]    
+            end
+            @catalog_checks.each do |dbid, osvdb, threat, uri, method, match, or_match, and_match, fail, or_fail, summary, post_data, headers|
 
               if pattern and uri =~ /(#{pattern})/
                 key = $1
@@ -740,7 +744,7 @@ module Watobo#:nodoc: all
       end
       
       def start_update_timer
-         @timer = FXApp.instance.addTimeout( 250, :repeat => true) {
+         @timer = FXApp.instance.addTimeout( 1000, :repeat => true) {
            unless @scanner.nil?
              progress = @scanner.progress
              sum_progress = progress.values.inject(0){|i, v|  i += v[:progress] }
@@ -750,7 +754,8 @@ module Watobo#:nodoc: all
             if @scanner.finished?             
               msg = "Scan Finished!"              
               @log_viewer.log(LOG_INFO, msg)
-              Watobo.log(msg, :sender => "Catalog")              
+              Watobo.log(msg, :sender => "Catalog")
+              @scanner.stop              
               @scanner = nil
               reset_pbar()
                

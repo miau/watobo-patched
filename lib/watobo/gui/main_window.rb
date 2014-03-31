@@ -450,9 +450,9 @@ module Watobo#:nodoc: all
           #puts @project.getWwwAuthentication().to_yaml
           #@settings[:password_policy][:save_passwords] = ccdlg.savePasswords?
           puts "* got client certificate settings"
-          puts ccdlg.client_certificates.to_yaml
-          Watobo.project.client_certificates = ccdlg.client_certificates
-          Watobo::Interceptor.proxy.client_certificates = ccdlg.client_certificates
+          #puts ccdlg.client_cert_settings.to_yaml
+        #  Watobo.project.client_certificates = ccdlg.client_certificates
+         # Watobo::Interceptor.proxy.client_certificates = ccdlg.client_certificates
          # saveProjectSettings(@project)
           Watobo::Gui.save_settings()
           # Watobo::Gui.save_default_settings(@project)
@@ -499,6 +499,17 @@ module Watobo#:nodoc: all
           sqlmap = Watobo::Plugin::Sqlmap::Gui.new(FXApp.instance, @project, chat)
           sqlmap.create
           sqlmap.show(Fox::PLACEMENT_SCREEN)
+        rescue => bang
+        puts "!!! could not open fuzzer"
+        puts bang
+        end
+      end
+      
+       def open_plugin_crawler(chat)
+        begin
+          plugin = Watobo::Plugin::Crawler::Gui.new(FXApp.instance, @project, chat)
+          plugin.create
+          plugin.show(Fox::PLACEMENT_SCREEN)
         rescue => bang
         puts "!!! could not open fuzzer"
         puts bang
@@ -1146,6 +1157,7 @@ module Watobo#:nodoc: all
         super(app, "WATOBO by siberas (Version: #{Watobo.version})", :opts => DECOR_ALL, :width => 1000, :height => 600)
         #FXToolTip.new(app)
         #app.disableThreads
+        @app = app
 
         self.icon = ICON_WATOBO
         self.show(PLACEMENT_MAXIMIZED)
@@ -1481,6 +1493,23 @@ request_splitter.connect(SEL_COMMAND){
                end
          
          }
+         
+        @chatTable.subscribe(:open_filter_dlg){|chat|
+         puts "#{self} Open Filter Dialog"
+         dlg = Watobo::Gui::ConversationFilterDialog.new(self, @conversation_table_ctrl.filter)
+          if dlg.execute != 0
+            #puts dlg.filter_settings.to_yaml
+            filter = dlg.filter_settings
+            
+            unless @chatTable.nil?
+              getApp().beginWaitCursor do
+                @chatTable.apply_filter(filter)           
+              end
+            end
+                   
+          end
+         
+         }
 
         @chatTable.connect(SEL_RIGHTBUTTONRELEASE) do |sender, sel, event|
           @findings_tree.killSelection()
@@ -1514,6 +1543,10 @@ request_splitter.connect(SEL_COMMAND){
                   target = FXMenuCommand.new(sendto_menu, "SQLmap..." )
                   target.connect(SEL_COMMAND) {
                     open_plugin_sqlmap(chat)
+                  }
+                  target = FXMenuCommand.new(sendto_menu, "Crawler..." )
+                  target.connect(SEL_COMMAND) {
+                    open_plugin_crawler(chat)
                   }
 
                 end
@@ -1849,9 +1882,11 @@ request_splitter.connect(SEL_COMMAND){
         #  puts "! #{Thread.list.length} Threads running"
         response = FXMessageBox.question(self, MBOX_YES_NO, "Finished?", "Are you sure?")
         if response == MBOX_CLICKED_YES
-        return 0
+          @app.handleTimeouts
+          # puts "Num. Threads: #{Thread.list.length}"
+          getApp().exit(0)
         else
-        return 1
+         1
         end
       end
 

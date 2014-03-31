@@ -92,10 +92,9 @@ module Watobo#:nodoc: all
         if id_string == '' then
         id_string = (Time.now.to_i + rand(10000)).to_s
         end
-        puts id_string
         #
         new_details[:fid] = Digest::MD5.hexdigest(id_string)
-        puts new_details[:fid]
+       
         puts new_details[:fid] if $DEBUG
 
         new_details[:module] = self.class.to_s

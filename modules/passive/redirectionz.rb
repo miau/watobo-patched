@@ -45,7 +45,7 @@ module Watobo#:nodoc: all
         end
         
         def showError(chatid, message)
-          puts "!!! Error"  
+          puts "!!! Error #{Module.nesting[0].name}"  
           puts "Chat: [#{chatid}]"
           puts message
         end

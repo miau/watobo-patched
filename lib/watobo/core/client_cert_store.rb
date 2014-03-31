@@ -1,5 +1,5 @@
 # .
-# core.rb
+# client_cert_store.rb
 # 
 # Copyright 2013 by siberas, http://www.siberas.de
 # 
@@ -19,6 +19,29 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-%w( subscriber client_cert_store sid_cache ott_cache parameter conversation chat findings chats active_checks passive_checks scope passive_scanner scanner3 finding project scanner proxy session fuzz_gen interceptor passive_check active_check cookie request response intercept_filter intercept_carver plugin forwarding_proxy cert_store netfilter_queue ).each do |lib|
-  require File.join( "watobo", "core", lib)
+ @private 
+module Watobo#:nodoc: all
+  module ClientCertStore#:nodoc: all
+    @client_certs = {}
+    
+#    :ssl_client_cert
+#    :ssl_client_key
+#    :extra_chain_certs
+    
+    def self.clear
+      @client_certs.clear
+    end
+    
+    def self.set( site, cert )
+      return false if cert.nil?
+      @client_certs[ site.to_sym ] = cert
+      true
+    end
+    
+    def self.get( site )
+      return nil unless @client_certs.has_key? site.to_sym
+      @client_certs[ site.to_sym ]
+    end
+    
+end
 end

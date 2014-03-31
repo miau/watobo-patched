@@ -30,11 +30,6 @@ module Watobo#:nodoc: all
         applyPolicy(policy)
       end
 
-      def isElementChecked_UNUSED(data)
-        item = @tree.findItemByData(data)
-        item.checked
-      end
-
       def applyPolicy(policy=nil)
         #return false if policy.nil?
         tree_elements = []
@@ -65,6 +60,7 @@ module Watobo#:nodoc: all
             :enabled => false,
             :data => check
           }
+          puts a[:name]
           tree_elements.push a
         end
 

@@ -102,18 +102,18 @@ module Watobo#:nodoc: all
           @sid_cache.update_request(request) if current_prefs[:update_session] == true
 
           #---------------------------------------
-          request.removeHeader("^Proxy-Connection") #if not use_proxy
-          #request.removeHeader("^Connection") #if not use_proxy
-          request.removeHeader("^Accept-Encoding")
+         # request.removeHeader("^Proxy-Connection") #if not use_proxy
+         # request.removeHeader("^Connection") #if not use_proxy
+          #request.removeHeader("^Accept-Encoding")
           # If-Modified-Since: Tue, 28 Oct 2008 11:06:43 GMT
           # If-None-Match: W/"3975-1225192003000"
-          request.removeHeader("^If-")
+          # request.removeHeader("^If-")
           #  puts
           #  request.each do |line|
           #  puts line.unpack("H*")
           #end
           #puts
-          if current_prefs[:update_contentlength] == true then
+          if current_prefs[:update_contentlength] == true and request.has_body? then
             request.fix_content_length()
           end
 
@@ -170,23 +170,30 @@ module Watobo#:nodoc: all
             #  timeout(6) do
             #puts "* no proxy - direct connection"
             tcp_socket = TCPSocket.new( host, port )
-            optval = [1, 5000].pack("I_2")
-            tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
-            tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval    
+            #optval = [1, 5000].pack("I_2")
+            #tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
+            #tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval    
             tcp_socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)    
-            tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1
+            #tcp_socket.setsockopt Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1
+            tcp_socket.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
+            
             tcp_socket.sync = true
 
             socket =  tcp_socket
             if request.is_ssl?
               ssl_prefs = {}
               ssl_prefs[:ssl_cipher] = current_prefs[:ssl_cipher] if current_prefs.has_key? :ssl_cipher
-              if current_prefs.has_key? :client_certificates
-                if current_prefs[:client_certificates].has_key? request.site
-                  puts "* use ssl client certificate for site #{request.site}" if $DEBUG
-                  ssl_prefs[:ssl_client_cert] = current_prefs[:client_certificates][request.site][:ssl_client_cert] 
-                ssl_prefs[:ssl_client_key] = current_prefs[:client_certificates][request.site][:ssl_client_key]
-                end
+              #if current_prefs.has_key? :client_certificates
+              #  if current_prefs[:client_certificates].has_key? request.site
+              #    puts "* use ssl client certificate for site #{request.site}" if $DEBUG
+              #    ssl_prefs[:ssl_client_cert] = current_prefs[:client_certificates][request.site][:ssl_client_cert] 
+              #    ssl_prefs[:ssl_client_key] = current_prefs[:client_certificates][request.site][:ssl_client_key]
+              #  end              
+              #end
+              unless Watobo::ClientCertStore.get(site).nil?
+               # puts "* using client cert for site #{site}"
+                client_cert = Watobo::ClientCertStore.get(site)
+                ssl_prefs[:client_certificate] = client_cert
               end
               socket = sslConnect(tcp_socket, ssl_prefs)
             end
@@ -194,11 +201,10 @@ module Watobo#:nodoc: all
             # remove URI before sending request but cache it for restoring request
             uri_cache = nil
             uri_cache = request.removeURI #if proxy.nil?
-
+            # request.addHeader("Proxy-Connection", "Close") unless proxy.nil?
+            # request.set_header("Accept-Encoding", "gzip;q=0;identity; q=0.5, *;q=0") #don't want encoding
             
-           # request.addHeader("Proxy-Connection", "Close") unless proxy.nil?
-           # request.addHeader("Accept-Encoding", "gzip;q=0;identity; q=0.5, *;q=0") #don't want encoding
-            
+            # request.set_header("Connection", "close") unless request.has_header?("Upgrade") 
 
             if current_prefs[:www_auth].has_key?(site)
               case current_prefs[:www_auth][site][:type]
@@ -212,25 +218,20 @@ module Watobo#:nodoc: all
               end
             else
               # puts "========== Add Headers"
-             # request.addHeader("Connection", "Close") #if not use_proxy
+             
+              request.addHeader("Connection", "Close") #if not use_proxy
 
               data = request.join
               unless request.has_body? 
                 data << "\r\n" unless data =~ /\r\n\r\n$/ 
               end
-           #  puts "= SESSION ="
-           #  puts data
+            # puts "= SESSION ="
+            # puts data
            #  puts data.unpack("H*")[0]#.gsub(/0d0a/,"0d0a\n")
-              
+             # puts "---"
               unless socket.nil?                
                 socket.print data
                 socket.flush
-                # tell finished sending data
-                if socket.is_a? OpenSSL::SSL::SSLSocket
-                  socket.io.shutdown(Socket::SHUT_WR)
-                else
-                  socket.shutdown(Socket::SHUT_WR)
-                end
                 response_header = readHTTPHeader(socket, current_prefs)
               end
               # RESTORE URI FOR HISTORY/LOG
@@ -297,6 +298,7 @@ module Watobo#:nodoc: all
           # unless @session[:csrf_requests].empty? or @session[:csrf_patterns].empty?
           unless Watobo::OTTCache.requests(request).empty? or @session[:update_otts] == false
             Watobo::OTTCache.requests(request).each do |req|
+              
               copy = Watobo::Request.new YAML.load(YAML.dump(req))
 
               #updateCSRFToken(csrf_cache, copy)
@@ -338,8 +340,8 @@ module Watobo#:nodoc: all
           if @session[:follow_redirect]
  # puts response.status
   if response.status =~ /^302/
-    response.extend Watobo::Mixin::Parser::Web10
-    request.extend Watobo::Mixin::Shaper::Web10
+    #response.extend Watobo::Mixin::Parser::Web10
+    #request.extend Watobo::Mixin::Shaper::Web10
 
     loc_header = response.headers("Location:").first
     new_location = loc_header.gsub(/^[^:]*:/,'').strip
@@ -597,10 +599,10 @@ end
           {:workstation => ntlm_credentials[:workstation], :ntlmv2 => true})
 
           #     puts "* NTLM-Credentials: #{ntlm_credentials[:username]},#{ntlm_credentials[:password]}, #{ntlm_credentials[:domain]}, #{ntlm_credentials[:workstation]}"
-          auth_request.removeHeader("Authorization")
-          auth_request.removeHeader("Connection")
+          #auth_request.removeHeader("Authorization")
+          #auth_request.removeHeader("Connection")
 
-          auth_request.addHeader("Connection", "Close")
+          auth_request.set_header("Connection", "Close")
 
           msg = "NTLM " + t3.encode64
           auth_request.addHeader("Authorization", msg)
@@ -666,19 +668,24 @@ end
                         puts "= KEY ="
                         puts ctx.key.display
                         puts "---"
-                      end    
-              
+                      end                 
 
           end
           # @ctx.tmp_dh_callback = proc { |*args|
           #  OpenSSL::PKey::DH.new(128)
           #}
+          if current_prefs.has_key? :client_certificate
+             ccp = current_prefs[:client_certificate]
+             ctx.cert = ccp[:ssl_client_cert]
+            ctx.key = ccp[:ssl_client_key]
+            ctx.extra_chain_cert = ccp[:extra_chain_certs] if ccp.has_key?(:extra_chain_certs)
+          end
 
           socket = OpenSSL::SSL::SSLSocket.new(tcp_socket, ctx)
           socket.sync_close = true
 
           socket.connect
-          socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
+          #socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
           puts "[SSLconnect]: #{socket.state}" if $DEBUG
           return socket
         rescue => bang
@@ -705,7 +712,9 @@ end
           #  timeout(6) do
 
           tcp_socket = TCPSocket.new( proxy.host, proxy.port)
-          tcp_socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
+          tcp_socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)    
+          #tcp_socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
+          tcp_socket.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
           tcp_socket.sync = true
           #  end
           #  puts "* sslProxyConnect"
@@ -907,7 +916,7 @@ end
 
         t2 = Net::NTLM::Message.decode64(ntlm_challenge)
         t3 = t2.response({:user => proxy.username, :password => proxy.password, :workstation => proxy.workstation, :domain => proxy.domain}, {:ntlmv2 => true})
-        request.removeHeader("Proxy-Authorization")
+        #request.removeHeader("Proxy-Authorization")
         #  request.removeHeader("Proxy-Connection")
 
         #  request.addHeader("Proxy-Connection", "Close")
@@ -974,6 +983,8 @@ end
 
           tcp_socket = TCPSocket.new( proxy.host, proxy.port)
           tcp_socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
+          tcp_socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+          tcp_socket.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)    
           tcp_socket.sync = true
           #  end
 
@@ -1060,15 +1071,9 @@ end
         header = []
         msg = nil
         begin
-          # signal finished sending before reading
-         # if socket.is_a? OpenSSL::SSL::SSLSocket
-            # socket.io.close_write
-         # else
-         #    socket.close_write
-         # end                
-                
+
           Watobo::HTTPSocket.read_header(socket) do |line|
-            #puts line
+           # puts line
             # puts line.unpack("H*")
             header.push line
           end
