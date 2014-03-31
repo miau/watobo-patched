@@ -62,6 +62,7 @@ module Watobo
         # get project path
         if dir.nil?
           @tmp_dir = File.join(Watobo.temp_directory,"sqlmap")
+          Dir.mkdir @tmp_dir unless File.exist? @tmp_dir
         else
           @tmp_dir = dir if File.exist? dir
         end

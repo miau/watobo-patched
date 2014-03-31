@@ -1,3 +1,6 @@
+= Version 0.9.10
+* fixed sqlmap temp directory
+
 = Version 0.9.9
 == NEW
 * [Module] Time-based SQL injection module
