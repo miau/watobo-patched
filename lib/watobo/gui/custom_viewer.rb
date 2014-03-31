@@ -191,6 +191,9 @@ module Watobo#:nodoc: all
       
       def load_handler(file)
         @handler = nil
+        @handler_status_lbl.text = "No handler!"
+        @handler_status_lbl.textColor = "red"
+        
         return false if file.nil?
         return false unless File.exist? file
         begin

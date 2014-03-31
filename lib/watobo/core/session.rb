@@ -196,6 +196,8 @@ module Watobo#:nodoc: all
                 ssl_prefs[:client_certificate] = client_cert
               end
               socket = sslConnect(tcp_socket, ssl_prefs)
+             # puts "SSLSocket " + (socket.nil? ? "NO" : "OK")
+              return nil, request, [] if socket.nil?
             end
             #puts socket.class
             # remove URI before sending request but cache it for restoring request
@@ -273,7 +275,7 @@ module Watobo#:nodoc: all
           puts bang
           puts bang.backtrace if $DEBUG
         end
-        puts response
+        #puts response
         return socket, request, response
       end
 
@@ -333,6 +335,7 @@ module Watobo#:nodoc: all
 
           if socket.nil?
             return request, response
+            #return request, nil
           end
 
           @sid_cache.update_sids(request.site, response.headers) if @session[:update_sids] == true
@@ -688,6 +691,11 @@ end
           #socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
           puts "[SSLconnect]: #{socket.state}" if $DEBUG
           return socket
+        rescue OpenSSL::SSL::SSLError => e
+         # puts "[SSLconnect] Failure"
+         # puts e      
+          raise e    
+          #return nil
         rescue => bang
           if current_prefs[:ssl_cipher].nil?
             puts "[SSLconnect] ... gr#!..*peep*.. "

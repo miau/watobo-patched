@@ -413,11 +413,11 @@ end
 def url_allowed?(uri)   
  # puts "* excluded_urls"
  # puts exluded_urls
-  return false if excluded_urls.select{ |url| uri.path_ext =~ /#{url}/ }.length > 0
+  return false if excluded_urls.select{ |url| uri.path =~ /#{url}/ }.length > 0
  # puts "* allowed_urls"
  # puts allowed_urls  
   return true if allowed_urls.empty?
-  return true if allowed_urls.select{ |url| uri.path_ext =~ /#{url}/ }.length > 0
+  return true if allowed_urls.select{ |url| uri.path =~ /#{url}/ }.length > 0
  # puts "> URL is NOT allowed"
   return false
 end

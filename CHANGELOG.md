@@ -1,3 +1,18 @@
+Version 0.9.18
+===
+News
+---
+
+Fixes
+---
+**Crawler**
+
+ * excluded path definitions are now handled correctly
+
+***SSLChecker***
+
+ * unsupported ciphers are now recognized
+
 Version 0.9.17
 ===
 News
@@ -8,6 +23,8 @@ News
  * changed parameter parsing for better handling
  * Boolean-SQL check now also takes xml parameters for testing
  * new appearance of CA certificates
+ * new custom response viewer; now you can code your own handler, e.g. `lambda{ |response| return response.content_type }`
+ * added table view on request viewer
  
 **Manual Request Editor**
 
@@ -20,9 +37,7 @@ Fixes
  * request line removed on `remove_header` regex match 
  * double insert of Content-Length header
  * bad markdown format of CHANGELOG
- * wrong parameter parsing if value contains '=' sign
- * new custom response viewer; now you can code your own handler, e.g. `lambda{ |response| return response.content_type }`
- * added table view on request viewer
+ * wrong parameter parsing if value contains '=' sign 
  
 Version 0.9.16
 ===

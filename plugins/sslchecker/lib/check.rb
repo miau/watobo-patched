@@ -103,7 +103,7 @@ module Watobo#:nodoc: all
                     :support => true
                   }
               
-                if test_request and test_response
+                unless test_response.status =~ /555/ 
                   
               
                   notify( :cipher_checked, result)
