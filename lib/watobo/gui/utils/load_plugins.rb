@@ -40,7 +40,6 @@ module Watobo
         # this is the old plugin style
         Dir["#{Watobo.plugin_path}/*"].each do |sub|
           if File.ftype(sub) == "directory"
-            puts "+ #{sub}"
             Dir["#{sub}/#{File.basename(sub)}.rb"].each do |plugin_file|
               begin
                 puts "* processing plugin file #{plugin_file}" if $DEBUG
@@ -74,7 +73,7 @@ module Watobo
                 #
                 plugin_class = plugin.slice(0..0).upcase + plugin.slice(1..-1).downcase
                 class_name = "Watobo::Plugin::#{group_class}::Gui::Main"
-                puts class_name
+                #puts class_name
                 class_constant = Watobo.class_eval(class_name)
 
                 Watobo::Gui.add_plugin class_constant.new(Watobo::Gui.application, project)

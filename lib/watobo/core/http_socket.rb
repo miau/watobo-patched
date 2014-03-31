@@ -43,6 +43,7 @@ module Watobo
             puts "!!! Timeout: read_body (max_bytes=#{max_bytes})"
             #puts "* last data seen on socket:"
             # puts buf
+            puts $!.backtrace if $DEBUG
             return
           rescue => bang
             print "E!"

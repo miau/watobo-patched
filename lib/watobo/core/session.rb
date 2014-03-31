@@ -21,31 +21,40 @@
 # .
 module Watobo
     class Proxy
-      attr :login
-      attr :name
-      attr :host
-      attr :port
+      include Watobo::Constants
+      
       attr :login
       
-      def unsetCredentials()
-        @login = nil
-      end
+      def method_missing(name, *args, &block)
+          # puts "* instance method missing (#{name})"
+          if @settings.has_key? name.to_sym
+            return @settings[name.to_sym]
+          else
+            super
+          end
+        end
 
-      def setCredentials(creds)
-        @login = Hash.new
-        @login.update creds
-      end
 
       def has_login?
-        return false if @login.nil?
+       # puts @settings.to_yaml
+        return false if @settings[:auth_type] == AUTH_TYPE_NONE
         return true
       end
 
       def initialize(prefs)
         @login = nil
-        @name = prefs[:name]
-        @host = prefs[:host]
-        @port = prefs[:port]
+        raise ArgumentError, "Proxy needs host, port and name" unless prefs.has_key? :host
+        raise ArgumentError, "Proxy needs host, port and name" unless prefs.has_key? :port
+        raise ArgumentError, "Proxy needs host, port and name" unless prefs.has_key? :name
+        
+        @settings = { 
+          :auth_type => AUTH_TYPE_NONE, 
+          :username => '', 
+          :password => '',
+          :domain => '',
+          :workstation => ''}
+        
+        @settings.update prefs
 
       end
     end
@@ -183,7 +192,8 @@ include Watobo::Constants
             # check for regular proxy authentication
             if request.is_ssl?
               socket, response_header = sslProxyConnect(request, proxy, current_prefs)
-              return socket, response_header, "WATOBO: could not connect to proxy #{proxy.name}:#{proxy.host}" if socket.nil?
+              return socket, response_header, error_response("Could not connect to proxy #{proxy.name} (#{proxy.host}:#{proxy.port})\nReason: #{response_header}") if socket.nil?
+              
               if current_prefs[:www_auth].has_key?(site)
                 case current_prefs[:www_auth][site][:type]
                 when AUTH_TYPE_NTLM
@@ -339,6 +349,7 @@ include Watobo::Constants
 
               updateCSRFToken(csrf_cache, copy)
               socket, csrf_request, csrf_response = sendHTTPRequest(copy, opts)
+              next if socket.nil?
               puts "= Response Headers:"
               puts csrf_response
               puts "==="
@@ -390,14 +401,9 @@ include Watobo::Constants
     nr.removeBody()
     nr.replaceURL(new_location)
 
-   # puts response
-   # puts nr
-   puts "send redirect request"
+   
     socket, request, response = sendHTTPRequest(nr, opts)
-    puts "= request"
-    puts request
-    puts "= response"
-    puts response
+   
     if socket.nil?
       #return nil, request
       return request, response
@@ -429,12 +435,10 @@ end
 
       def addProxy(prefs=nil)
 
-        #  puts "* add proxy"
-        # puts prefs.to_yaml
         proxy = nil
         unless prefs.nil?
-          proxy = Proxy.new(:name => prefs[:name], :host => prefs[:host], :port => prefs[:port])
-          proxy.setCredentials(prefs[:credentials]) unless prefs[:credentials].nil?
+          proxy = Proxy.new(prefs)
+        #  proxy.setCredentials(prefs[:credentials]) unless prefs[:credentials].nil?
           unless prefs[:site].nil?
             @@proxy[prefs[:site]] = proxy
             return
@@ -466,7 +470,8 @@ end
       # :update_valid_sids => false,
       # :update_sids => false,
       # :update_contentlength => true
-      def initialize(session_id, prefs={})
+      def initialize( session_id, prefs={} )
+        
         @event_dispatcher_listeners = Hash.new
         #     @session = {}
 
@@ -572,13 +577,16 @@ end
           auth_request.addHeader("Authorization", msg)
           auth_request.addHeader("Connection", "Keep-Alive")
 
-          #          puts "============= T1 ======================="
-          #    puts auth_request
+          if $DEBUG
+            puts "============= T1 ======================="
+            puts auth_request
+      end
+          
           data = auth_request.join + "\r\n"
-          #puts "= REQUEST ="
-
           socket.print data
-          #  puts "-----------------"
+          
+      puts "-----------------" if $DEBUG
+      
           response_header = []
           rcode = nil
           clen = nil
@@ -599,21 +607,36 @@ end
           end
           #        puts "==================="
 
-          #if rcode == 200 # Ok
-          # puts "* seems request doesn't need authentication"
-          #  return socket, response_header
-          if rcode == 401 #Authentication Required
-            puts "* got ntlm challenge: #{ntlm_challenge}" if $DEBUG
+      if $DEBUG
+        puts "--- T1 RESPONSE HEADERS ---"
+        puts response_header
+      puts "---"
+      end
+      if rcode == 401 #Authentication Required
+            puts "[NTLM] got ntlm challenge: #{ntlm_challenge}" if $DEBUG
             return socket, response_header if ntlm_challenge.nil?
+          elsif rcode == 200 # Ok
+            puts "[NTLM] seems request doesn't need authentication" if $DEBUG
+            return socket, response_header
           else
-            # puts "! arrgh .... :("
-            # puts response_header
+        if $DEBUG
+              puts "[NTLM] ... !#*+.!*peep* ...."
+              puts response_header
+      end
             return socket, response_header
           end
 
           # reading rest of response
-          Watobo::HTTP.read_body(socket, :max_bytes => clen){ |d| }
+      rest = ''
+          Watobo::HTTP.read_body(socket, :max_bytes => clen){ |d| 
+         rest += d
+      }
 
+      if $DEBUG
+      puts "--- T1 RESPONSE BODY ---"
+      puts rest
+      puts "---"
+      end
           t2 = Net::NTLM::Message.decode64(ntlm_challenge)
           t3 = t2.response({:user => ntlm_credentials[:username],
             :password => ntlm_credentials[:password],
@@ -634,8 +657,8 @@ end
 
           if $DEBUG
             puts "= NTLM Type 3 ="
-                    puts data
-                  end
+            puts data
+          end
           socket.print data
 
           response_header = []
@@ -650,11 +673,13 @@ end
           end
 
           if rcode == 200 # Ok
-            # puts "* authentication successfull [OK]"
+            if $DEBUG
+       puts "[NTLM] Authentication Successfull" if $DEBUG
+      end
           elsif rcode == 401 # Authentication Required
             # TODO: authorization didn't work -> do some notification
             # ...
-            puts "* could not authenticate with the following credentials:"
+            puts "[NTLM] could not authenticate. Bad credentials?"
             puts ntlm_credentials.to_yaml
           end
 
@@ -681,7 +706,7 @@ end
             ctx.cert = current_prefs[:ssl_client_cert]
             ctx.key = current_prefs[:ssl_client_key]
             if $DEBUG
-                        puts "* using client certificates"
+                        puts "[SSLconnect] Client Certificates"
                         puts "= CERT ="
                        # puts @ctx.cert.methods.sort
               puts ctx.cert.display
@@ -702,11 +727,11 @@ end
 
           socket.connect
           socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 1)
-          puts "* socket status: #{socket.state}" if $DEBUG
+          puts "[SSLconnect]: #{socket.state}" if $DEBUG
           return socket
         rescue => bang
           if current_prefs[:ssl_cipher].nil?
-            puts "!sslConnect"
+            puts "[SSLconnect] ... gr#!..*peep*.. "
             puts bang
             puts bang.backtrace if $DEBUG
           end
@@ -715,6 +740,7 @@ end
 
       # SSLProxyConnect
       # return SSLSocket, ResponseHeader of ConnectionSetup
+      # On error SSLSocket is nil
       def sslProxyConnect(orig_request, proxy, prefs)
         begin
           tcp_socket = nil
@@ -749,23 +775,27 @@ end
           #  puts request
 
           if proxy.has_login?
-            case proxy.login[:type]
+            case proxy.auth_type
             when AUTH_TYPE_NTLM
 
-              ntlm_challenge = nil
               t1 = Net::NTLM::Message::Type1.new()
               msg = "NTLM " + t1.encode64
               request.addHeader("Proxy-Authorization", msg)
 
-              # puts "============= T1 ======================="
-              # puts request
+              if $DEBUG
+              puts "============= PROXY NTLM: T1 ======================="
+              puts request
+              puts "---"
+              end
               data = request.join + "\r\n"
 
               tcp_socket.print data
               #  puts "-----------------"
+              cl = 0
+              ntlm_challenge = nil
               while (line = tcp_socket.gets)
                 response_header.push line
-                # puts line
+                puts line if $DEBUG
                 if line =~ /^HTTP\/\d\.\d (\d+) (.*)/ then
                   rcode = $1.to_i
                   rmsg = $2
@@ -773,12 +803,18 @@ end
                 if line =~ /^Proxy-Authenticate: (NTLM) (.+)\r\n/
                   ntlm_challenge = $2
                 end
+                if line =~ /^Content-Length: (\d*)/i
+                  cl = $1.to_i
+                end
                 break if line.strip.empty?
               end
 
+    
+              if cl > 0
               Watobo::HTTP.read_body(tcp_socket) { |d|
                 # puts d
               }
+              end
 
               if rcode == 200 # Ok
                 puts "* seems proxy doesn't require authentication"
@@ -789,17 +825,21 @@ end
               return socket, response_header if ntlm_challenge.nil? or ntlm_challenge == ""
 
               t2 = Net::NTLM::Message.decode64(ntlm_challenge)
-              t3 = t2.response( { :user => proxy.login[:username],
-                :password => proxy.login[:password],
-                :domain => proxy.login[:domain] },
-              { :workstation => proxy.login[:workstation], :ntlmv2 => true } )
+              t3 = t2.response( { :user => proxy.username,
+                :password => proxy.password,
+                :domain => proxy.domain },
+              { :workstation => proxy.workstation, :ntlmv2 => true } )
               request.removeHeader("Proxy-Authorization")
 
               msg = "NTLM " + t3.encode64
               request.addHeader("Proxy-Authorization", msg)
-              # puts "============= T3 ======================="
-              #  puts request
+              
               data = request.join + "\r\n"
+              if $DEBUG
+               puts "============= T3 ======================="
+               puts data
+               puts "---"
+              end
 
               tcp_socket.print data
               #  puts "-----------------"
@@ -809,17 +849,19 @@ end
               response_header = readHTTPHeader(tcp_socket)
               rcode = response_header.status
               if rcode =~/^200/ # Ok
-                puts "* proxy authentication successfull"
+                puts "[ProxyAuth-NTLM] Authorization Successful" if $DEBUG
+                socket = sslConnect(tcp_socket, prefs)
+                return socket, response_header
               elsif rcode =~ /^407/ # ProxyAuthentication Required
                 # if rcode is still 407 authentication didn't work -> break
-                return nil
+                msg = "NTLM-Authentication failed!"
+                puts "[ProxyAuth-NTLM] #{msg}" if $DEBUG
+                return nil, msg
               else
-                puts "! check proxy connection [FALSE]"
-                puts ">  #{rcode} #{rmsg} <"
-              end
-
-              socket = sslConnect(tcp_socket, prefs)
-              return socket, response_header
+                puts "[SSLconnect] NTLM Authentication"
+                puts ">  #{rcode} <"
+                return nil, response_header
+              end              
             end
           end # END OF PROXY AUTH
 
@@ -837,22 +879,22 @@ end
             # if rcode is still 407 authentication didn't work -> break
 
           else
-            puts "! check proxy connection [FALSE]"
-            puts ">  #{rcode} #{rmsg} <"
+            puts "[SSLconnect] Response Status"
+            puts ">  #{rcode} <"
           end
 
           socket = sslConnect(tcp_socket, prefs)
           return socket, response_header
         rescue => bang
           puts bang
-          return nil, bang
+          return nil, error_response(bang)
         end
         # return nil, nil
       end
 
       # proxyAuthNTLM
       # returns: ResponseHeaders
-      def proxyAuthNTLM(tcp_socket, orig_request, credentials)
+      def proxyAuthNTLM(tcp_socket, orig_request, proxy)
 
         request = Watobo::Utils::copyObject(orig_request)
         request.extend Watobo::Mixin::Parser::Url
@@ -911,7 +953,7 @@ end
         }
 
         t2 = Net::NTLM::Message.decode64(ntlm_challenge)
-        t3 = t2.response({:user => credentials[:username], :password => credentials[:password], :workstation => credentials[:workstation], :domain => credentials[:domain]}, {:ntlmv2 => true})
+        t3 = t2.response({:user => proxy.username, :password => proxy.password, :workstation => proxy.workstation, :domain => proxy.domain}, {:ntlmv2 => true})
         request.removeHeader("Proxy-Authorization")
         #  request.removeHeader("Proxy-Connection")
 
@@ -949,11 +991,13 @@ end
       #
       # doProxyAuth
       #
-      def doProxyAuth(tcp_socket, orig_request, credentials)
+      def doProxyAuth(tcp_socket, orig_request, proxy)
+       # puts "DO PROXY AUTH"
+       # puts proxy.to_yaml
         response_headers = nil
-        case credentials[:type]
+        case proxy.auth_type
         when AUTH_TYPE_NTLM
-          return proxyAuthNTLM(tcp_socket, orig_request, credentials)
+          return proxyAuthNTLM(tcp_socket, orig_request, proxy)
 
         end # END OF NTLM
 
@@ -963,7 +1007,8 @@ end
       #    doProxyRequest
       ################################################
       def doProxyRequest(request, proxy, prefs={})
-
+        #puts "DO PROXY REQUEST"
+        # puts prefs.to_yaml
         begin
           tcp_socket = nil
           site = request.site
@@ -985,12 +1030,16 @@ end
           auth_request.addHeader("Pragma", "no-cache")
 
           if proxy.has_login?
-            request_header = doProxyAuth(tcp_socket, auth_request, proxy.login)
+            response_header = doProxyAuth(tcp_socket, auth_request, proxy)
             # puts "* got request_header from doProxy Auth"
             # puts request_header.class
-            return tcp_socket, request_header
+            puts "[Proxy Auth] Status: #{response_header.status}" if $DEBUG
+            return tcp_socket, response_header unless response_header.status =~ /401/
+            return tcp_socket, response_header unless prefs[:www_auth].has_key?(site)
           end
 
+      #    puts "CHECK WWW_AUTH"
+      #    puts prefs.to_yaml
           if prefs[:www_auth].has_key?(site)
             case prefs[:www_auth][site][:type]
             when AUTH_TYPE_NTLM
@@ -1008,8 +1057,8 @@ end
 
             tcp_socket.print data
 
-            request_header = readHTTPHeader(tcp_socket)
-            return tcp_socket, request_header
+            response_header = readHTTPHeader(tcp_socket)
+            return tcp_socket, response_header
           end
         rescue => bang
           puts bang

@@ -218,22 +218,7 @@ module Watobo
   end
 
   class Project
-    # SessionManager
-    #
-    #     class SessionManager < Watobo::Session
-    #       def initialize(project)
-    #         super(project.session )
-
-    #       end
-    #       def runLogin
-    #         print "[L"
-    #        @project.loginscript_ids.each do |chatid|
-    #            test_req = @project.getChat(chatid).copyRequest
-    #          request, response = doRequest(test_req, :update_sids => true, :update_session => true, :update_contentlength => true)
-    #          end
-
-    #      end
-    #    end
+    
     attr :chats
     attr_accessor :findings
     attr :scan_settings
@@ -244,18 +229,10 @@ module Watobo
     attr :session_store
     attr_accessor :settings
 
-    # attr_accessor :numRunningChecks
-
-    # attr_accessor :valid_sids
-    ##   attr_accessor :loginscript_ids
     attr :active_checks
     attr :passive_checks
     attr_accessor :plugins
     attr_accessor :excluded_chats
-
-    #  attr_accessor :intercept_request
-    #  attr_accessor :intercept_response
-    #  attr_accessor :interceptor
 
     attr :target_filter
     def subscribe(event, &callback)
@@ -824,7 +801,6 @@ module Watobo
       #      @active_checks = @settings[:active_checks]
       @settings[:active_checks].each do |am|
         ac = am.new(self)
-        puts "+#{ac.class}"
         ac.subscribe(:new_finding){ |nf| addFinding(nf) }
         @active_checks << ac
       end
@@ -969,7 +945,7 @@ module Watobo
 =end
     end
 
-    def setDefaults()
+    def setDefaults_UNUSED()
       @settings = {
         :excluded_chats => [],
         :scope => Hash.new,

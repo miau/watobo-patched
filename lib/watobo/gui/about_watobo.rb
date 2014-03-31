@@ -37,7 +37,7 @@ module Watobo
         version = FXHorizontalFrame.new(main, :opts => LAYOUT_FILL_X, :padding => 0)
         version.backColor = FXColor::White
         
-        version_label  = FXLabel.new(version, "Version: #{$version}", nil, :opts => JUSTIFY_CENTER_X|LAYOUT_FILL_X)
+        version_label  = FXLabel.new(version, "Version: #{Watobo.version}", nil, :opts => JUSTIFY_CENTER_X|LAYOUT_FILL_X)
         version_label.setFont(FXFont.new(getApp(), "helvetica", 14, FONTWEIGHT_BOLD, FONTSLANT_ITALIC, FONTENCODING_DEFAULT))
         version_label.backColor = FXColor::White
         version_label.justify = JUSTIFY_CENTER_X

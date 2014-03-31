@@ -38,11 +38,11 @@ module Watobo
           :password => @password_dt.value,
           :workstation => @workstation_dt.value,
           :domain => @domain_dt.value,
-          :type => @auth_type
+          :auth_type => @auth_type
         }
 
         puts "* auth_type"
-        puts c[:type]
+        puts c[:auth_type]
         if @auth_types_cb.currentItem > 0 and c[:username] != "" and c[:password] != ""
         s.update c
         end
@@ -174,8 +174,8 @@ module Watobo
         @auth_types_cb.setCurrentItem(0)
 
         unless proxy.nil?
-          if proxy.has_key?(:credentials)
-            case proxy[:credentials][:type]
+          if proxy.has_key?(:auth_type)
+            case proxy[:auth_type]
             when AUTH_TYPE_NTLM
               @auth_types_cb.setCurrentItem(1)
             end
@@ -429,7 +429,7 @@ module Watobo
       end
 
       def addProxyItem(proxy)
-        puts proxy.to_yaml
+       # puts proxy.to_yaml
         lastRowIndex = @proxyTable.numRows
         siteIndex = -1
         lastRowIndex.times do |i|

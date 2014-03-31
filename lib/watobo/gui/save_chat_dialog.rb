@@ -24,7 +24,7 @@ module Watobo
     class SaveChatDialog < FXDialogBox
       class Sender < Watobo::Session
         def initialize()
-          @project = Watobo::Gui.active_project
+          @project = Watobo::Gui.project
           super(@project.object_id,  @project.getScanPreferences())
 
         end

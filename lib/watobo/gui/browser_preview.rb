@@ -21,6 +21,11 @@
 # .
 module Watobo
   module Gui
+    
+    def self.browser_preview(opts)
+      
+    end
+    
     class BrowserControl
       def initialize()
 
@@ -61,176 +66,7 @@ module Watobo
       end
     end
 
-    #
-    # Firefox Controller Class
-    #
-    class FFControl_UNUSED < BrowserControl
-      #@@fft = nil
-      def initialize()
-        @jssh = nil
-        aquireSession()
-      end
-
-      def ready?()
-        return false if @jssh == nil
-        begin
-          @jssh.cmd(""){ |s| print s }
-        rescue
-          @jssh = nil
-          return false
-        end
-
-        return true
-      end
-
-      def navigate(url)
-        # puts "* Firefox.navigate"
-        if aquireSession() then
-          res = ""
-          @jssh.cmd("tabBrowser.loadURI(\"#{url}\")"){ |l|
-            print l
-            res += l
-          }
-          if res.split(/\n/).first =~ /Error:/i then
-            @jssh.cmd("var tab = browser.addTab(\"#{url}\")"){ |s| print s }
-            @jssh.cmd("var tabBrowser = browser.getBrowserForTab(tab)"){ |s| print s }
-          end
-
-        end
-      end
-
-      def getDoc()
-        begin
-          aquireSession()
-
-          jssh_cmd = "var doc = tabBrowser.contentDocument;"
-          @jssh.cmd(jssh_cmd){ |s| print s }
-
-          jssh_cmd = "var body = doc.body;"
-          @jssh.cmd(jssh_cmd){ |s| print s }
-          @jssh.cmd("body"){ |s| print s }
-
-          jssh_cmd = "body.innerHTML;"
-          doc = @jssh.cmd(jssh_cmd)
-          puts doc
-          return doc
-
-        rescue => bang
-          puts bang
-          return false
-
-        end
-
-      end
-
-      def busy?()
-        ffcmd = "tabBrowser.webProgress.isLoadingDocument"
-        res = ""
-        begin
-
-          if ready?() then
-
-            res = ""
-            @jssh.cmd(ffcmd) {|s| res += s}
-
-            return true if res =~ /true/
-          end
-
-          return false
-
-        rescue => bang
-          puts bang
-          return false
-        end
-      end
-
-      def connect()
-        aquireSession()
-      end
-
-      def close()
-        if ready?
-          @jssh.cmd("browser.removeTab(tab)"){ |s| print s }
-        end
-      end
-
-      private
-
-      def aquireSession()
-
-        if not ready?
-          @jssh = nil
-          @jssh = ffconnect("127.0.0.1", "9997")
-        end
-
-        if @jssh != nil then
-          @jssh.cmd("var w0 = getWindows()[0]"){ |s| print s }
-          @jssh.cmd("var browser = w0.getBrowser()"){ |s| print s }
-          @jssh.cmd("browser"){ |s| print s }
-
-          #jssh.cmd("browser.loadURI(\"http://www.siberas.de\")"){ |s| print s }
-        else
-          return false
-        end
-      end
-
-      def startFireFox()
-        puts "startFireFox()"
-        path_to_firefox = ""
-        case RUBY_PLATFORM
-        when /mswin|mingw|bccwin/
-          puts "* firefox on this platform (#{RUBY_PLATFORM}) not supported, yet!"
-        when /linux|bsd|solaris|hpux/i
-          path_to_firefox = `which firefox`.strip
-        when /darwin/i
-          path_to_firefox = '/Applications/Firefox.app/Contents/MacOS/firefox'
-        else
-          puts "!Unknown OS???"
-          nil
-        end
-        if path_to_firefox != ""
-          puts "* trying to start firefox (#{path_to_firefox})"
-          Thread.new { system("#{path_to_firefox} -jssh")}
-        end
-      end
-
-      def ffconnect(host, port)
-        retry_count = 0
-
-        begin
-          puts "* connecting to firefox jssh extension"
-          jssh = Net::Telnet.new('Host' => host,
-          'Port' => port)
-          jssh.sync = true
-
-          jssh.waitfor(/>/){ |s| print s }
-        rescue Errno::ECONNREFUSED
-          puts "! BrowserControl: Connection Reset"
-
-          if retry_count < 1 then
-            retry_count += 1
-            startFireFox()
-            retry
-          elsif retry_count < 3 then
-            retry_count += 1
-            # startFireFox()
-            sleep 1.0
-            retry
-          else
-            puts "!!! Seems like JSSH is not installed !!!"
-            puts "please check the installation instructions!"
-            raise "JSSH_CONNECT_ERROR"
-          end
-        rescue => bang
-          puts "!!! Could not create FireFoxControl !!!"
-          puts bang
-          return false
-        end
-
-        return jssh
-      end
-    end
-
+   
     #
     # InternetExplorer Controller Class
     #
@@ -298,14 +134,14 @@ module Watobo
           #  require 'selenium-webdriver'
           @rc = createBrowser(browser_type, proxy)
         rescue => bang
-          puts "* Could not create selenium driver"
+          puts "[#{self}] Could not create selenium driver"
         end
       end
 
       def createBrowser( browser_type = :firefox, proxy = nil )
         profile = nil
         unless proxy.nil?
-          puts "* create preview with proxy #{proxy}"
+          puts "[Preview] create preview with proxy #{proxy}" if $DEBUG
           profile = Selenium::WebDriver::Firefox::Profile.new
 
           driver_proxy = Selenium::WebDriver::Proxy.new(:http => proxy)

@@ -49,6 +49,8 @@ module Watobo
     puts "Total: " + project_settings[:active_checks].length.to_s
 
     project = Project.new(project_settings)
+    @running_projects << project
+    project
     
   end
   

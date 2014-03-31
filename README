@@ -28,8 +28,11 @@ Note: Ruby 1.8 is crap, so get rid of it!
   gem install watobo
   
 === BackTrack 5
-  gem install selenium-webdriver
-  gem install watobo
+  gem install --user-install selenium-webdriver
+  gem install --user-install watobo
+  
+Add the following line to your ~/.bashrc file:
+  export PATH=$PATH:/root/.gem/ruby/1.9.2/bin/
 
 === Generic Linux (with APT)
 * Install Ruby via RVM

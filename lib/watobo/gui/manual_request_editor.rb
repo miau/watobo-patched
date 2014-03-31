@@ -403,7 +403,7 @@ module Watobo
                   orig = Watobo::Chat.new(first_request, first_response, :id => 0)
                   new = Watobo::Chat.new(second_request, second_response, :id => 0)
                   project = nil
-                  diffViewer = ChatDiffViewer.new(FXApp.instance, project, orig, new)
+                  diffViewer = ChatDiffViewer.new(FXApp.instance, orig, new)
                   diffViewer.create
                   diffViewer.show(Fox::PLACEMENT_SCREEN)
                end
@@ -458,6 +458,10 @@ module Watobo
          include Responder
          # ID_CTRL_S = ID_LAST
          # ID_LAST = ID_CTRL_S + 1
+         SCANNER_IDLE = 0x00
+         SCANNER_STARTED = 0x01
+         SCANNER_FINISHED = 0x02
+         SCANNER_CANCELED = 0x04
          def subscribe(event, &callback)
             (@event_dispatcher_listeners[event] ||= []) << callback
          end
@@ -508,7 +512,7 @@ module Watobo
 
          def logger(message)
           @log_viewer.log( LOG_INFO, message )
-          puts "[#{self.class.to_s}] #{message}"
+          puts "[#{self.class.to_s}] #{message}" if $DEBUG
          end
 
 
@@ -610,19 +614,24 @@ module Watobo
                }
               
               logger("Scan Started ...")
-              
+              @scan_status = SCANNER_STARTED
               Thread.new(run_prefs) { |rp|
-                  
+                  begin
                   # puts "* starting scanner ..."
                   # puts run_prefs.to_yaml
                   
                   @scanner.run( rp )
 
+                    #sender.text = "QuickScan"
+                  rescue => bang
+                    puts bang
+                    puts bang.backtrace if $DEBUG
+                  ensure
                    logger("Scan finished!")
-                     @pbar.total = 0
-                     @pbar.progress = 0
-                     @pbar.barColor = 'grey'
-                    sender.text = "QuickScan"
+                   @scan_status_lock.synchronize do
+                      @scan_status |= SCANNER_FINISHED
+                   end  
+                  end
                  }
             end
 
@@ -686,8 +695,8 @@ module Watobo
                @sel_pos = ""
                @sel_len = ""
 
-               @last_request = []
-               @last_response = []
+               @last_request = nil
+               @last_response = nil
 
                @history_size = 10
                @history = []
@@ -699,6 +708,8 @@ module Watobo
                @new_request = nil
                
                @update_lock = Mutex.new
+               @scan_status_lock = Mutex.new
+               @scan_status = SCANNER_IDLE
 
                # shortcuts here
                #FXMAPFUNC(SEL_COMMAND, ID_CTRL_S, :on_ctrl_s)
@@ -840,8 +851,8 @@ module Watobo
 
                frame = FXHorizontalFrame.new(req_editor, :opts => LAYOUT_FILL_X|FRAME_GROOVE)
 
-               btn_quickscan = FXButton.new(frame, "QuickScan", nil, nil, 0, FRAME_RAISED|FRAME_THICK)
-               btn_quickscan.connect(SEL_COMMAND, method(:onBtnQuickScan))
+               @btn_quickscan = FXButton.new(frame, "QuickScan", nil, nil, 0, FRAME_RAISED|FRAME_THICK)
+               @btn_quickscan.connect(SEL_COMMAND, method(:onBtnQuickScan))
                @pbar = FXProgressBar.new(frame, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK|PROGRESSBAR_HORIZONTAL)
                #@pbar.create
                @pbar.connect(SEL_CHANGED) {
@@ -917,10 +928,24 @@ module Watobo
 
   def add_update_timer(ms)
   @update_timer = FXApp.instance.addTimeout( ms, :repeat => true) {
+    @scan_status_lock.synchronize do
+      
+      if @scan_status == ( SCANNER_STARTED | SCANNER_FINISHED ) or @scan_status == ( SCANNER_STARTED | SCANNER_CANCELED )
+        puts "[SCAN-STATUS] #{@scan_status}"
+         @pbar.total = 0
+         @pbar.progress = 0
+         @pbar.barColor = 'grey'
+         @btn_quickscan.text = "QuickScan"
+         @scan_status = SCANNER_IDLE
+      end
+    end
     @update_lock.synchronize do
       unless @new_response.nil? 
+        @last_request = nil
+        @last_response = nil
         
         @response_viewer.setText @new_response
+        @last_response = @new_response
 
         if @logChat.checked? == true
 
@@ -932,6 +957,7 @@ module Watobo
 
       unless @new_request.nil? then
         @request_viewer.setText @new_request
+        @last_request = @new_request
 
         @response_viewer.setText(@new_response, :filter => true)
         @responseMD5.text = @new_response.contentMD5
@@ -1000,17 +1026,6 @@ end
                
                logger("got answer")
                
-               if @logChat.checked? == true
-                 logger("log chat")
-                     chat = Watobo::Chat.new(last_request, last_response, :source => CHAT_SOURCE_MANUAL, :run_passive_checks => false)
-                     notify(:new_chat, chat)
-                  end
-                  
-               
-               #puts "finished (#{last_response.status})"
-             #  puts last_request.url
-             #  puts last_response.status
-
 
 =begin
                if last_request and p[:follow_redirect] == true and last_response.status =~ /302/

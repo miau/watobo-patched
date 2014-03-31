@@ -141,20 +141,20 @@ module Watobo
 
       wsp = Watobo.workspace_path
       return false unless File.exist? wsp
-      puts "* using workspace path: #{wsp}"
+      puts "* using workspace path: #{wsp}" if $DEBUG
       project_path = File.join(wsp, project_name)
       unless File.exist? project_path
-        puts "* create project path: #{project_path}"
+        puts "* create project path: #{project_path}" if $DEBUG
         Dir.mkdir(project_path)
       end
       session_path = File.join(project_path, session_name)
 
       unless File.exist? session_path
-        puts "* create session path: #{session_path}"
+        puts "* create session path: #{session_path}" if $DEBUG
         Dir.mkdir(session_path)
       end
       sext = Watobo::Conf::General.session_settings_file_ext
-      puts "SEXT: #{sext}"
+      
       @session_file = File.join(session_path, session_name + sext)
       @project_file = File.join(project_path, project_name + Watobo::Conf::General.project_settings_file_ext)
 

@@ -169,7 +169,8 @@ module Watobo
           COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
           #@filterCombo.width =200
 
-          @sites_combo.numVisible = 20
+          num_ssl_sites = @project.listSites(:ssl => true).length
+          @sites_combo.numVisible = num_ssl_sites > 15 ? 15 : num_ssl_sites
           @sites_combo.numColumns = 35
           @sites_combo.editable = true
           @sites_combo.connect(SEL_COMMAND, method(:onSiteSelect))

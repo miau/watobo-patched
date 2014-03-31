@@ -42,7 +42,7 @@ module Watobo
       # @interface.updateRequestTable(@project)
       end
 
-def refresh_tree()
+      def refresh_tree()
         self.clearItems
 
         @project.chats.each do |chat|
@@ -51,6 +51,7 @@ def refresh_tree()
 
       # @interface.updateRequestTable(@project)
       end
+
       def expandFullTree(item)
         self.expandTree(item)
         item.each do |c|
@@ -115,10 +116,10 @@ def refresh_tree()
         site = self.findItem(chat.request.site, nil, SEARCH_FORWARD|SEARCH_IGNORECASE)
 
         if not site then
-        # found new site
-        site = self.appendItem(nil, chat.request.site, @siteIcon, @siteIcon)
-        #site = @findings_tree.moveItem(project.first,project,site)
-        self.setItemData(site, :item_type_site)
+          # found new site
+          site = self.appendItem(nil, chat.request.site, @siteIcon, @siteIcon)
+          #site = @findings_tree.moveItem(project.first,project,site)
+          self.setItemData(site, :item_type_site)
 
         end
 
@@ -140,9 +141,9 @@ def refresh_tree()
             end
             #folder_item = self.findItem(folder_name, folder_parent, SEARCH_FORWARD|SEARCH_WRAP)
             if folder_item.nil? then
-            #folder_item = self.appendItem(folder_parent, folder_name, @folderIcon, @folderIcon)
-            folder_item = self.insertItem(folder_parent.first, folder_parent, folder_name, @folderIcon, @folderIcon)
-            self.setItemData(folder_item, :item_type_folder)
+              #folder_item = self.appendItem(folder_parent, folder_name, @folderIcon, @folderIcon)
+              folder_item = self.insertItem(folder_parent.first, folder_parent, folder_name, @folderIcon, @folderIcon)
+              self.setItemData(folder_item, :item_type_folder)
 
             #     puts "added folder #{folder_name} to #{folder_parent} for site #{chat.request.site}"
             end
@@ -206,9 +207,9 @@ def refresh_tree()
             getApp().beginWaitCursor do
               begin
                 if item.data
-                #if item.data.class.to_s =~ /Qchat/
-                #@interface.show_chat(item.data)
-                notify(:show_chat, item.data)
+                  #if item.data.class.to_s =~ /Qchat/
+                  #@interface.show_chat(item.data)
+                  notify(:show_chat, item.data)
                 #end
                 chat = item.data
                 #         url_parts.unshift chat.request.file_ext
@@ -256,14 +257,15 @@ def refresh_tree()
                 ["404", "302"].each do |rc|
                   target = FXMenuCheck.new(sub, "#{rc} Status" )
 
-                  target.check = @tree_filters[:response_status].include?(rc)
+                  target.check = @tree_filters[:response_status].include? rc
 
-                  target.connect(SEL_COMMAND) {
-                    status = target.to_s.slice(/\d+/)
-                    if sender.checked?()
-                    @tree_filters[:response_status].push status
+                  target.connect(SEL_COMMAND) { |tsender, tsel, titem|
+                    
+                    rs = tsender.to_s.slice(/\d+/)
+                    unless @tree_filters[:response_status].include? rs
+                      @tree_filters[:response_status].push rs
                     else
-                    @tree_filters[:response_status].delete(status)
+                      @tree_filters[:response_status].delete rs
                     end
                     reload() if @project
                   }

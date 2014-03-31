@@ -44,7 +44,7 @@ require 'watobo/framework'
 
 module Watobo
 
-  VERSION = "0.9.8-680"
+  VERSION = "0.9.8-686"
 
   def self.base_directory
     @base_directory ||= ""
@@ -69,8 +69,17 @@ module Watobo
   def self.version
     Watobo::VERSION
   end
+  
+  def self.print_summary
+    puts "--- Info ---"
+    puts "Version: " + version
+    puts "Working Directory: " + Watobo.working_directory
+    puts "Active Checks Location: " + Watobo.active_module_path
+    puts "Passive Checks Location: " + Watobo.passive_module_path
+    puts "---"
+    puts
+  end
 end
 
-puts "* init framework ..."
 Watobo.init_framework
 

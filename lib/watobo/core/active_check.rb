@@ -217,8 +217,10 @@ module Watobo
       begin
         t_request, t_response = doRequest(request, prefs)
         #puts t_response.status
-        return true, t_request, t_response if t_response.status =~ /^403/
-        return false, t_request, t_response if t_response.status =~ /^40\d/
+        status = t_response.status
+        return false if status.empty?
+        return true, t_request, t_response if status =~ /^403/
+        return false, t_request, t_response if status =~ /^40\d/
 
         puts @settings[:custom_error_patterns] if $debug_active_check
 

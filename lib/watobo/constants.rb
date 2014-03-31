@@ -88,5 +88,11 @@ module Watobo
     
     DEFAULT_PORT_HTTP = 80
     DEFAULT_PORT_HTTPS = 443
+    
+    # Status Messages
+    SCAN_STARTED = 0x00
+    SCAN_FINISHED = 0x01
+    SCAN_PAUSED = 0x02
+    SCAN_CANCELED = 0x04
   end
 end

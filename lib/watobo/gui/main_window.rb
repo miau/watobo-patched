@@ -39,7 +39,7 @@ module Watobo
       
       def open_manual_request_editor(chat)
         begin
-          mrtk = ManualRequestEditor.new(FXApp.instance, @active_project, chat)
+          mrtk = ManualRequestEditor.new(FXApp.instance, @project, chat)
 
           mrtk.create
 
@@ -48,7 +48,7 @@ module Watobo
           }
 
           mrtk.subscribe(:new_chat) { |c|
-            @active_project.addChat(c)
+            @project.addChat(c)
           }
           mrtk.show(Fox::PLACEMENT_SCREEN)
         rescue => bang
@@ -76,13 +76,26 @@ module Watobo
     end
     
     @status_lock.synchronize do
-      
+      unless @new_status.nil?
+        update_status(@new_status)
+      end
+        
     end
     
   }
  end
 
-      
+      def update_status(new_status)
+        case new_status
+        when SCAN_STARTED
+          
+        when SCAN_FINISHED
+          @scan_button.icon = ICON_START
+          @dashboard.setScanStatus("Finished")
+          @statusBar.statusInfoText = "Ready."
+        end
+        new_status = nil
+      end
       #def loadDefaultS
       def saveDefaultSettings_UNUSED(update_settings={})
 
@@ -312,19 +325,19 @@ module Watobo
       end
 
       def openSessionManagement(sender, sel, item)
-        smdlg = SessionManagementDialog.new(self, @active_project)
+        smdlg = SessionManagementDialog.new(self, @project)
         if smdlg.execute != 0 then
           ids = smdlg.getLoginScriptIds()
           sidpatterns = smdlg.getSidPatterns()
           logout_signatures = smdlg.getLogoutSignatures()
-          if @active_project
-          @active_project.setLoginChatIds(ids)
-          @active_project.setSidPatterns(sidpatterns)
-          @active_project.setLogoutSignatures(logout_signatures)
+          if @project
+          @project.setLoginChatIds(ids)
+          @project.setSidPatterns(sidpatterns)
+          @project.setLogoutSignatures(logout_signatures)
           end
         # save settings
-        saveProjectSettings(@active_project)
-        saveSessionSettings(@active_project)
+        saveProjectSettings(@project)
+        saveSessionSettings(@project)
         end
       end
 
@@ -340,9 +353,9 @@ module Watobo
         puts prefdlg.settings
 
         update_status_bar()
-        if @active_project then
-        @active_project.settings.update(@settings)
-        @active_project.saveProjectSettings()
+        if @project then
+        @project.settings.update(@settings)
+        @project.saveProjectSettings()
         end
 
         end
@@ -350,68 +363,68 @@ module Watobo
       end
 
       def openCADialog(sender, sel, item)
-        cadlg = CertificateDialog.new(self, @active_project)
+        cadlg = CertificateDialog.new(self, @project)
         if cadlg.execute != 0
 
         end
       end
 
       def openWwwAuthDialog()
-        if @active_project.nil?
+        if @project.nil?
         FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
         else
           auth_settings = {}
-          w3adlg = Watobo::Gui::WwwAuthDialog.new(self, @active_project, Watobo::Conf::General.dump )
+          w3adlg = Watobo::Gui::WwwAuthDialog.new(self, @project, Watobo::Conf::General.dump )
           if w3adlg.execute != 0
           #puts "* New WWW-Authentication"
-          #puts @active_project.getWwwAuthentication().to_yaml
+          #puts @project.getWwwAuthentication().to_yaml
           Watobo::Conf::General.save_passwords = w3adlg.savePasswords?
-          saveProjectSettings(@active_project)
-          Watobo::Gui.save_default_settings(@active_project)
-          @iproxy.www_auth = @active_project.getWwwAuthentication()
+          saveProjectSettings(@project)
+          Watobo::Gui.save_default_settings(@project)
+          @iproxy.www_auth = @project.getWwwAuthentication()
           end
         puts "* new www_auth settings"
-        # puts YAML.dump(@active_project.settings[:www_auth])
+        # puts YAML.dump(@project.settings[:www_auth])
         end
 
       end
 
       def open_client_cert_dialog()
-        if @active_project.nil?
+        if @project.nil?
         FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
         else
-          ccdlg = Watobo::Gui::ClientCertDialog.new(self, @active_project )
+          ccdlg = Watobo::Gui::ClientCertDialog.new(self)
           if ccdlg.execute != 0
           #puts "* New WWW-Authentication"
-          #puts @active_project.getWwwAuthentication().to_yaml
+          #puts @project.getWwwAuthentication().to_yaml
           @settings[:password_policy][:save_passwords] = ccdlg.savePasswords?
           puts "* got client certificate settings"
           puts ccdlg.client_certificates.to_yaml
-          @active_project.client_certificates = ccdlg.client_certificates
+          @project.client_certificates = ccdlg.client_certificates
           @iproxy.client_certificates = ccdlg.client_certificates
-          saveProjectSettings(@active_project)
-          # Watobo::Gui.save_default_settings(@active_project)
+          saveProjectSettings(@project)
+          # Watobo::Gui.save_default_settings(@project)
 
           end
-        # puts YAML.dump(@active_project.settings[:www_auth])
+        # puts YAML.dump(@project.settings[:www_auth])
         end
 
       end
 
       def openPWPolicyDialog()
-        if @active_project.nil?
+        if @project.nil?
         FXMessageBox.information(self,MBOX_OK,"No Project Defined", "Create Project First")
         else
           auth_settings = {}
           dlg = Watobo::Gui::PasswordPolicyDialog.new(self, @settings[:password_policy] )
           if dlg.execute != 0
           @settings[:password_policy] = dlg.passwordPolicy
-          Watobo::Gui.save_default_settings(@active_project)
+          Watobo::Gui.save_default_settings(@project)
           #puts "* New WWW-Authentication"
-          #puts @active_project.getWwwAuthentication().to_yaml
+          #puts @project.getWwwAuthentication().to_yaml
           #@settings[:password_policy][:save_passwords] = w3adlg.savePasswords?
-          saveProjectSettings(@active_project)
-          #@iproxy.www_auth = @active_project.settings[:www_auth]
+          saveProjectSettings(@project)
+          #@iproxy.www_auth = @project.settings[:www_auth]
           end
         end
 
@@ -419,7 +432,7 @@ module Watobo
 
       def openFuzzer(chat)
         begin
-          fuzzer = FuzzerGui.new(FXApp.instance, @active_project, chat)
+          fuzzer = FuzzerGui.new(FXApp.instance, @project, chat)
           fuzzer.create
           fuzzer.show(Fox::PLACEMENT_SCREEN)
         rescue => bang
@@ -509,7 +522,7 @@ module Watobo
       end
 
       def useSmallIcons()
-        unless @active_project.nil?
+        unless @project.nil?
         @findings_tree.useSmallIcons()
         @sites_tree.useSmallIcons()
         # @chatTable.setNewFont( "helvetica", GUI_SMALL_FONT_SIZE)
@@ -521,7 +534,7 @@ module Watobo
       end
 
       def useRegularIcons()
-        unless @active_project.nil?
+        unless @project.nil?
         @findings_tree.useRegularIcons()
         @sites_tree.useRegularIcons()
         @chatTable.setNewFont("Segoe UI", GUI_REGULAR_FONT_SIZE)
@@ -545,11 +558,11 @@ module Watobo
       end
 
       def onOpenInterceptor(sender, sel, ptr)
-        if @active_project then
+        if @project then
         interceptor = Watobo::Gui::InterceptorUI.new(self, @iproxy, :opts => DECOR_ALL)
         iproxy.target = interceptor
         puts "* Interceptor created"
-        #@active_project.interceptor = interceptor
+        #@project.interceptor = interceptor
         interceptor.create
         interceptor.show(Fox::PLACEMENT_SCREEN)
         getApp().runModalWhileShown(interceptor)
@@ -603,7 +616,7 @@ module Watobo
 
 
       def closeProject()
-        @active_project = nil
+        @project = nil
         @findings_tree.clearItems()
         @sites_tree.clearItems()
         @chatTable.clearItems()
@@ -621,7 +634,7 @@ module Watobo
       #
       def onNewProject(sender,sel,ptr)
 
-        if @active_project then
+        if @project then
         response = FXMessageBox.question(self, MBOX_YES_NO, "New Project", "This will close the actual project!\nAre you sure?")
         return 0 if not response == MBOX_CLICKED_YES
         # clear old project
@@ -648,7 +661,7 @@ module Watobo
                
         Watobo::Gui.history.add_entry(:project_name => new_project_settings[:project_name], :session_name => new_project_settings[:session_name])
         Watobo::Gui.save_default_settings project
-        puts Watobo::Gui.active_project.class
+        puts @project.class
         end
 
       end
@@ -658,11 +671,11 @@ module Watobo
         return false unless project.is_a? Project
 
         puts "DEBUG: starting project" if $DEBUG
-        @active_project = project
+        @project = project
 
-        subscribeProject(@active_project)
+        subscribeProject(@project)
 
-        @active_project.subscribe(:update_progress){ |up|
+        @project.subscribe(:update_progress){ |up|
           begin
             @progress_window.update_progress(up)
           rescue => bang
@@ -680,7 +693,7 @@ module Watobo
         Thread.new{
           begin
             print "\n* setting up project ..."
-            @active_project.setupProject()
+            @project.setupProject()
             print "[OK]\n"
 
             #puts "= SETTINGS ="
@@ -688,26 +701,26 @@ module Watobo
             @iproxy = Watobo::InterceptProxy.new()
             @iproxy.subscribe(:new_interception) { |chat|
               Thread.new(chat) { |c|
-                @active_project.addChat(c)
+                @project.addChat(c)
               }
             }
             @iproxy.run()
             puts "DEBUG: Proxy running" if $DEBUG
             #   puts "* set www_auth for interceptor"
-            #   puts YAML.dump(@active_project.settings[:www_auth])
-            @iproxy.www_auth = @active_project.settings[:www_auth]
+            #   puts YAML.dump(@project.settings[:www_auth])
+            @iproxy.www_auth = @project.settings[:www_auth]
 
             @browserView = BrowserPreview.new(@iproxy)
 
            
             Watobo::Gui.clear_plugins
-            Watobo::Gui::Utils.load_plugins(@active_project)
-            #            saveProjectSettings(@active_project)
-            #            saveSessionSettings(@active_project)
+            Watobo::Gui::Utils.load_plugins(@project)
+            #            saveProjectSettings(@project)
+            #            saveSessionSettings(@project)
 
-            @sites_tree.project = @active_project
-            @findings_tree.project = @active_project
-            Watobo::Gui.active_project = @active_project
+            @sites_tree.project = @project
+            @findings_tree.project = @project
+            Watobo::Gui.project = @project
             puts "* finished, closing progress window" if $DEBUG
 
           rescue => bang
@@ -724,9 +737,9 @@ module Watobo
         }
         getApp().runModal
       #  puts "* finished modal mode"
-       update_conversation_table(@active_project)
+       update_conversation_table(@project)
 
-            update_status_bar(@active_project)
+            update_status_bar(@project)
         @progress_window.hide
         @chatTable.show
         @sites_tree.show
@@ -843,7 +856,7 @@ module Watobo
 #        puts "= Loading Session ="
 #        session_file = File.join( Watobo.workspace_path, prefs[:project_name], prefs[:session_name] )
 #        puts "SessionFile: #{session_file}"
-        if @active_project then
+        if @project then
         response = FXMessageBox.question(self, MBOX_YES_NO, "New Project", "This will close the actual project!\nAre you sure?")
         return false if not response == MBOX_CLICKED_YES
         # clear old project
@@ -899,7 +912,7 @@ module Watobo
       :project_file => project_file
       }
       startProject(project)
-      Watobo::Gui.save_default_settings(@active_project)
+      Watobo::Gui.save_default_settings(@project)
       end
 
       return true
@@ -910,19 +923,15 @@ module Watobo
 =end
       end
 
-      def setActiveProject(project)
-        @active_project = project
-      end
-
       def openScannerSettingsDialog(sender,sel,ptr)
-        if @active_project then
-          settings = @active_project.getScanPreferences()
+        if @project then
+          settings = @project.getScanPreferences()
           # puts settings.to_yaml
           dlg = Watobo::Gui::ScannerSettingsDialog.new(self, settings, LAYOUT_FILL_X|LAYOUT_FILL_Y)
           if dlg.execute != 0 then
           # puts dlg.scanner_settings.to_yaml
-          @active_project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
-          saveProjectSettings(@active_project)
+          @project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
+          saveProjectSettings(@project)
 
           end
         else
@@ -933,10 +942,10 @@ module Watobo
       def openInterceptorSettingsDialog(sender,sel,ptr)
         dlg = Watobo::Gui::InterceptorSettingsDialog.new(self)
         if dlg.execute != 0 then
-        puts dlg.interceptor_settings.to_yaml
+        puts dlg.interceptor_settings.to_yaml if $DEBUG
         Watobo::Conf::Interceptor.set dlg.interceptor_settings 
         #@settings[:interceptor].update YAML.load(YAML.dump(dlg.interceptor_settings))
-        #@active_project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
+        #@project.updateSettings(YAML.load(YAML.dump(dlg.scanner_settings)))
         FXMessageBox.information(self, MBOX_OK, "Restart required!", "You must restart WATOBO in order your changes take effect.")
         Watobo::Conf::Interceptor.save
         #Watobo::Gui.save_default_settings(@settings[:interceptor])
@@ -944,10 +953,10 @@ module Watobo
       end
 
       def openScopeDialog(sender,sel,ptr)
-        dlg = Watobo::Gui::EditScopeDialog.new(self, @active_project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        dlg = Watobo::Gui::EditScopeDialog.new(self, @project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
         if dlg.execute != 0 then
-        @active_project.scope = YAML.load(YAML.dump(dlg.scope))
-        saveProjectSettings(@active_project)
+        @project.scope = YAML.load(YAML.dump(dlg.scope))
+        saveProjectSettings(@project)
         refreshViewers()
         end
       end
@@ -958,40 +967,40 @@ module Watobo
         @scan_button.icon = ICON_START
         @scan_running = false
         else
-          dlg = Watobo::Gui::FullScanDialog.new(self, @active_project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+          dlg = Watobo::Gui::FullScanDialog.new(self, @project, LAYOUT_FILL_X|LAYOUT_FILL_Y)
           if dlg.execute != 0 then
 
             @scan_running = true
             @scan_button.icon = ICON_STOP
             #@pause_scan_button.enable
-            @active_project.setScope(dlg.scope)
+            @project.setScope(dlg.scope)
 
-            #  saveProjectSettings(@active_project)
-            #  saveSessionSettings(@active_project)
+            #  saveProjectSettings(@project)
+            #  saveSessionSettings(@project)
 
-            #@active_project.scanLogDirectory = dlg.scan_prefs[:scanlog_dir] unless dlg.scan_prefs[:scanlog_dir] == ''
+            #@project.scanLogDirectory = dlg.scan_prefs[:scanlog_dir] unless dlg.scan_prefs[:scanlog_dir] == ''
 
-            #   chats = @active_project.getChats(dlg.scope)
+            #   chats = @project.getChats(dlg.scope)
             dlg_modules = dlg.activeModules().map{ |m| m.class.to_s}
             # we only need array of selected class names
             #  scan_modules = dlg.selectedModules().map{ |m| m.class.to_s }
-            acc = @active_project.active_checks.select do |ac|
+            acc = @project.active_checks.select do |ac|
               dlg_modules.include? ac.class.to_s
             end
 
-            in_scope_chats = @active_project.chatsInScope()
+            in_scope_chats = @project.chatsInScope()
             #  puts "Chats to scan:"
             #  puts in_scope_chats.length
             #  p
 
-            confirm_dlg = Watobo::Gui::ConfirmScanDialog.new(self, in_scope_chats, @active_project.getScanPreferences())
+            confirm_dlg = Watobo::Gui::ConfirmScanDialog.new(self, in_scope_chats, @project.getScanPreferences())
             if confirm_dlg.execute == 0
             @scan_button.icon = ICON_START
             @scan_running = false
             return 0
             end
 
-            scan_prefs = @active_project.getScanPreferences()
+            scan_prefs = @project.getScanPreferences()
 =begin
             scan_prefs[:scanlog_dir] = dlg.scan_prefs[:scanlog_dir]
             if File.exist?(scan_prefs[:scanlog_dir]) then
@@ -1001,10 +1010,10 @@ module Watobo
             end
 =end
 
-            #scan_prefs[:data_store] = @active_project.datastore
+            #scan_prefs[:data_store] = @project.datastore
             scan_prefs[:scan_name] = "scan_" + Time.now.to_i.to_s + "_full"
 
-            @scanner = Watobo::Scanner2.new(in_scope_chats, acc , @active_project.passive_checks, scan_prefs)
+            @scanner = Watobo::Scanner2.new(in_scope_chats, acc , @project.passive_checks, scan_prefs)
 
             @scanner.subscribe(:progress) { |check|
                   @dashboard.progress(check)
@@ -1026,7 +1035,7 @@ module Watobo
 
             @scanner.subscribe(:new_finding) { |finding|
               begin
-                @active_project.addFinding(finding)
+                @project.addFinding(finding)
               rescue => bang
               puts bang
               puts bang.backtrace if $DEBUG
@@ -1042,10 +1051,11 @@ module Watobo
               begin               
                 @scanner.run(:run_passive_checks => false, :update_sids => true, :update_session => true)
                # logger("scan finished")
-            #    @dashboard.setScanStatus("Finished")
-            #    @statusBar.statusInfoText = "Ready."
-            #    @scan_button.icon = ICON_START
+           
                 @scan_running = false
+                @status_lock.synchronize do
+                  @new_status = SCAN_FINISHED
+                end
               rescue => bang
               puts bang
               end
@@ -1071,13 +1081,6 @@ module Watobo
         end
       end
 
-      #
-      # new_event
-      #
-      def logger_UNUSED(message)
-        @log_viewer.log(LOG_INFO, message)
-      end
-
       def initialize(app)
         # Invoke base class initialize first
         super(app, "WATOBO by siberas (Version: #{Watobo.version})", :opts => DECOR_ALL, :width => 1000, :height => 600)
@@ -1088,13 +1091,14 @@ module Watobo
         self.show(PLACEMENT_MAXIMIZED)
         self.connect(SEL_CLOSE, method(:onClose))
 
-        @projects = Hash.new
+        @project = nil
 
         @scanner = nil
         @iproxy = nil
         @browserView = nil
 
         @scan_running = false
+        @new_status = nil
 
         @lastViewed = nil # last viewed/selected item (chat/finding)
         @last_request = nil
@@ -1111,8 +1115,6 @@ module Watobo
         @interceptor = nil
 
         @table_filter = FXDataTarget.new("")
-        @active_project = nil
-
 
         @finding_lock = Mutex.new
         @chat_lock = Mutex.new
@@ -1166,7 +1168,7 @@ module Watobo
         FXMenuTitle.new(menu_bar, "Settings" , :popupMenu => settings_menu_pane)
         menu_proxy = FXMenuCommand.new(settings_menu_pane, "Forwarding Proxy..." )
         menu_session = FXMenuCommand.new(settings_menu_pane, "Session Management..." )
-        # @active_project ? menu_session.enable : menu_session.disable
+        # @project ? menu_session.enable : menu_session.disable
 
         menu_ca = FXMenuCommand.new(settings_menu_pane, "Create Certificate..." )
         menu_ca.connect(SEL_COMMAND, method(:openCADialog))
@@ -1304,37 +1306,29 @@ module Watobo
         #   @treeTabbook.connect(SEL_COMMAND) { |sender, sel, item|
         #     case item
         #       when 0
-        # if @active_project
-        #   @active_project.settings.delete(:site_filter)
-        #       updateRequestTable(@active_project)
+        # if @project
+        #   @project.settings.delete(:site_filter)
+        #       updateRequestTable(@project)
         #end
         #     end
         #   }
         subscribeFindingsTree()
         subscribeSitesTree()
-        #
+        
         # S W I T C H E R
-        #
-
         @switcher = FXSwitcher.new(splitter,LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
 
         # R E Q U E S T I N F O
         requestInfo = FXVerticalFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         request_splitter = FXSplitter.new(requestInfo, :opts => LAYOUT_SIDE_TOP|SPLITTER_HORIZONTAL|LAYOUT_FILL_Y|LAYOUT_FILL_X|SPLITTER_TRACKING|SPLITTER_REVERSED)
 
-        #conversation_frame = FXVerticalFrame.new(request_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
 
-        # filterFrame =FXVerticalFrame.new(conversation_frame, LAYOUT_FILL_X)
-        #
-        # C H A T  F I L T E R  C O N T R O L L E R
+        # C H A T  T A B L E  C O N T R O L L E R
         @conversation_table_ctrl = ConversationTableCtrl.new(request_splitter,  :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
 
-        #==============================================================================================#
-        # Chat-Table
-        #==============================================================================================#
-        #@chatTable = ConversationTable.new(conversation_frame,
+        # C H A T   T A B L E
         @chatTable = ConversationTable.new(@conversation_table_ctrl )
-@conversation_table_ctrl.table= @chatTable
+        @conversation_table_ctrl.table= @chatTable
 
         @chatTable.autoscroll =  true
 
@@ -1351,7 +1345,7 @@ module Watobo
           if row >= 0 then
           @chatTable.selectRow(row, false)
           chatid = @chatTable.getRowText(row).to_i
-          chat = @active_project.getChat(chatid)
+          chat = @project.getChat(chatid)
           open_manual_request_editor(chat)
           end
         end
@@ -1368,7 +1362,7 @@ module Watobo
 
               @chatTable.selectRow(row, false)
               chatid = @chatTable.getRowText(row).to_i
-              chat = @active_project.getChat(chatid)
+              chat = @project.getChat(chatid)
 
               showChat(chat)
 
@@ -1391,17 +1385,17 @@ module Watobo
 
                 # EXCLUDE SUBMENU
                 exclude_submenu = FXMenuPane.new(self) do |sub|
-                  chat = @active_project.getChat(chatid)
+                  chat = @project.getChat(chatid)
 
                   target = FXMenuCheck.new(sub, "Chat (#{chatid})" )
 
-                  target.check = @active_project.scan_settings[:excluded_chats].include?(chatid) ? true : false
+                  target.check = @project.scan_settings[:excluded_chats].include?(chatid) ? true : false
 
                   target.connect(SEL_COMMAND) {
                     if target.checked?()
-                    @active_project.scan_settings[:excluded_chats].push chatid
+                    @project.scan_settings[:excluded_chats].push chatid
                     else
-                    @active_project.scan_settings[:excluded_chats].delete(chatid)
+                    @project.scan_settings[:excluded_chats].delete(chatid)
                     end
 
                   }
@@ -1415,8 +1409,8 @@ module Watobo
 
                 # COPY SUBMENU
                 copy_submenu = FXMenuPane.new(self) do |sub|
-                  chat = @active_project.getChat(chatid)
-                  url = @active_project.getChat(chatid).request.url
+                  chat = @project.getChat(chatid)
+                  url = @project.getChat(chatid).request.url
                   #  puts url
                   url_string = "URL: #{url.slice(0,35)}"
                   url_string += "..." if url.length > 36
@@ -1430,9 +1424,9 @@ module Watobo
                     end
 
                   }
-                  target = FXMenuCommand.new(sub, "Site: #{@active_project.getChat(chatid).request.site}" )
+                  target = FXMenuCommand.new(sub, "Site: #{@project.getChat(chatid).request.site}" )
                   target.connect(SEL_COMMAND) {
-                    site = @active_project.getChat(chatid).request.site
+                    site = @project.getChat(chatid).request.site
 
                     types = [ FXWindow.stringType ]
                     if acquireClipboard(types)
@@ -1445,8 +1439,8 @@ module Watobo
 
                 addToLogin = FXMenuCommand.new(menu_pane, "Add to Login-Script" )
                 addToLogin.connect(SEL_COMMAND) {
-                  @active_project.add_login_chat_id(chatid)
-                  saveSessionSettings(@active_project)
+                  @project.add_login_chat_id(chatid)
+                  saveSessionSettings(@project)
                 }
 
                 target = FXMenuCheck.new(menu_pane, "Mark as tested" )
@@ -1635,7 +1629,7 @@ module Watobo
 
       def subscribeSitesTree()
         @sites_tree.subscribe(:add_site_to_scope){ |site|
-          @active_project.addToScope(site)
+          @project.addToScope(site)
         }
 
         @sites_tree.subscribe(:show_conversation){ |chat_list|
@@ -1650,17 +1644,17 @@ module Watobo
 
       def subscribeFindingsTree()
         @findings_tree.subscribe(:add_site_to_scope){ |site|
-          @active_project.addToScope(site)
+          @project.addToScope(site)
         }
 
         @findings_tree.subscribe(:delete_domain_filter){ |df|
-          @active_project.settings[:domain_filters].delete(df)
+          @project.settings[:domain_filters].delete(df)
           #  puts "Delete Domain-Filter #{df}"
           updateTreeLists()
         }
 
         @findings_tree.subscribe(:delete_all_domain_filters) {
-          @active_project.settings[:domain_filters].clear
+          @project.settings[:domain_filters].clear
           updateTreeLists()
         }
 
@@ -1751,7 +1745,7 @@ module Watobo
           chatid = @chatTable.getRowText(row).to_i
           @chatTable.selectRow(row, false)
           # @logText.appendText("selected ID: (#{chatid})\n")
-          @active_project.chats.each do |chat|
+          @project.chats.each do |chat|
             if chat.id == chatid then
                showChat(chat)
             end
@@ -1766,22 +1760,22 @@ module Watobo
       end
 
       def onMenuProxy(sender,sel,item)
-        if @active_project
-          # puts @active_project.settings.to_yaml
+        if @project
+          # puts @project.settings.to_yaml
           # puts @settings[:password_policy].to_yaml
-          proxy_dialog = Watobo::Gui::ProxyDialog.new(self, @active_project.forward_proxy_settings, Watobo::Conf::Gui.dump )
+          proxy_dialog = Watobo::Gui::ProxyDialog.new(self, @project.forward_proxy_settings, Watobo::Conf::Gui.dump )
           if proxy_dialog.execute != 0 then
           proxy_prefs = proxy_dialog.getProxyPrefs
           Watobo::Conf::ForwardingProxy.set proxy_prefs
-          @active_project.setProxyOptions(YAML.load(YAML.dump(proxy_prefs)))
-          puts "* current proxy:\n> #{@active_project.getCurrentProxy()}" if $DEBUG
+          @project.setProxyOptions(YAML.load(YAML.dump(proxy_prefs)))
+          puts "* current proxy:\n> #{@project.getCurrentProxy()}" if $DEBUG
           
-          Watobo::Gui.save_default_settings(@active_project)
+          Watobo::Gui.save_default_settings(@project)
           
-          saveProjectSettings(@active_project)
+          saveProjectSettings(@project)
          
-          update_status_bar(@active_project)
-          #puts "* current proxy:\n> #{@active_project.getCurrentProxy().to_yaml}"
+          update_status_bar(@project)
+          #puts "* current proxy:\n> #{@project.getCurrentProxy().to_yaml}"
           #puts @settings[:password_policy].to_yaml
           end
         else
@@ -1790,23 +1784,23 @@ module Watobo
       end
 
       def purge_findings(findings)
-        return false if @active_project.nil?
+        return false if @project.nil?
         findings.each do |f|
-          @active_project.delete_finding(f)
+          @project.delete_finding(f)
         end
       end
       
       def set_false_positive(findings)
-        return false if @active_project.nil?
+        return false if @project.nil?
         findings.each do |f|
-          @active_project.set_false_positive(f)
+          @project.set_false_positive(f)
         end
       end
       
       def unset_false_positive(findings)
-        return false if @active_project.nil?
+        return false if @project.nil?
         findings.each do |f|
-          @active_project.unset_false_positive(f)
+          @project.unset_false_positive(f)
         end
       end
     end # Class End

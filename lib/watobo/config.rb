@@ -48,10 +48,8 @@ module Watobo
           file = filename unless filename.nil?
           file = File.join( Watobo::Conf::General.working_directory, n )
           if File.exist? file
-            puts " [#{self}] update settings from file #{file}"
+            puts " [#{self}] update settings from file #{file}" if $DEBUG
             @settings.update YAML.load_file(file)
-            puts @settings.to_yaml
-            puts self.dump if $DEBUG
           else
             puts "! [#{self}] could not update settings from file #{file}" if $DEBUG
           end

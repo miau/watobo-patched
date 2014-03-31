@@ -97,16 +97,16 @@ module Watobo
         # end
         
           if @filter[:unique]
-            unless Watobo::Gui.active_project.nil?
-              uniq_hash = Watobo::Gui.active_project.uniqueRequestHash chat.request
+            unless Watobo::Gui.project.nil?
+              uniq_hash = Watobo::Gui.project.uniqueRequestHash chat.request
               return false if @uniq_chats.has_key? uniq_hash
               @uniq_chats[uniq_hash] = nil
             end
           end
           
           if @filter[:show_scope_only]           
-            unless Watobo::Gui.active_project.nil?
-              return false unless Watobo::Gui.active_project.siteInScope?(chat.request.site)
+            unless Watobo::Gui.project.nil?
+              return false unless Watobo::Gui.project.siteInScope?(chat.request.site)
             end
           end
           # puts "* passed scope"

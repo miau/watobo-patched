@@ -369,7 +369,6 @@ module Watobo
         end
 
         #  @ctx = OpenSSL::SSL::SSLContext.new('SSLv23_server')
-        puts "* read certificat (#{crt_path})"
         @cert = OpenSSL::X509::Certificate.new(File.read(crt_filename))
         @key = OpenSSL::PKey::RSA.new(File.read(key_filename))
 

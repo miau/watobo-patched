@@ -32,10 +32,9 @@ module Watobo
 
       include Responder
 
-      def initialize(owner, project, prefs={})
+      def initialize(owner, prefs={})
 
-        super(owner, "Client Certificates", :opts => DECOR_ALL)
-        @project = project
+        super(owner, "Client Certificates", :opts => DECOR_ALL)     
         FXMAPFUNC(SEL_COMMAND, ID_ACCEPT, :onAccept)
 
         @password_policy = {
@@ -45,7 +44,7 @@ module Watobo
         @cert_path = nil
         @client_certificates = {}
         @client_certificates = project.getClientCertificates unless project.getClientCertificates.nil?
-        puts client_certificates.to_yaml
+      #  puts client_certificates.to_yaml
 
         @password_policy.update prefs[:password_policy] if prefs.has_key? :password_policy
 
@@ -121,7 +120,7 @@ module Watobo
         @sites_combo.clearItems
         @sites_combo.appendItem(NO_SELECTION, nil)
         @site_dt.value = NO_SELECTION
-        @project.listSites(:in_scope => @scope_only_cb.checked? ){ |site|
+        Watobo::Gui.project.listSites(:in_scope => @scope_only_cb.checked? ){ |site|
           #puts "Site: #{site}"
           @sites_combo.appendItem(site, site)
         }

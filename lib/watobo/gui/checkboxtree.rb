@@ -50,7 +50,7 @@ module Watobo
           # puts icon.class.to_s
           node = nil
           levels = e[:name].split('|')
-          # puts "Processing: #{e[:name]}"
+          puts "Processing: #{e[:name]} > #{e[:data].class}" if $DEBUG
           levels.each do |l|
             
             item = self.findItem(l, node, SEARCH_FORWARD|SEARCH_IGNORECASE)
@@ -177,11 +177,13 @@ module Watobo
         #LAYOUT_TOP|LAYOUT_RIGHT|TREELIST_SHOWS_LINES|TREELIST_SHOWS_BOXES|TREELIST_ROOT_BOXES|TREELIST_EXTENDEDSELECT
         
         self.connect(SEL_COMMAND) do |sender, sel, item|
-          # puts "Selected Item: #{item}"
-          #  if item.parent
-          #    puts "Member Of: #{item.parent}"
-          #   puts "Has Brothers: #{item.parent.numChildren}"
-          #  end
+          if $DEBUG
+           puts "Selected Item: #{item}"
+            if item.parent
+              puts "Member Of: #{item.parent}"
+             puts "Has Brothers: #{item.parent.numChildren}"
+            end
+          end
           if self.itemLeaf?(item) then
             toggleState(item)
             updateParent(item)
@@ -204,6 +206,7 @@ module Watobo
               uncheckAllChildren(item)
               :none
             end
+            
             self.setItemData(item, new_state)
             self.setItemClosedIcon(item, icon)
             self.setItemOpenIcon(item, icon)

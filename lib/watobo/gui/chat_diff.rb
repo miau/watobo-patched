@@ -336,11 +336,10 @@ module Watobo
       end
       
       
-      def initialize(owner, project, chat_orig, chat_new)
+      def initialize(owner, chat_orig, chat_new)
         # Invoke base class initialize function first
         super(owner, "Chat Differ", :opts => DECOR_ALL,:width=>800, :height=>600)
         self.icon = ICON_DIFFER
-        @project = project
         @chat_orig = chat_orig
         @chat_new = chat_new
         @max_line_length = 80

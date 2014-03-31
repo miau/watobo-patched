@@ -23,6 +23,12 @@ module Watobo
 
   @active_checks = []
   @passive_checks = []
+  @running_projects = []
+  
+  def self.running_projects
+    @running_projects
+  end
+  
   def self.active_checks
     @active_checks
   end
@@ -32,12 +38,8 @@ module Watobo
   end
 
   def self.init_framework()
-    puts "* Initializing Framework"
     init_working_directory
 
-    # @settings.update settings
-
-    puts "* loading custom settings ..."
     Watobo::Conf.each do |cm|
       cm.update
     end
@@ -101,8 +103,6 @@ module Watobo
   end
 
   def self.init_working_directory
-    puts "* init_working_directory ..."
-
     watobo_folder = ".watobo"
     watobo_folder = Conf::General.watobo_folder if Conf::General.respond_to? :watobo_folder
 
@@ -121,7 +121,6 @@ module Watobo
       puts "!!! WATOBO is not tested for this platform (#{RUBY_PLATFORM})!!!"
       exit
       end
-      puts ">> " + Conf::General.working_directory
     end
 
     unless File.exist? Conf::General.working_directory

@@ -20,15 +20,18 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
 begin
+  print "\nLoading FXRuby ... this may take some time ... "
   require 'fox16'
   require 'fox16/colors'
+  print "[OK]\n"
 rescue LoadError
+  print "[FAILED]\n"
   puts "!!! Seems like FXRuby is not installed !!!"
   puts "please check the installation tutorial at http://watobo.sourceforge.net"
   exit
 end
 
-  if RUBY_PLATFORM =~ /(linux|bsd|solaris|hpux|darwin)/i
+  if RUBY_PLATFORM =~ /(linux|bsd|solaris|hpux|darwin)/i then
     begin
       require 'selenium-webdriver'
     rescue LoadError
@@ -47,15 +50,11 @@ module Watobo
     @application = nil
     @icon_path = File.expand_path(File.join(File.dirname(__FILE__),"..","..","icons"))
 
-    @active_project = nil
+    @project = nil
     def self.history
       unless defined? @history
         hf = Watobo::Conf::Gui.history_file
-        puts Watobo::Conf::Gui.dump.to_yaml
         wd = Watobo.working_directory
-        puts "* create new history"
-        puts "* in working directory: #{wd}"
-        puts "* history file: #{hf}"
         
       history_file = File.join(wd , hf)
       @history = SessionHistory.new(history_file)
@@ -89,50 +88,43 @@ module Watobo
       @application
     end
 
-    def self.active_project
-      @active_project
+    def self.project
+      @project
     end
     
-    def self.active_project=(project)
-      @active_project = project
+    def self.project=(project)
+      @project = project
     end
     
-    private
-
-def self.check_first_run
-  file = File.join(File.expand_path(File.dirname(__FILE__)), "..", "..", "disclaimer.chk")
-  unless File.exists?(file)
-    first_start_info = Watobo::Gui::AboutWatobo.new(@main_window)
-    if first_start_info.execute != 0 then
-      File.new(file, "w")
-    else
-      exit
-    end
-  end
-end
+    def self.check_first_run
+       file = File.join(File.expand_path(File.dirname(__FILE__)), "..", "..", "disclaimer.chk")
+       unless File.exists?(file)
+          first_start_info = Watobo::Gui::AboutWatobo.new(@main_window)
+         if first_start_info.execute != 0 then
+            File.new(file, "w")
+         else
+           exit
+         end
+       end
+     end
   end
 end
 
 %w( load_icons gui_utils load_plugins session_history save_default_settings master_password session_history save_project_settings save_proxy_settings ).each do |l|
   require File.join("watobo","gui","utils", l)
 end
-#require 'watobo/gui/utils/load_icons'
-#require 'watobo/gui/utils/gui_utils'
-#require 'watobo/gui/utils/load_plugins'
-#require 'watobo/gui/utils/session_history'
-#require 'watobo/gui/utils/save_default_settings'
 
 Watobo::Gui.create_application
 
 require 'watobo/gui/utils/init_icons'
 
 gui_path = File.expand_path(File.join(File.dirname(__FILE__), "gui"))
-#puts "* loading gui #{gui_path}"
+
 Dir.glob("#{gui_path}/*.rb").each do |cf|
   next if File.basename(cf) == 'main_window.rb' # skip main_window here, because it must be loaded last
   require File.join("watobo","gui", File.basename(cf))
-
 end
+
 require 'watobo/gui/templates/plugin'
 require 'watobo/gui/templates/plugin2'
 require 'watobo/gui/main_window'

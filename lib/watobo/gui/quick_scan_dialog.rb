@@ -32,7 +32,7 @@ module Watobo
         o[:use_orig_request] = @useOriginalRequest.checked?
         o[:detect_logout] = @detectLogout.checked?
         o[:follow_redirect] = @followRedirects.checked?
-        puts o.to_yaml
+        puts o.to_yaml if $DEBUG
         o
       end
 
