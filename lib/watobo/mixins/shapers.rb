@@ -184,6 +184,7 @@ module Watobo#:nodoc: all
           begin
             matches = []
             headers.each_with_index do |h,i|
+              next if i == 0
               matches << i if h =~ /#{header}/i
             end
             matches.map{ |m| self.delete_at(m) }
@@ -342,17 +343,7 @@ module Watobo#:nodoc: all
           self.first.gsub!(/(.*) (HTTP\/.*)/, "\\1#{pref}#{parms} \\2")
 
         end
-
-        def setCookie(cname="Cookie", value=nil)
-          return nil if value.nil?
-
-          self.map!{ |l|
-            break if l.strip.empty?
-            if l =~ /^#{cname}:/i
-              l = "#{cname}: #{value}"
-            end
-          }
-        end
+        
         
         def set_content_length(length)
           set_header("Content-Length", length)     

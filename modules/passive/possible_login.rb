@@ -54,14 +54,15 @@ module Watobo#:nodoc: all
         def do_test(chat)
           begin
             #  puts "running module: #{Module.nesting[0].name}"
-            all_parms = chat.request.post_parms
-            if all_parms
+            # all_parms = chat.request.post_parms
+            all_parms = chat.request.parameters(:data, :url)
+            return true if all_parms.empty?
               # puts all_parms
             #  resource = "/" + chat.request.resource
               all_parms.each do |parm|
                 @possible_login_patterns.each do |pattern|
                   #  puts "Testing pattern #{pattern} on postparms\r\n#{parm}"
-                  if parm =~ /#{pattern}/i
+                  if parm.name =~ /#{pattern}/i
                     match = $1
                     
                     addFinding(
@@ -112,11 +113,7 @@ module Watobo#:nodoc: all
                     end
                     
                     return true
-                  end
-                  
-                  
-                end
-                
+                  end               
               end
             end
           rescue => bang

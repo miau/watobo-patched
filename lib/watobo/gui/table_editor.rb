@@ -23,6 +23,8 @@
 module Watobo#:nodoc: all
   module Gui
     class AddTableParmDialog < FXDialogBox
+      attr :param
+      
       def location()
         @location_combo.getItemData(@location_combo.currentItem)
       end
@@ -42,6 +44,7 @@ module Watobo#:nodoc: all
         @location = nil
         @pname = nil
         @pval = nil
+        @param = nil
 
         base_frame = FXVerticalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
         frame = FXHorizontalFrame.new(base_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
@@ -77,10 +80,11 @@ module Watobo#:nodoc: all
         buttons_frame = FXHorizontalFrame.new(base_frame,
         :opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)
 
-        @finishButton = FXButton.new(buttons_frame, "Accept" ,  nil, nil, :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
+        @finishButton = FXButton.new(buttons_frame, "Add" ,  nil, nil, :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
         @finishButton.enable
         @finishButton.connect(SEL_COMMAND) do |sender, sel, item|
         #self.handle(self, FXSEL(SEL_COMMAND, ID_CANCEL), nil)
+          create_param
           self.handle(self, FXSEL(SEL_COMMAND, ID_ACCEPT), nil)
         end
 
@@ -88,6 +92,21 @@ module Watobo#:nodoc: all
             :target => self, :selector => FXDialogBox::ID_CANCEL,
             :opts => BUTTON_NORMAL|LAYOUT_RIGHT)
 
+      end
+      
+      private
+      
+      def create_param
+        @param = case @location_combo.getItemData(@location_combo.currentItem)
+        when /Post/i
+         Watobo::WWWFormParameter.new(:name => @parm_name_dt.value, :value => @parm_value_dt.value)
+         when /Url/i
+           Watobo::UrlParameter.new(:name => @parm_name_dt.value, :value => @parm_value_dt.value)
+         when /Cookie/i
+           Watobo::CookieParameter.new(:name => @parm_name_dt.value, :value => @parm_value_dt.value)
+         else
+           nil
+         end
       end
 
     end
@@ -99,55 +118,32 @@ module Watobo#:nodoc: all
       end
 
       def parseRequest
-        cookies = []
-        url = ""
+        request = @request.copy
         
-        parms = []
         self.numRows.times do |i|
           name = CGI.escape(self.getItemText(i, 1))
-          value = self.getItemText(i, 2).strip
           location = self.getItemText(i, 0)
-          case location
-          when /req/i
-            url = self.getItemText(i, 2)
-          when /post/i
-            @request.set Watobo::WWWFormParameter.new( :name => name, :value => value)            
-          when /url/i
-            @request.set Watobo::UrlParameter.new( :name => name, :value => value)
-          when /cookie2?/i
-            cookies << "#{name}=#{value}"
-          end
+          parm = self.getItemData(i, 0)
+          parm.value = self.getItemText(i, 2).unpack("C*").pack("C*").strip 
+          request.set parm
         end
         
-        request = @request.copy
-
-        unless cookies.empty?
-          # puts cookies
-          request.removeHeader("Cookie")
-          request.addHeader("Cookie", cookies.join("; "))
-        end
         request
       end
 
       def setRequest(request)
+        initTable()
+        return false if request.empty?
         @request = request.copy
 
-        return false if @request.content_type =~ /(multipart|xml|json)/
+        return false if @request.content_type =~ /(multipart|json)/
 
-        initTable()
+        
         @request = Watobo::Utils.text2request(request) if request.is_a? String
         # addParmList("REQ", ["URL=#{request.url}"])
 
-        if @request.get_parms.length > 0
-          addParmList("URL", @request.get_parms)
-        end
-
-        if @request.post_parms.length > 0
-          addParmList("Post", @request.post_parms)
-        end
-
-        if @request.cookies.length > 0
-          addParmList("Cookie", @request.cookies)
+        @request.parameters.each do |parm|
+          add_parm parm
         end
 
         true
@@ -264,15 +260,29 @@ module Watobo#:nodoc: all
       end
 
       private
+      
+      def add_parm(parm)
+        lastRowIndex = self.getNumRows
+          self.appendRows(1)
+          self.setItemText(lastRowIndex, 0, parm.location.to_s)
+          self.setItemData(lastRowIndex, 0, parm)
+          self.setItemText(lastRowIndex, 1, CGI.unescape(parm.name))
+          self.setItemText(lastRowIndex, 2, parm.value)
+         
+          3.times do |i|
+            self.getItem(lastRowIndex, i).justify = FXTableItem::LEFT
+          end
+      end
 
       def addNewParm()
 
         dlg = AddTableParmDialog.new(self)
         if dlg.execute != 0 then
-          loc = dlg.location
-          pname = dlg.parmName
-          pval = dlg.parmValue
-          addParmList(loc, ["#{pname}=#{pval}"])
+          #loc = dlg.location
+          #pname = dlg.parmName
+          #pval = dlg.parmValue
+          parm = dlg.param
+          add_parm parm unless parm.nil?
         end
       end
 
@@ -322,19 +332,18 @@ module Watobo#:nodoc: all
             else
               notify(:hotkey_ctrl_f) if event.code == KEY_f
               notify(:hotkey_ctrl_s) if event.code == KEY_s
+              
+              text = self.getItemText(cr, 2).unpack("C*").pack("C*")
 
               if event.code == KEY_u
-                text = self.getItemText(cr, 2)
-                #puts "* Encode URL: #{text}"
                 cgi = CGI::escape(text)
               self.acceptInput(true)
               self.setItemText(cr, 2, cgi.strip, true)
               end
 
               if event.code == KEY_b
-                text = self.getItemText(cr, 2)
                 #puts "* Encode B64: #{text}"
-                b64 = Base64.encode64(text)
+                b64 = Base64.strict_encode64(text)
                 self.acceptInput(true)
                 self.setItemText(cr, 2, b64.strip, true)
                 puts b64.class
@@ -342,15 +351,11 @@ module Watobo#:nodoc: all
 
              # puts "CTRL-SHIFT-U" if event.code == KEY_U
               if event.code == KEY_U
-                text = self.getItemText(cr, 2)
-                #puts "* Encode URL: #{text}"
                 uncgi = CGI::unescape(text)
               self.acceptInput(true)
               self.setItemText(cr, 2, uncgi.strip, true)
               end
               if event.code == KEY_B
-                text = self.getItemText(cr, 2)
-                #puts "* Encode B64: #{text}"
                 b64 = Base64.decode64(text)
                 self.acceptInput(true)
                 self.setItemText(cr, 2, b64.strip, true)
@@ -375,7 +380,7 @@ module Watobo#:nodoc: all
         end
       end
 
-      def addParmList(parm_origin, parm_list)
+      def addParmList_UNUSED(parm_origin, parm_list)
         parm_list.each do |parm|
           p,v = parm.split("=")
           lastRowIndex = self.getNumRows
@@ -428,9 +433,11 @@ module Watobo#:nodoc: all
        
 
         @editor.setRequest request
-        @req_line.text = request.first.strip
+        @req_line.text = request.first.strip unless request.empty?
 
       end
+      
+      alias :setText :setRequest
 
       def initialize(owner, opts)
         super(owner, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)

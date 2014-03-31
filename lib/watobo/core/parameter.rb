@@ -38,7 +38,8 @@ module Watobo#:nodoc: all
     def initialize(prefs)
       @location = nil
       @name = prefs[:name]
-      @value = prefs[:value]      
+      @value = prefs[:value]
+      @prefs = prefs      
     end
   end
   
@@ -61,6 +62,17 @@ module Watobo#:nodoc: all
     def initialize(prefs)
       super prefs
       @location = :cookie
+    end
+  end
+  
+  class XmlParameter < Parameter
+    attr :parent
+    attr :namespace
+    def initialize(prefs)
+      super prefs
+      @location = :xml
+      @parent = prefs.has_key?(:parent) ? prefs[:parent] : ""
+      @namespace = prefs.has_key?(:namespace) ? prefs[:namespace] : nil
     end
   end
 end

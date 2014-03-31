@@ -150,8 +150,7 @@ module Watobo#:nodoc: all
               
             # puts "#{c_sock} - read request"
              request = c_sock.request
-            #puts ">>>"
-            # puts request
+            
              if request.nil? or request.empty? then
                 print "c/"
                 c_sock.close

@@ -82,8 +82,10 @@ EOF
            r = eval(command)           
                        
            @executions << [ cmd, r ]
-         rescue SyntaxError, LocalJumpError, NameError
-           @executions << [ cmd, "Error In Command!" ]
+         rescue SyntaxError, LocalJumpError, NameError => e
+           out = e.to_s
+           out << e.backtrace.join("\n")
+           @executions << [ cmd, "#{out}" ]
          rescue => bang
            puts bang.backtrace
            @executions << [ cmd, bang ]

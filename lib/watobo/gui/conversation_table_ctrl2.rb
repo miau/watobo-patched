@@ -303,8 +303,23 @@ module Watobo#:nodoc: all
        update_text
        # l = FXLabel.new(@filter_info, "Test")
        
-        @table_option_autoscroll = FXCheckButton.new(f, "autoscroll", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
+       bframe = FXVerticalFrame.new(f, :opts => LAYOUT_FILL_Y, :padding => 0)
+        @table_option_autoscroll = FXCheckButton.new(bframe, "autoscroll", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
         @table_option_autoscroll.setCheck(true)
+        
+        iframe = FXHorizontalFrame.new(bframe, :opts => LAYOUT_FILL_X, :padding => 0 )
+        
+        FXButton.new(iframe, "", ICON_BTN_DOWN, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT).connect(SEL_COMMAND) {
+          @table.scrollDown() unless @table.nil?
+        }
+        
+        FXButton.new(iframe, "", ICON_BTN_UP, nil, 0, FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT).connect(SEL_COMMAND) {
+          @table.scrollUp() unless @table.nil?
+        }
+
+        
+        
+         
 
         
         

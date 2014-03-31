@@ -262,6 +262,21 @@ module Watobo#:nodoc: all
             # puts ssl_socket.methods.sort
 
             ssl_session = ssl_socket.accept
+
+            session = ssl_session
+            request = []
+
+            Watobo::HTTPSocket.read_header(session) do |line|
+              request << line
+            end
+            return nil if request.empty?
+            return nil if request.first.nil?
+
+            unless request.first =~ /(^[^[:space:]]{1,}) http/
+              request.first.gsub!(/(^[^[:space:]]{1,})( )(\/.*)/, "\\1 https://#{site}\\3")
+            end
+
+            request = Watobo::Request.new(request)
           rescue => bang
             puts bang
             puts bang.backtrace if $DEBUG
@@ -269,10 +284,9 @@ module Watobo#:nodoc: all
             return nil
 
           end
-          session = ssl_session
-          request = nil
+
         else
-         # puts "* create request object"
+        # puts "* create request object"
           request = Watobo::Request.new(request)
         site = request.site
         #puts request
@@ -318,9 +332,9 @@ module Watobo#:nodoc: all
       # e.g., hop_by_hop headers
       def clean_request(request)
         # puts request
-        request.remove_header "Connection"
-        request.remove_header "Proxy\-Connection"
-        request.remove_header "If\-"
+        request.remove_header "^Connection"
+        request.remove_header "^Proxy\-Connection"
+        request.remove_header "^If\-"
 
         request.remove_header("^Accept-Encoding")
       end
@@ -568,7 +582,7 @@ module Watobo#:nodoc: all
           session = ssl_session
           request = nil
         else
-         # puts "* create request object"
+        # puts "* create request object"
           request = Watobo::Request.new(request)
         site = request.site
         #puts request

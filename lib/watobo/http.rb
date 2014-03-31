@@ -1,5 +1,5 @@
 # .
-# http_socket.rb
+# http.rb
 # 
 # Copyright 2013 by siberas, http://www.siberas.de
 # 
@@ -19,7 +19,7 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
-%w( client_socket http_socket ).each do |lib|
-  require "watobo/http_socket/#{lib}"
-end
-
+require 'watobo/http/data/data'
+require 'watobo/http/url/url'
+require 'watobo/http/cookies/cookies'
+require 'watobo/http/xml/xml'

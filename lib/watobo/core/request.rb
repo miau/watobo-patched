@@ -40,7 +40,10 @@ module Watobo#:nodoc: all
     attr :data
     attr :url
     attr :header
-    attr :cookies
+   # attr :cookies
+   
+   include Watobo::HTTP::Cookies::Mixin
+   include Watobo::HTTP::Xml::Mixin
     
     def self.create request
       request.extend Watobo::Mixin::Parser::Url
@@ -79,10 +82,23 @@ module Watobo#:nodoc: all
       end
     end
     
-    def parameters(*locations)
+    def parameters(*locations, &block)
+      param_locations = [ :url, :data, :wwwform, :xml, :cookies ]
+      unless locations.empty?
+        param_locations.select!{ |loc| locations.include? loc }
+      end
+      
       parms = []
-      parms.concat @data.parameters
-      parms.concat @url.parameters
+      parms.concat @url.parameters if param_locations.include?(:url)
+      parms.concat cookies.parameters if param_locations.include?(:cookies)
+      parms.concat @data.parameters if self.is_wwwform? and ( param_locations.include?(:data) or param_locations.include?(:wwwform) )
+      
+      parms.concat xml.parameters if self.is_xml? and param_locations.include?(:xml)
+      if block_given?
+        parms.each do |p|
+          yield p
+        end
+      end
       parms
     end
     
@@ -94,6 +110,10 @@ module Watobo#:nodoc: all
        @data.set parm
       when :url
         @url.set parm
+      when :xml
+        xml.set parm
+      when :cookie
+        cookies.set parm
       end
       true
     end

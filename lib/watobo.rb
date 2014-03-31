@@ -47,16 +47,14 @@ require 'watobo/utils'
 require 'watobo/mixins'
 require 'watobo/config'
 require 'watobo/defaults'
+require 'watobo/http'
 require 'watobo/core'
 require 'watobo/externals'
 require 'watobo/adapters'
 require 'watobo/framework'
-require 'watobo/http/data/data'
-require 'watobo/http/url/url'
-require 'watobo/http/cookies/cookies'
 require 'watobo/parser'
 require 'watobo/interceptor'
-require 'watobo/http_socket'
+require 'watobo/sockets'
 
 # WORKAROUND FOR LINUX :(
 dont_know_why_REQUIRE_hangs = Mechanize.new
@@ -64,7 +62,7 @@ dont_know_why_REQUIRE_hangs = Mechanize.new
 # @private 
 module Watobo#:nodoc: all #:nodoc: all
 
-  VERSION = "0.9.16"
+  VERSION = "0.9.17"
 
   def self.base_directory
     @base_directory ||= ""

@@ -1791,6 +1791,7 @@ request_splitter.connect(SEL_COMMAND){
         rescue => bang
           puts "!!!ERROR: chat_selected"
           puts bang
+          puts bang.backtrace
           puts "!!!"
         ensure
         getApp().endWaitCursor()

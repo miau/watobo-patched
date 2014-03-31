@@ -33,7 +33,7 @@ module Watobo#:nodoc: all
             :check_group => AC_GROUP_SQL,
             :description => "Check every parameter for SQL-Injection flaws. The detection is based on error messages of the database.",   # description of checkfunction
             :author => "Andreas Schmidt", # author of check
-            :version => "0.9"   # check version
+            :version => "1.0"   # check version
             )
             
             threat =<<'EOF'
@@ -89,14 +89,14 @@ EOF
           def generateChecks(chat)
             
             begin
-              urlParmNames(chat).each do |parm|
+              chat.request.parameters( :url, :wwwform ) do |parm|
                 # puts "#{Module.nesting[0].name}: run check on chat-id (#{chat.id}) with parm (#{parm})"
                 #@sql_checks.each do |check, pattern|
                 test_values = []
                 @sql_checks.each do |check|
                   test_values << check
-                  test_values << "#{chat.request.get_parm_value(parm)}#{check}"
-                  test_values << "#{check}#{chat.request.get_parm_value(parm)}"
+                  test_values << "#{parm.value}#{check}"
+                  test_values << "#{check}#{parm.value}"
                 end
                 test_values.each do |check|
                   checker = proc {
@@ -105,10 +105,11 @@ EOF
                     test_response = nil
                     # IMPORTANT!!!
                     # use prepareRequest(chat) for cloning the original request 
-                    test = chat.copyRequest
-                    test_parm = "#{parm.clone}"
-                    # modify the test request
-                    test.replace_get_parm(test_parm, check)
+                    test = chat.request.copy
+                    parm.value = check
+                    test.set parm
+                    
+                    puts test
                     # fire it up!
                     #puts req_copy
                     test_request,test_response = doRequest(test)
@@ -122,11 +123,11 @@ EOF
                        # test_chat = Chat.new(test,test_response,chat.id)
                       #  path = "/" + test_request.path_ext
                         addFinding(test_request,test_response,
-                            :test_item => parm,
-                                   :check_pattern => "#{check}", 
+                            :test_item => parm.name,
+                                   :check_pattern => "#{parm.name}.*#{check}", 
                         :proof_pattern => "#{match}",
                         :chat => chat,
-                        :title => "[#{test_parm}] - #{test_request.path}"
+                        :title => "[#{parm.name}] - #{test_request.path}"
                         )
                       end
                       
@@ -137,62 +138,7 @@ EOF
                   yield checker
                 end            
               end
-              
-              
-              #
-              #  Check POST-Parameters
-              #           
-              
-              postParmNames(chat).each do |parm|
-                #puts "#{chat.id}: run check on post parm #{parm}"
-                test_values = []
-                @sql_checks.each do |check|
-                  test_values << check
-                  test_values << "#{chat.request.post_parm_value(parm)}#{check}"
-                  test_values << "#{check}#{chat.request.post_parm_value(parm)}"
-                end
-                test_values.each do |check|
-                  checker = proc {
-                    test_request = nil
-                    test_response = nil
-                    # IMPORTANT!!!
-                    # use prepareRequest(chat) for cloning the original request 
-                    test = chat.copyRequest
-                    test_parm = "#{parm.clone}"
-                    
-                    
-                    # modify the test request
-                    test.replace_post_parm(test_parm,check)
-                    # puts test.last
-                    # fire it up!
-                    #puts req_copy
-                    test_request,test_response = doRequest(test)
-                    
-                    # puts test_response
-                    # verify response
-                    match = nil
-                    @sql_patterns.each do |pattern|
-                      if test_response.join =~ /(#{pattern})/i
-                        match = $1
-                        # puts "found xss (post)"
-                       # test_chat = Chat.new(test,test_response,chat.id)
-                        #resource = "/" + test_request.resource
-                        addFinding(test_request,test_response,
-                            :test_item => parm,
-                                   :check_pattern => "#{check}", 
-                        :proof_pattern => "#{match}",
-                        :chat => chat,
-                        :title => "[#{test_parm}] - #{test_request.path}"
-                        )
-                      end
-                      
-                    end
-                    [ test_request, test_response ]
-                  }
-                  yield checker
-                  
-                end
-              end            
+                        
             rescue => bang
               puts bang
               puts "ERROR!! #{Module.nesting[0].name}"

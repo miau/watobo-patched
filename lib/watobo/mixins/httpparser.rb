@@ -610,15 +610,27 @@ def content_encoding
         nil
       end
       
-      def body_is_text?
+      def is_text?
         ct = self.content_type(nil) 
         if ct.nil?
           return true if self.body_encoded.ascii_only?
           return false
         else
-          return true if ct =~ /text/
+          return true if ct =~ /text/i
           return false
         end
+      end
+      
+      def is_wwwform?
+        ct = self.content_type
+        return true if ct =~ /form/i
+        return false
+      end
+      
+      def is_xml?
+        ct = self.content_type
+        return true if ct =~ /xml/i
+        return false
       end
       
       def body_encoded
@@ -695,8 +707,8 @@ end
           return header_list if cl.strip.empty?
           unless filter.nil?
             if cl =~ /#{filter}/
-            yield line if block_given?
-            header_list.push line
+              yield line if block_given?
+              header_list.push line
             end
           else
             yield line if block_given?
@@ -716,7 +728,7 @@ end
         end
       end
 
-      def cookies
+      def cookies_UNUSED
         cookie_list=[]
         self.headers.each do |line|
           if line =~ /Cookie2?: (.*)/i then

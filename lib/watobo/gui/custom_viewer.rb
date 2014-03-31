@@ -1,5 +1,5 @@
 # .
-# chatviewer_frame.rb
+# custom_viewer.rb
 # 
 # Copyright 2013 by siberas, http://www.siberas.de
 # 
@@ -23,10 +23,10 @@
 module Watobo#:nodoc: all
   module Gui
 
-    SEL_TYPE_GREP = 0
+   
+    class CustomViewer < FXVerticalFrame
+ SEL_TYPE_GREP = 0
     SEL_TYPE_HIGHLIGHT = 1
-    class TextViewer < FXVerticalFrame
-
       attr_accessor :max_len
       def style=(new_style)
         @simple_text_view.style = new_style
@@ -39,26 +39,18 @@ module Watobo#:nodoc: all
       def setText(text, prefs={})
         
         normalized_text = text
-        if text.is_a? String
-           normalized_text = text.gsub(/[^[:print:]]/,".")
-        elsif text.respond_to? :has_body?
-          if text.content_type =~ /(xml)/
-            doc = Nokogiri::XML(text.body, &:noblanks)
-            fbody = doc.to_xhtml( indent:3, indent_text:" ")
-            normalized_text = text.headers.map{|h| h.strip }.join("\n")
-            normalized_text << "\n\n"
-            unless fbody.to_s.empty?
-            normalized_text << fbody.to_s
-            else
-              normalized_text = text
-            end
-          end
+        if text.is_a? Watobo::Request or text.is_a? Watobo::Response          
+           return false unless @handler.respond_to? :call
+           result = call_handler(text)
+           normalized_text =  result
+        else
+          return false
         end
         
         @text = normalized_text
         #@text = text
-        @simple_text_view.max_len = @max_len
-        @simple_text_view.setText(text, prefs)
+        @simple_text_view.max_len = -1
+        @simple_text_view.setText(normalized_text, prefs)
         @match_pos_label.text = "0/0"
         @match_pos_label.textColor = 'grey'
 
@@ -89,6 +81,25 @@ module Watobo#:nodoc: all
         @cur_match_pos = 0
         @text_dt = FXDataTarget.new('')
         @filter_dt = FXDataTarget.new('')
+        
+        @handler = nil
+        @handler_file = nil
+        @handler_path = nil
+        
+        handler_ctrl_frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X, :padding => 0)
+        @handler_status_lbl = FXLabel.new(handler_ctrl_frame, "No handler!")
+         @handler_status_lbl.textColor = "red"
+        add_handler_btn = FXButton.new(handler_ctrl_frame, "add", nil, nil, 0, FRAME_RAISED|LAYOUT_FILL_Y|LAYOUT_RIGHT)
+        add_handler_btn.connect(SEL_COMMAND){ add_handler }
+        reload_handler_btn = FXButton.new(handler_ctrl_frame, "reload", nil, nil, 0, FRAME_RAISED|LAYOUT_FILL_Y|LAYOUT_RIGHT)
+        reload_handler_btn.connect(SEL_COMMAND){ load_handler(@handler_file) }
+        reset_handler_btn = FXButton.new(handler_ctrl_frame, "reset", nil, nil, 0, FRAME_RAISED|LAYOUT_FILL_Y|LAYOUT_RIGHT)
+        reset_handler_btn.connect(SEL_COMMAND){
+          @handler = nil
+          @handler_file = nil
+          @handler_status_lbl = FXLabel.new(handler_ctrl_frame, "No handler!")
+          @handler_status_lbl.textColor = "red"
+        }
 
         text_view_header = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM|LAYOUT_FIX_HEIGHT,:height => 24, :padding => 0)
 
@@ -164,6 +175,57 @@ module Watobo#:nodoc: all
       end
 
       private
+      
+      def add_handler
+        
+         handler_filename = FXFileDialog.getOpenFilename(self, "Select handler file", @handler_path, "*.rb\n*")
+          if handler_filename != "" then
+            if File.exists?(handler_filename) then
+              @handler_file = handler_filename
+              @handler_path = File.dirname(handler_filename) + "/"
+              load_handler(handler_filename)
+            end
+          end
+        
+      end
+      
+      def load_handler(file)
+        @handler = nil
+        return false if file.nil?
+        return false unless File.exist? file
+        begin
+          source = File.read(file)
+          #puts source
+          result = eval(source)
+          if result.respond_to? :call
+            @handler = result
+            @handler_status_lbl.text = "Handler ready!"
+            @handler_status_lbl.textColor = "green"
+          end
+          return true
+                     
+         rescue SyntaxError, LocalJumpError, NameError => e
+           out = e.to_s
+           out << e.backtrace.join("\n")
+         rescue => bang
+           out = bang
+           out << bang.backtrace.join("\n")
+         end
+         puts out
+         return false
+      end
+      
+      def call_handler(object)
+        begin
+          result = @handler.call(object)
+          return result       
+        rescue => bang
+          result = bang.to_s
+          result << bang.backtrace.join("\n")
+          return result
+        end
+        
+      end
 
       def gotoNextMatch()
         @cur_match_pos += 1 if @cur_match_pos < @simple_text_view.numMatches-1
@@ -302,160 +364,5 @@ module Watobo#:nodoc: all
       end
 
     end
-
-    class RequestViewer < FXVerticalFrame
-
-      attr_accessor :max_len
-      def setText(text)
-        @text = text
-        @textviewer.max_len = @max_len
-        index = @tabBook.current
-        @viewers[index].setText(text)
-      end
-
-      def setFontSize(size)
-        @textviewer.setFont(nil, size)
-      end
-
-      def getText
-        index = @tabBook.current
-        @viewers[index].getText()
-      end
-
-      def highlight(pattern)
-        begin
-          index = @tabBook.current
-          @viewers[index].highlight(pattern)
-        rescue
-        end
-      end
-
-      def initialize(owner, opts)
-        super(owner, opts)
-        @tabbook = nil
-        @viewers = []
-        @text = ''
-        @max_len = 5000
-
-        @tabBook = FXTabBook.new(self, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
-        @tabBook.connect(SEL_COMMAND) {
-          begin
-            getApp().beginWaitCursor()
-            setText(@text)
-          ensure
-            getApp().endWaitCursor()
-          end
-        }
-        textviewer_tab = FXTabItem.new(@tabBook, "Text", nil)
-        tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        @textviewer = TextViewer.new(tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y,:padding => 0)
-        @textviewer.style = 1
-        @textviewer.editable = false
-
-        @viewers.push @textviewer
-
-        FXTabItem.new(@tabBook, "Hex", nil)
-        tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        @hexViewer = HexViewer.new(tab_frame)
-        @viewers.push @hexViewer
-        
-        FXTabItem.new(@tabBook, "Table", nil)
-        tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        @viewers << Watobo::Gui::TableEditorFrame.new(tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
-      end
-
-    end
-
-    class ResponseViewer < FXVerticalFrame
-
-      include Watobo::Gui::Utils
-
-      attr_accessor :max_len, :auto_filter
-      def setText(text, prefs={})
-        
-        @text = text
-        @textviewer.max_len = @max_len
-        index = @tabBook.current
-
-        @viewers[index].setText(text)
-     #  @viewers.map{|v| v.setText(text)}
-      # @textviewer.applyFilter if cp[:filter] == true
-
-      end
-
-      def setFontSize(size)
-        @textviewer.setFont(nil, size)
-      end
-
-      def getText
-        index = @tabBook.current
-        @viewers[index].getText()
-      end
-
-      def highlight(pattern)
-        begin
-          index = @tabBook.current
-          @viewers[index].highlight(pattern)
-        rescue
-        end
-      end
-
-      def initialize(owner, opts)
-        super(owner, opts)
-
-        @tabbook = nil
-        @viewers = []
-        @text = ''
-        @max_len = 5000
-
-        @auto_filter = false
-
-        @tabBook = FXTabBook.new(self, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
-        @tabBook.connect(SEL_COMMAND) {
-          begin
-            getApp().beginWaitCursor()
-            setText(@text)
-          ensure
-            getApp().endWaitCursor()
-          end
-        }
-
-        @text_dt = FXDataTarget.new('')
-
-        textviewer_tab = FXTabItem.new(@tabBook, "Text", nil)
-        tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        @textviewer = TextViewer.new( tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-       # @textviewer = TextView2.new( tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-
-        @textviewer.style = 2
-        @textviewer.editable = false
-        #   @textviewer.target = @text_dt
-        #  @textviewer.selector = FXDataTarget::ID_VALUE
-
-        @viewers << @textviewer
-
-        taglessviewer_tab = FXTabItem.new(@tabBook, "Tagless", nil)
-        tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        tagless_frame = FXVerticalFrame.new(tab_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
-        #text_view_header = FXHorizontalFrame.new(tagless_frame, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM)
-        @taglessviewer = TaglessViewer.new(tagless_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
-        @viewers << @taglessviewer
-
-        FXTabItem.new(@tabBook, "Hex", nil)
-        tab_frame = FXVerticalFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        @hexViewer = HexViewer.new(tab_frame)
-        @viewers << @hexViewer
-        
-        FXTabItem.new(@tabBook, "HTML", nil)       
-        @html_viewer = HTMLViewerFrame.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        @viewers << @html_viewer
-        
-        FXTabItem.new(@tabBook, "Custom", nil)       
-        @viewers << CustomViewer.new(@tabBook, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
-        
-      end
-
-    end
-  ###################### end of namespace ############################
-  end
+end
 end

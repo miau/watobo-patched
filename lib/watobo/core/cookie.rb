@@ -30,15 +30,16 @@ module Watobo#:nodoc: all
     attr :path
     attr :secure
     attr :http_only
-    def name_value
+    
+    def to_s
       "#{@name}=#{@value}"
-    end
+    end    
 
-    def initialize(cookie_prefs)
+    def initialize(prefs)
       @secure = false
       @http_only = false
       
-      if cookie_prefs.respond_to? :has_key?
+      if prefs.respond_to? :has_key?
         @secure = prefs.has_key?(:secure) ? prefs[:secure] : false
         @http_only = prefs.has_key?(:http_only) ? prefs[:http_only] : false
         @location = :cookie
@@ -46,11 +47,14 @@ module Watobo#:nodoc: all
         @name = prefs[:name]
         @value = prefs[:value]
       else
-        chunks = cookie_prefs.split(";")
+        puts "= NEW COOKIE ="
+        puts prefs
+        puts prefs.class
+        chunks = prefs.split(";")
         # first chunk
         @name, @value = chunks.first.split(":").last.split("=")
         
-        m = cookie_prefs.match(/path=([^;]*)/)
+        m = prefs.match(/path=([^;]*)/)
         @path = m.nil? ? "" : m[1].strip
         @secure = true if chunks.select{|c| c =~ /Secure/i }
         @http_only = true if chunks.select{|c| c =~ /HttpOnly/i }

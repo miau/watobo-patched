@@ -1,8 +1,35 @@
+Version 0.9.17
+===
+News
+---
+
+**General**
+
+ * changed parameter parsing for better handling
+ * Boolean-SQL check now also takes xml parameters for testing
+ * new appearance of CA certificates
+ 
+**Manual Request Editor**
+
+ * XML parser, xml-request parameters available in table
+ 
+Fixes
+---
+**General**
+
+ * request line removed on `remove_header` regex match 
+ * double insert of Content-Length header
+ * bad markdown format of CHANGELOG
+ * wrong parameter parsing if value contains '=' sign
+ * new custom response viewer; now you can code your own handler, e.g. `lambda{ |response| return response.content_type }`
+ * added table view on request viewer
+ 
 Version 0.9.16
 ===
 Fixes
 ---
 **General**
+
  * double insert of Content-Length header
  * bad markdown format of CHANGELOG
  
@@ -11,6 +38,7 @@ Version 0.9.15
 Fixes
 ---
 **General**
+
  * improved socket handling
  * fixed some UTF-8 issues in passive modules
  * added application/octet-stream to pass-through content-types
@@ -18,12 +46,15 @@ Fixes
  * setting/replacing http-headers is now case-in-sensitive
 
 **Passive Modules**
+
  * fixed `Disclosure_ipaddr`; now all IPs inside body are reported
  
 **Active Modules**
+
  * Domino DB enumeration will now run on all requests
  
 **Crawler Plugin**
+
  * extended allowed/excluded URL checks on full url path /w query
 
 News

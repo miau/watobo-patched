@@ -46,7 +46,10 @@ module Watobo#:nodoc: all
       def parameters(&block)
         parms = []
         @root.get_parms.each do |p|
-          name, val = p.split("=")
+          p.strip!
+          i = p.index("=")
+          name = p[0..i-1]
+          val = i < p.length ? p[i+1..-1] : ""
           parms << Watobo::UrlParameter.new( :name => name, :value => val )
         end
         parms

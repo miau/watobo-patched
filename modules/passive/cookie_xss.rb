@@ -51,36 +51,26 @@ module Watobo#:nodoc: all
             #  puts "running module: #{Module.nesting[0].name}"
             return if chat.response.nil? or chat.response.body.nil?
             if chat.response.content_type =~ /text/
-              all_cookies = chat.request.cookies
-              if all_cookies
-                # puts all_parms
-                all_cookies.each do |cookie|
-                  dummy = cookie.split("=")
-                  cname = dummy.shift
-                  cval = Regexp.quote(dummy.join)
-                  
-                    if chat.response.body =~ /#{cval}/ and cval.length > 5 then
-                      
-                      addFinding(:proof_pattern => "#{cval}", 
+              chat.request.cookies do |cookie|
+                 cval = Regexp.quote(cookie.value)
+                 if chat.response.body =~ /#{cval}/ and cval.length > 5 then
+                   addFinding(:proof_pattern => "#{cval}", 
                       :check_pattern => "#{cval}", 
                       :chat => chat, 
                       :title => "[#{cname}] - #{chat.request.path}")
-                      break
-                    end
-
-                end
-                return true
-                
-              end
-            end
-          end
-        rescue => bang
-          puts "ERROR!! #{Module.nesting[0].name}"
-          puts bang
-          puts bang.backtrace if $DEBUG
-        end
+                   break
+                 end
+               end
+             end
+             return true
+           rescue => bang
+              puts "ERROR!! #{Module.nesting[0].name}"
+              puts bang
+             puts bang.backtrace if $DEBUG
+           end
+           return false
+         end
       end
-      
     end
   end
 end

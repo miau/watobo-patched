@@ -572,16 +572,8 @@ module Watobo#:nodoc: all
             
             csrf_requests = []           
 
-           # if @updateCSRF.checked?
-           #    csrf_requests = Watobo::OTTCache.requests(new_request)
-           # end
-            
             prefs = Watobo::Conf::Scanner.to_h
-          #  puts "= SCANNER PREFS ="
-          #  puts prefs[:csrf_patterns]
-          puts prefs.to_yaml
-            
-
+        
             current_prefs = {:run_login => @updateSession.checked? ? @runLogin.checked? : false,
                :update_session => @updateSession.checked?,
                :update_contentlength => @updateContentLength.checked?,
@@ -612,9 +604,10 @@ module Watobo#:nodoc: all
             return nil if request.nil?
             request = Watobo::Request.new request
 
-            if request.method =~ /POST/i
+            if request.method =~ /POST/i and request.content_type =~ /www\-form/i
                request.setMethod("GET")
                request.removeHeader("Content-Length")
+               request.removeHeader("Content-Type")
                data = request.data.to_s
                #      puts "Data: "
                #      puts data
@@ -631,7 +624,8 @@ module Watobo#:nodoc: all
 
              if request.method =~ /GET/i
                request.setMethod("POST")
-               request.addHeader("Content-Length", "0")
+               request.set_header("Content-Length", "0")
+               request.set_header("Content-Type", "application/x-www-form-urlencoded")
                data = request.query
                request.setData(data)
                request.removeUrlParms()

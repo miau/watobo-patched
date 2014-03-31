@@ -27,6 +27,20 @@ module Watobo#:nodoc: all
     @hostname = %x('hostname').strip
     @hostname = "watobo" if @hostname.empty?
     @domain = "#{@hostname}.watobo.local"
+    
+    def self.dh_key
+      dh_filename = File.join(@ca_config[:CA_dir], "watobo_dh.key")
+      unless File.exist? dh_filename
+        #puts "* no dh key file found"
+        File.open(dh_filename,"w") do |fh|
+          print "* creating SSL key (DH 1024) ... "
+          fh.write OpenSSL::PKey::DH.new(1024).to_pem
+          print " DONE\r\n"
+        end
+      end
+      OpenSSL::PKey::DH.new(File.read(dh_filename))
+    end
+    
     def self.ca_ready?
       return false unless File.exists? @ca_config[:CA_dir]
       return false unless File.exists? @ca_config[:private_dir]
@@ -63,8 +77,10 @@ module Watobo#:nodoc: all
       :crl_days => 14,
       :name => [
         ['C', 'DE', OpenSSL::ASN1::PRINTABLESTRING],
-        ['O', @domain, OpenSSL::ASN1::UTF8STRING],
-        ['OU', @hostname, OpenSSL::ASN1::UTF8STRING],
+        #['O', @domain, OpenSSL::ASN1::UTF8STRING],
+        ['O', "WATOBO", OpenSSL::ASN1::UTF8STRING],
+       # ['OU', @hostname, OpenSSL::ASN1::UTF8STRING],
+        ['OU', "WATOBO CA", OpenSSL::ASN1::UTF8STRING]
       ]
     }
 
@@ -85,10 +101,10 @@ module Watobo#:nodoc: all
       #print "Create Certificate ..."
       cert = OpenSSL::X509::Certificate.new
       #puts "done!"
-      name = @ca_config[:name].dup << ['CN', 'CA']
+      name = @ca_config[:name].dup << ['CN', 'Watobo']
 
       cert.subject = cert.issuer = OpenSSL::X509::Name.new(name)
-      cert.not_before = Time.now
+      cert.not_before = Time.now - 24 * 60 * 60
       cert.not_after = Time.now + @ca_config[:ca_cert_days] * 24 * 60 * 60
       cert.public_key = keypair.public_key
       cert.serial = 0x0
@@ -130,6 +146,8 @@ module Watobo#:nodoc: all
       end
 
       puts "Done generating certificate for #{cert.subject}"
+      puts ">> create DH key ..."
+      dh_key
     else
       #puts "Open Cert File ..."
       raw = File.read @ca_config[:cert_file] # DER- or PEM-encoded
@@ -326,7 +344,7 @@ module Watobo#:nodoc: all
         ex << ef.create_extension("authorityInfoAccess",
         "OCSP;" << @ca_config[:ocsp_location])
       end
-      cert.extensions = ex
+     # cert.extensions = ex
       cert.sign ca_keypair, OpenSSL::Digest::SHA1.new
 
       #  backup_cert_file = @ca_config[:backup_certs_dir] + "/cert_#{cert.serial}.pem"
@@ -360,8 +378,9 @@ module Watobo#:nodoc: all
       name = @ca_config[:name].dup
       case cert_config[:type]
       when 'server' then
-        name << ['OU', 'CA']
-        name << ['CN', cert_config[:hostname]]
+       # name << ['OU', 'Watobo CA']
+       name << ['CN', cert_config[:hostname]]
+        #name << ['CN', "WATOBO"]
       when 'client' then
         name << ['CN', cert_config[:user]]
         name << ['emailAddress', cert_config[:email]]
@@ -396,17 +415,6 @@ module Watobo#:nodoc: all
       return csr_file
     end
 
-    def self.dh_key
-      dh_filename = File.join(@ca_config[:CA_dir], "watobo_dh.key")
-      unless File.exist? dh_filename
-        #puts "* no dh key file found"
-        File.open(dh_filename,"w") do |fh|
-          puts "* creating SSL key (DH 1024) ... "
-          fh.write OpenSSL::PKey::DH.new(1024).to_pem
-          print " DONE\r\n"
-        end
-      end
-      OpenSSL::PKey::DH.new(File.read(dh_filename))
-    end
+    
   end
 end
