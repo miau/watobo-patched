@@ -66,7 +66,9 @@ include Watobo::Gui
       end
 
       def initialize(owner, title, project, opts)
-        super(owner, title, :opts => DECOR_ALL,:width=>800, :height=>600)
+        dialog_opts = { :opts => DECOR_ALL, :width=>800, :height=>650  }
+        dialog_opts.update opts
+        super(owner, title, dialog_opts)
         # Implement Sender
         # Implement Scanner
         @icon = nil
@@ -74,6 +76,33 @@ include Watobo::Gui
         @plugin_name = "undefined"
         @event_dispatcher_listeners = Hash.new
 
+      end
+      
+      private
+      
+      def save_config(config)
+        wd = Watobo.working_directory
+
+        dir_name = Watobo::Utils.snakecase self.class.to_s.gsub(/.*::/,'')
+        path = File.join(wd, "conf", "plugins")
+        Dir.mkdir path unless File.exist? path
+        conf_dir = File.join(path, dir_name)
+        Dir.mkdir conf_dir unless File.exist? conf_dir
+        file = File.join(conf_dir, dir_name + "_config.yml")
+        
+        Watobo::Utils.save_settings(file, config)
+      end
+
+      def load_config()
+        wd = Watobo.working_directory
+        dir_name = Watobo::Utils.snakecase self.class.to_s.gsub(/.*::/,'')
+        path = File.join(wd, "conf", "plugins")
+        Dir.mkdir path unless File.exist? path
+        conf_dir = File.join(path, dir_name)
+        Dir.mkdir conf_dir unless File.exist? conf_dir
+        file = File.join(conf_dir, dir_name + "_config.yml")
+        config = Watobo::Utils.load_settings(file)
+        config
       end
     end
   end

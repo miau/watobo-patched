@@ -1147,6 +1147,9 @@ module Watobo
 
         self.icon = ICON_WATOBO
         self.show(PLACEMENT_MAXIMIZED)
+        
+        self.extend Watobo::Gui::Settings
+        
         self.connect(SEL_CLOSE, method(:onClose))
 
         @project = nil
@@ -1393,7 +1396,10 @@ module Watobo
         # R E Q U E S T I N F O
         requestInfo = FXVerticalFrame.new(@switcher, :opts => LAYOUT_FILL_X|LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         request_splitter = FXSplitter.new(requestInfo, :opts => LAYOUT_SIDE_TOP|SPLITTER_HORIZONTAL|LAYOUT_FILL_Y|LAYOUT_FILL_X|SPLITTER_TRACKING|SPLITTER_REVERSED)
-
+request_splitter.connect(SEL_COMMAND){
+  puts "Request Splitter Resized!"
+  
+}
 
         # C H A T  T A B L E  C O N T R O L L E R
         @conversation_table_ctrl = ConversationTableCtrl.new(request_splitter,  :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN)
@@ -1421,6 +1427,15 @@ module Watobo
           open_manual_request_editor(chat)
           end
         end
+        
+        @chatTable.connect(SEL_CHANGED){ |sender, sel, item|
+          #puts item.row
+           @chatTable.selectRow(item.row, false)
+           chatid = @chatTable.getRowText(item.row).to_i
+          chat = @project.getChat(chatid)
+          chat_selected(chat)
+
+        }
 
         @chatTable.connect(SEL_RIGHTBUTTONRELEASE) do |sender, sel, event|
           @findings_tree.killSelection()
@@ -1606,6 +1621,15 @@ module Watobo
         @request_viewer = Watobo::Gui::RequestViewer.new(chat_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         #  @request_viewer = Watobo::Gui::ChatViewer.new(chat_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y, :padding => 0)
         # @request_viewer.highlight_style = 1
+        
+        #
+        # SEL_CONFIGURE is fired when the window is resized
+        #@request_viewer.connect(SEL_CONFIGURE){ |sender, sel, ptr|
+        @chat_frame_splitter.connect(SEL_COMMAND){
+         # puts sender.class
+        #  puts sender.width 
+        puts @request_viewer.height
+          }
 
         # FXHorizontalSeparator.new(chat_frame, :opts => SEPARATOR_GROOVE|LAYOUT_FILL_X)
         chat_frame = FXVerticalFrame.new(@chat_frame_splitter, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|LAYOUT_MIN_WIDTH, :padding => 0, :width=>400)
@@ -1672,6 +1696,24 @@ module Watobo
 
       # end
       private
+      
+      def chat_selected(chat)
+        begin
+          getApp().beginWaitCursor()
+          # purge viewers
+          @request_viewer.setText('')
+          @response_viewer.setText('')
+       
+               showChat(chat)
+          
+        rescue => bang
+          puts "!!!ERROR: chat_selected"
+          puts bang
+          puts "!!!"
+        ensure
+        getApp().endWaitCursor()
+        end
+      end
 
       def save_response
         unless @last_chat.nil?

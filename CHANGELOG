@@ -1,4 +1,13 @@
+= Version 0.9.11
+== NEW
+* [FileFinder] pimped the interface, added save-settings
+
+== Fixes
+* [ConversationTable] Request-/Resoponse View is updated when navigating with arrow-keys
+* [INTERCEPOR] fixed bug in parsing intercepted responses
+
 = Version 0.9.10
+== Fixes
 * fixed sqlmap temp directory
 
 = Version 0.9.9

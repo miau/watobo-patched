@@ -130,6 +130,65 @@ module Watobo
       class Filefinder < Watobo::Template::Plugin
         
           include Watobo::Constants
+        class DBSelectFrame < FXVerticalFrame
+          
+          def select_db(db_name)
+            @db_listbox.numItems.times do |i|
+              if db_name == @db_listbox.getItemData(i)
+                @db_listbox.currentItem = i
+              end
+            end            
+          end
+          
+          def get_db_name
+            i = @db_listbox.currentItem
+            db = ''
+            db = @db_listbox.getItemData(i) if i >= 0
+            db
+          end
+          
+          def get_db_list
+            l = []
+            @db_listbox.numItems.times do |i|
+              l << @db_listbox.getItemData(i)
+            end
+            l
+          end
+          
+          def initialize(parent, db_list, opts)
+            super(parent, opts)
+            @db_list = []
+            db_list.each do |f|
+              @db_list << f if File.exist? f
+            end
+           
+            FXLabel.new(self, "Each filename must be in a seperate line, e.g. DirBuster-DBs" )
+            frame = FXHorizontalFrame.new(self, :opts => LAYOUT_FILL_X)
+            
+            @db_listbox = FXListBox.new(frame, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK)
+            @db_list.each do |db|
+              item = @db_listbox.appendItem(db)
+              @db_listbox.setItemData(@db_listbox.numItems-1, db )
+            end
+            @db_listbox.numVisible = @db_listbox.numItems
+            
+            @add_db_btn = FXButton.new(frame, "add")
+            @add_db_btn.connect(SEL_COMMAND) { add_db }
+          end
+          
+          private
+          
+          def add_db
+            db_path = File.dirname(get_db_name)
+          db = FXFileDialog.getOpenFilename(self, "Open DB", db_path, "All Files (*)")
+          unless db.empty?
+            item = @db_listbox.appendItem(db)
+            i= @db_listbox.numItems-1
+              @db_listbox.setItemData(i, db )
+              @db_listbox.currentItem = i
+          end
+        end
+        end
         
         def updateView()
           #@project = project
@@ -167,7 +226,7 @@ module Watobo
         
         
         def initialize(owner, project)
-          super(owner, "File Finder", project, :opts => DECOR_ALL, :width=>800, :height=>400)
+          super(owner, "File Finder", project, :opts => DECOR_ALL, :width=>800, :height=>600)
           load_icon(__FILE__)
           
           self.connect(SEL_CLOSE, method(:onClose))
@@ -181,6 +240,28 @@ module Watobo
           
           @site = nil
           @dir = nil
+          @db_list = []
+          @db_name = ""
+          @file_name = ""
+          
+          config = load_config
+
+          
+          if config.respond_to? :has_key?
+          if config.has_key? :db_list
+            config[:db_list].each do |db|
+              @db_list << db if File.exist? db              
+            end
+          end
+          
+          if config.has_key? :name
+            @db_list.each do |db|
+              @db_name = db if config[:name] == db
+            end
+            @file_name = config[:name] if @db_name.empty?            
+          end
+          end
+          puts @db_list
           
           begin            
             hs_green = FXHiliteStyle.new
@@ -202,11 +283,15 @@ module Watobo
             top_splitter = FXSplitter.new(top_frame, LAYOUT_FILL_X|SPLITTER_HORIZONTAL|LAYOUT_FILL_Y|SPLITTER_TRACKING)
             log_frame = FXVerticalFrame.new(mr_splitter, :opts => LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM,:height => 100)
             
+            @settings_tab = FXTabBook.new(top_splitter, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+             FXTabItem.new(@settings_tab, "Settings", nil)
+            @settings_frame = FXVerticalFrame.new(@settings_tab, :opts => LAYOUT_FILL_Y|LAYOUT_FILL_Y|FRAME_RAISED)
             
-            @settings_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_Y)
+            FXTabItem.new(@settings_tab, "Logging", nil)
+            @logging_frame = FXVerticalFrame.new(@settings_tab, :opts => LAYOUT_FILL_Y|LAYOUT_FILL_Y|FRAME_RAISED)
             
-             result_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
-             @requestCombo = FXComboBox.new(result_frame, 5, nil, 0,
+             request_frame = FXVerticalFrame.new(top_splitter, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+             @requestCombo = FXComboBox.new(request_frame, 5, nil, 0,
                                            COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_SIDE_TOP|LAYOUT_FILL_X)
             #@filterCombo.width =200
             
@@ -215,7 +300,7 @@ module Watobo
             @requestCombo.editable = false
             @requestCombo.connect(SEL_COMMAND, method(:onSelectRequest))
             
-            log_text_frame = FXVerticalFrame.new(result_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
+            log_text_frame = FXVerticalFrame.new(request_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
             @request_editor = RequestEditor.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
             
            #   @scope_only_cb = FXCheckButton.new(@settings_frame, "target scope only", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
@@ -246,50 +331,64 @@ module Watobo
             @test_all_dirs.setCheck(false)
             
             
-            @dbfile_dt = FXDataTarget.new('')
-            @dbfile_dt.value = ''
-            @db_path = File.expand_path(File.dirname(__FILE__))
-            @dbfile_label = FXLabel.new(@settings_frame, "Enter name of file or db-filename:" )
-            dbfile_frame = FXHorizontalFrame.new(@settings_frame,:opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)
-            @dbfile_text = FXTextField.new(dbfile_frame, 20,
-                                           :target => @dbfile_dt, :selector => FXDataTarget::ID_VALUE,
-                                           :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN)
+            @finder_tab = FXTabBook.new(@settings_frame, nil, 0, LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT)
+            
+            FXTabItem.new(@finder_tab, "Filename", nil)
+            frame = FXVerticalFrame.new(@finder_tab, :opts => LAYOUT_FILL_X|FRAME_RAISED)
+            @search_name_dt = FXDataTarget.new(@file_name)
+           
+            @dbfile_text = FXTextField.new(frame, 30,
+                                           :target => @search_name_dt, :selector => FXDataTarget::ID_VALUE,
+                                           :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN|LAYOUT_FILL_X)
             @dbfile_text.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-            @dbfile_btn = FXButton.new(dbfile_frame, "Change")
-            @dbfile_btn.connect(SEL_COMMAND, method(:selectDBFile))
             
+
+            FXTabItem.new(@finder_tab, "Database", nil)     
+            @db_select_frame = DBSelectFrame.new(@finder_tab, @db_list, :opts => FRAME_THICK|FRAME_RAISED|LAYOUT_FILL_X)
             
-                        @fmode_dt = FXDataTarget.new(0)
+            unless @db_name.empty?
+              @db_select_frame.select_db @db_name
+              @finder_tab.current = 1
+            end
+            
+            @fmode_dt = FXDataTarget.new(0)
             group_box = FXGroupBox.new(@settings_frame, "Mode", LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X, 0, 0, 0, 0)
             mode_frame = FXVerticalFrame.new(group_box, :opts => LAYOUT_FILL_X)
-          
-@append_extensions_cb = FXCheckButton.new(mode_frame, "append extensions", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP|LAYOUT_RIGHT|LAYOUT_FILL_Y)           
-@append_slash_cb = FXCheckButton.new(mode_frame, "append /", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP|LAYOUT_RIGHT|LAYOUT_FILL_Y)
-            # group_box = FXGroupBox.new(self, "Collection",LAYOUT_SIDE_TOP|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 0)
-            # frame = FXVerticalFrame.new(group_box, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_GROOVE)
-            # @collectionList = FXList.new(frame, :opts => LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y)
-            #@fmode_dt.connect(SEL_COMMAND) {
-            #   @file_rb.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-            #   @dir_rb.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-            #}
-            #@dbfile_text.enabled = false
-            #@dbfile_label.enabled = false
-            #@dbfile_btn.disable
-            # @use_ssl = FXCheckButton.new(@settings_frame, "use SSL", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
-            
-            
-            #   @run_passive_checks = FXCheckButton.new(@settings_frame, "run passive checks", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_LEFT)
-            #   @run_passive_checks.setCheck(false)
-            gbox = FXGroupBox.new(@settings_frame, "Extensions", LAYOUT_SIDE_LEFT|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y, 0, 0, 0, 150)
-            gbframe = FXVerticalFrame.new(gbox, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
-            @extensions_text = FXText.new(gbframe, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
-            ext = "bak;php;asp;aspx;tgz;tar.gz;gz;tmp;temp;old;_"
-         #   fxtext.backColor = fxtext.parent.backColor
-         #   fxtext.disable
-         #   text = "FileFinder allows you to search easily for specific files, e.g. files you have uploaded.\nIf you want to search for multiple files you can also use a db-file, "
-         #   text << "which is a plain text file - each filename on one line."
+            @append_slash_cb = FXCheckButton.new(mode_frame, "append /", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP|LAYOUT_FILL_Y)
+           
+            @append_extensions_cb = FXCheckButton.new(mode_frame, "append extensions", nil, 0, ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP|LAYOUT_FILL_Y)
+            frame = FXVerticalFrame.new(mode_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding => 0)
+            @extensions_text = FXText.new(frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y|TEXT_WORDWRAP)
+            ext = "bak;php;asp;aspx;tgz;tar.gz;gz;tmp;temp;old;_"        
             
             @extensions_text.setText(ext)
+            
+            frame = @logging_frame
+            @logScanChats = FXCheckButton.new(frame, "enable", nil, 0, JUSTIFY_LEFT|JUSTIFY_TOP|ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP)
+            @logScanChats.checkState = false
+
+            @logScanChats.connect(SEL_COMMAND) do |sender, sel, item|
+              if @logScanChats.checked? then
+                @scanlog_name_text.enabled = true
+                @scanlog_name_text.backColor = FXColor::White
+              else
+                @scanlog_name_text.enabled = false
+                @scanlog_name_text.backColor = @scanlog_name_text.parent.backColor 
+              end
+            end
+
+            @scanlog_name_dt = FXDataTarget.new('')
+           # @scanlog_name_dt.value = @project.scanLogDirectory() if File.exist?(@project.scanLogDirectory())
+            @scanlog_dir_label = FXLabel.new(frame, "Scan Name:" )
+            scanlog_frame = FXHorizontalFrame.new(frame,:opts => LAYOUT_FILL_X|LAYOUT_SIDE_TOP)
+            @scanlog_name_text = FXTextField.new(scanlog_frame, 20,
+            :target => @scanlog_name_dt, :selector => FXDataTarget::ID_VALUE,
+            :opts => TEXTFIELD_NORMAL|LAYOUT_FILL_COLUMN|LAYOUT_FILL_X)
+            @scanlog_name_text.handle(self, FXSEL(SEL_UPDATE, 0), nil)
+            unless @logScanChats.checked?
+              @scanlog_name_text.enabled = false
+              @scanlog_name_text.backColor = @scanlog_name_text.parent.backColor
+            end 
              
             
             @pbar = FXProgressBar.new(@settings_frame, nil, 0, LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK|PROGRESSBAR_HORIZONTAL)
@@ -304,15 +403,9 @@ module Watobo
             @start_button.connect(SEL_COMMAND, method(:start))
             @start_button.disable
             
-            
-           
-            
-            
             log_frame_header = FXHorizontalFrame.new(log_frame, :opts => LAYOUT_FILL_X)
             FXLabel.new(log_frame_header, "Logs:" )
             
-            
-            #log_text_frame = FXHorizontalFrame.new(bottom_frame, :opts => LAYOUT_FILL_X|FRAME_SUNKEN|LAYOUT_BOTTOM)
             log_text_frame = FXVerticalFrame.new(log_frame, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK, :padding=>0)
             @log_viewer = LogViewer.new(log_text_frame, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
             
@@ -338,6 +431,20 @@ module Watobo
        
         
         private
+        
+        def config
+          name = @search_name_dt.value
+          db_list = @db_select_frame.get_db_list
+          if @finder_tab.current == 1
+            name = @db_select_frame.get_db_name           
+          end
+          
+          c={
+            :db_list => db_list,
+            :name => name            
+          }
+          
+        end
         
         def onSelectRequest(sender, sel, item)
           begin
@@ -455,13 +562,7 @@ module Watobo
         end
         
         
-        def selectDBFile(sender, sel, item)
-          filename = FXFileDialog.getOpenFilename(self, "Save file", @db_path, "All Files (*)")
-          if filename != ""
-            @dbfile_dt.value = filename
-            @dbfile_text.handle(self, FXSEL(SEL_UPDATE, 0), nil)
-          end
-        end
+        
         
         
         def hide()
@@ -483,7 +584,17 @@ module Watobo
           @start_button.text = "Cancel"
           chatlist = []
           checklist = []
-          @check = Check.new(@project, @dbfile_dt.value, @project.getScanPreferences())
+          #config = { :db_file => @dbfile_dt.value }
+          save_config(config)
+          name = ''
+          if @finder_tab.current == 0
+            name = @search_name_dt.value
+          else
+            name = @db_select_frame.get_db_name
+          end
+                    
+          
+          @check = Check.new(@project, name, @project.getScanPreferences())
           
           if @append_extensions_cb.checked?
           extensions = @extensions_text.text.split(/(;|\n)/).select {|x| x !~ /(\n|;)/ }          
@@ -547,10 +658,12 @@ module Watobo
          
           t.join
           
-         # puts @project
-         # puts @project.getScanPreferences().to_yaml
-         # puts
-          @scanner = Watobo::Scanner2.new(chatlist, checklist, @project.passive_checks, @project.getScanPreferences())
+          scan_prefs = Watobo.project.getScanPreferences
+          if @logScanChats.checked?
+            scan_prefs[:scanlog_name] = @scanlog_name_dt.value unless @scanlog_name_dt.value.empty?
+          end
+          
+          @scanner = Watobo::Scanner2.new(chatlist, checklist, @project.passive_checks, scan_prefs)
           @pbar.total = @check.numChecks
           @pbar.progress = 0
           @pbar.barColor = 'red' 

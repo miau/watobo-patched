@@ -294,7 +294,7 @@ about_txt.disable
 
         def initialize(owner, project)
           
-          super(owner, "Catalog Scanner", project, :opts => DECOR_ALL, :width=>800, :height=>400)
+          super(owner, "Catalog Scanner", project, :opts => DECOR_ALL, :width=>800, :height=>600)
           menu_bar = FXMenuBar.new(self, :opts => LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_GROOVE)
           menu_pane = FXMenuPane.new(self)
           

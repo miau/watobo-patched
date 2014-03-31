@@ -129,7 +129,7 @@ module Watobo
          # result.extend Watobo::Mixin::Parser::Web10
          # result.extend Watobo::Mixin::Shaper::Web10
          Watobo::Request.create result
-
+        
           ct = result.content_type
           # last line is without "\r\n" if text has a body
           if ct =~ /multipart\/form/ and body then
@@ -173,11 +173,55 @@ module Watobo
             result.push "\r\n"
             result.push body.strip
           end
-
+ 
           result.fixupContentLength() if options[:update_content_length] == true
+          puts ">>"
+          puts result
           return result
-        rescue
-          raise
+        rescue => bang
+          puts bang
+          puts bang.backtrace
+          raise bang
+        end
+        #return nil
+      end
+      
+      def to_response(opts={})
+        options = { :update_content_length => false }
+        options.update opts
+        begin
+          text = parse_code
+          result = []
+
+          if text =~ /\n\n/
+            dummy = text.split(/\n\n/)
+            header = dummy.shift.split(/\n/)
+            body = dummy.join("\n\n")
+          else
+            header = text.split(/\n/)
+            body = nil
+          end
+
+          header.each do |h|
+            result.push "#{h}\r\n"
+          end
+
+
+         Watobo::Response.create result
+        
+          if body then
+            result.push "\r\n"
+            result.push body.strip
+          end
+ 
+          result.fixupContentLength() if options[:update_content_length] == true
+          puts ">>"
+          puts result
+          return result
+        rescue => bang
+          puts bang
+          puts bang.backtrace
+          raise bang
         end
         #return nil
       end

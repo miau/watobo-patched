@@ -200,7 +200,23 @@ module Watobo
           notify(:error, "#{$!}")
         rescue => bang
           puts bang
+          puts bang.backtrace if $DEBUG
           notify(:error, "Could not parse request: #{$!}")
+        end
+
+        return nil
+      end
+      
+      def to_response(prefs={})
+        begin
+          return @textbox.to_response(prefs)
+        rescue SyntaxError, LocalJumpError, NameError
+        #  puts bang
+        #  puts bang.backtrace if $DEBUG
+          notify(:error, "#{$!}")
+        rescue => bang
+        puts bang
+        notify(:error, "Could not parse request: #{$!}")
         end
 
         return nil
@@ -547,6 +563,7 @@ module Watobo
         # request_frame = FXVerticalFrame.new(request_frame_outer, LAYOUT_FILL_X|LAYOUT_FILL_Y)
 
         @requestbox = Watobo::Gui::InterceptEditor.new(request_frame_outer, :opts => LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        
 
         @response_tab = FXTabItem.new(@tabBook, "Response (0)", nil)
         response_frame_outer = FXVerticalFrame.new(@tabBook, LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_RAISED)
@@ -646,8 +663,10 @@ module Watobo
               response = @response_list.first
               if not response.nil?
                 response[:response].clear
-                new_response = @responsebox.parseRequest(:update_content_length => true)
+                new_response = @responsebox.to_response(:update_content_length => true)
+                puts new_response.class
                 response[:response].concat new_response
+                puts new_response
                 response[:thread].run
                 @responsebox.clear
                 @response_list.shift
@@ -658,6 +677,7 @@ module Watobo
           rescue => bang
             puts "!!! Error"
             puts bang
+            puts bang.backtrace
           end
         end
 
