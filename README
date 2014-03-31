@@ -1,0 +1,79 @@
+﻿
+= WATOBO - THE Web Application Toolbox
+WATOBO is a security tool for web applications. WATOBO is intended to enable security professionals to perform efficient (semi-automated) web application security audits.
+
+Most important features:
+* WATOBO has Session Management capabilities! You can define login scripts as well as logout signatures. So you don’t have to login manually each time you get logged out. 
+* WATOBO can perform vulnerability checks out of the box. 
+* WATOBO supports Inline De-/Encoding, so you don’t have to copy strings to a transcoder and back again. Just do it inside the request/response window with a simple mouse click. 
+* WATOBO has smart filter functions, so you can find and navigate to the most interesting parts of the application easily. 
+* WATOBO is written in (FX)Ruby and enables you to easiely define your own checks 
+* WATOBO is free software ( licensed under the GNU General Public License Version 2) 
+* It’s by siberas ;) 
+
+== Installation
+Please install Ruby 1.9.2+ first before you continue.
+
+Note: Ruby 1.8 is no longer supported!
+
+Note: WATOBO will not run under Ruby 1.8 anymore!
+
+Note: Please upgrade Ruby to 1.9.2+, because WATOBO will not run under Ruby 1.8!
+
+Note: Ruby 1.8 is crap, so get rid of it!
+
+... just want to be sure ;)
+
+=== Windows 7/Vista/XP
+  gem install watobo
+  
+=== BackTrack 5
+  gem install selenium-webdriver
+  gem install watobo
+
+=== Generic Linux (with APT)
+* Install Ruby via RVM
+* Setting up a build environment for linux
+Based on Lyle Johnsons tutorial https://github.com/lylejohnson/fxruby/wiki/Setting-Up-a-Linux-Build-Environment
+  apt-get -y install ruby-full
+  apt-get -y install install zlib1g-dev libbz2-dev libpng12-dev libjpeg62-dev libtiff4-dev
+  apt-get -y install zlib1g-dev libbz2-dev libpng12-dev libjpeg62-dev libtiff4-dev
+  apt-get -y install libx11-dev libglu1-xorg-dev libxcursor-dev libxext-dev libxrandr-dev libxft2-dev
+  apt-get -y install g++
+
+* Install the Fox-Toolkit libs
+Use version 1.6.44 only. The 1.7 branch is incompatible with fxruby!
+You can download it from the fox-tookit homepage http://www.fox-toolkit.org/
+  wget http://ftp.fox-toolkit.org/pub/fox-1.6.44.tar.gz
+  tar xzvf fox-1.6.44.tar.gz
+  cd fox-1.6.44
+  ./configure
+  make
+  make install
+  cd .. 
+
+* Install the Gems
+First install the selenium-webdriver gem which is necessary on xnix platforms for the browser preview feature of watobo.
+  gem install selenium-webdriver
+Finally install the watobo gem.
+  gem install watobo
+
+== Usage
+In your command prompt start WATOBO with the command:
+  watobo_gui.rb
+
+After starting WATOBO the interception proxy is listening on localhost:8081.
+     
+Configure your browser to use WATOBO as its proxy and visit the site you want to audit.
+       
+== Documentation
+Check the online (video) tutorials at http://watobo.sourceforge.net
+
+== Tips & Tricks
+* On Linux you should use RVM to install Ruby (http://beginrescueend.com/rvm/install/)
+* Use FoxyProxy or SwitchProxy to easily change your proxy settings
+
+	
+
+
+

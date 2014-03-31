@@ -1,0 +1,141 @@
+= Version 0.9.8
+== NEW
+* Ruby 1.9 Support - no more 1.8 don't even try it ;)
+* WATOBO available as a Gem
+* Reorganisation of WATOBO settings files.
+* Reorganisation of WATOBO project.
+* Introduced Framework capabilities
+* Changed version numbering for Gem compatibility
+* SSLChecker-Plugin: nicer gui, now you can scan a site which is not already in conversation list
+* Conversation-Table: better search features, e.g. URL, Request or Response
+* Chat-Viewer: added a 'save'-button to save the response's body to a file, e.g. save a flash file for further investigations
+* Scanner: now follows 302-redirects - this option is only available via QuickScan
+* GUI: purge (multiple) findings is possibel via FindingsTree
+
+== Fixes
+* lib/mixin/request_parser.rb: fixed file handling
+* fixed pattern for detecting file upload fields
+* optimized "tagless" view
+* optimized lots of threading stuff, e.g. progress bars, log-windows, ...
+* lib/qGui: changed progress_window 
+
+= Version 0.9.7 Revision 534
+== NEW
+* MasterPassword for encrypting Proxy- and WWW-Auth-Passwords
+* Hotkey-Help: Press F1 to view all Hotkeys for the focused widget!!! Works in ManualRequestEditor, Interceptor, ChatViewers
+* Interceptor: Intercept Filters, Editor, Hotkeys - almost complete rewrite!!!
+* Passive Module: 'DOM XSS' - checks for javascript code which manipulates DOM and may be misused for XSS
+* Passive Module: 'Detect One-Time-Tokens' - checks for parameters which may be used to prevent CSRF-Attacks
+* ManualRequest Following Redirects Automatically (optional)
+* ManualRequest: Added Hotkeys for 'send' (ctrl-enter) and transcoding ctrl-[shift]-b (base64), ctrl-[shift]-u (url)
+* ManualRequest: new Transform 'Get -> Post'
+* TableEditor: Added Hotkeys; ctrl-[shift]-b (base64), ctrl-[shift]-u (url), ctrl-enter (send request)
+* Passive Module: 'Detect Code' - Now also checks for ASP-Snippets
+* ConversationTable: added SSL-Icon
+* TextView: added Match-Navigation for 'Highlight'- and 'Grep'-Filter
+* One-Time-Token-Dialog: Target chat is also visible for OTT-pattern creation.
+* WATOBO-Logo: watobo-48x48.png for nice desktop shortcuts/launchers ;)
+
+== Fixes
+* FullScan-Wizzard: Empty Scanlist
+* Fixed Typo in lib/utils/response_hash.rb (SmartHash)
+* Manual Request Editor: Add Parameter in TableView
+* ConversationTable: Fixed Error Cutting Of Last Char On Copy
+* ConversationTable: Now update 'comment' immediately in table 
+* Required BasicAuth will now be sent to browser
+* Module SQL_Boolean: Adding a Finding produced an error
+* FileFinder & CatalogScanner: 'Custom Error Patterns' are recognized
+* TableEditor: Fixed Parsing Problem - appended parms instead of replacing
+* Interceptor: Fixed handling of chunk-encoded server responses 
+* SmartHash: Fixed Reduction -> much faster and less false-positives on blindSQLi 
+
+
+= Version 0.9.6 Build 271
+== Fixes
+* Scanner: Scanner works without proxy 
+ 
+= Version 0.9.6 Build 270
+== Fixes
+* ProxyDialog: AddProxy-Crash
+* Scanner: No Probe For Target If Proxy Is Set
+* Session: Fixed NTLM-Authentication
+
+= Version 0.9.6
+  !! NOTE !!
+  Due to the import fix you can't import older WATOBO sessions!
+
+== NEW
+* General: Supports One-Time-Tokens (e.g. Anti-CSRF-Tokens)
+* General: NTLM Authentication (Server and Proxy)
+* New Plugin: FileFinder
+* GUI: switch the icon and text size for lower screen resolution
+* Manual Request Editor: Table-View for easier parameter manipulation
+
+== !!! CONTRIBUTIONS !!! :))
+  Hans-Martin Muench contributed two active-check modules:
+* modstatus.rb:
+* crossdomain.rb:
+
+== Minor Changes
+* slightly improved SQL-Injection (Simple)
+* now you can hide 404 and 302 in Sites Tree
+
+== Fixes
+* General: Fixed Import Problem ('inspect' data before YAML'izing)
+* General: Fixed "limitation" of forwarding proxy port length 4 -> 5, wtf???
+* General: Fixed EOF handling on socket operation 
+* Catalog Scan: now use forwarding proxy
+* Interceptor: Fixed Drop and Discard 
+
+== Minor Fixes
+* General: switched to unix style line breaks again * got lost somewhere ...
+* General: fixed path reference for already tested directories in HTTP-Methods and Dir-Walker (reported by Hans-Martin Muench)
+* General: fixed HashBang line in start_watobo.rb (reported by Achim Hoffmann)
+* GUI: changed appearance of History
+* Sites Tree: workaround for FXTreeList.findItem (bug?)
+* GUI: now counters get reset when new project is started   
+
+
+= Version 0.9.5
+== New
+* PassThrough for large responses or special content-types (Interceptor/Proxy)
+* Introduced Plugins
+* Introduced Full logging of Scans
+* Introduced Target-Scope
+* Introduced Quick-Filter in Sites-Tree-View
+* Introduced Scope-Filter-Option for conversation table
+* Introduced Request-Transform (POST->GET) for Manual Requests
+* New Plugin: Catalog-Scan
+* New Plugin: SSL-Check
+
+== Improvements/Bugfixes
+* using YAML for saving settings 
+* speedup of session-import
+* request/response-viewer: auto-reset on grep
+* fixed hash-calculation for findings in passive checks
+* fixed autoscroll not disable-able
+* fixed passive module "cookie-options"
+* fixed numRequests calculation in FuzzFile-Generator
+* fixed url-shaping if parameter contains /https?/
+* fixed button behaviour @interceptor
+
+= Version 0.9.2
+* NEW: History navigation (for Manual Requests Editor)
+* NEW: Fuzzer Engine
+* NEW: Differ usability improved
+* NEW: WATOBO now can run on Windows, Linux and MAC
+* FIX: fixed table-right-click crash
+* MISC: Redesign of chat-table-menu
+* MISC: Improved checks for recognizing proxy settings
+
+= Version 0.9.1-96
+* load fox16 problem fixed - hope not too many user were hit by this!
+* auto-save of proxy settings 
+* fixed some issues with the fuzzer
+
+= Version 0.9.1-95
+* fixed hash calculation for better blind-sql checks
+* added Differ for diffing chats (very nice)
+* added HexViewer (no editor yet)
+* open session/project by double clicking 
+* response get cut off after 

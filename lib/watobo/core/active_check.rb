@@ -298,11 +298,7 @@ module Watobo
       # puts chat.request.site
       tlist = []
       @inner_pool = []
-      dummy = Hash.new
       generateChecks(chat) do |check|
-        dummy[chat.id] ||= 0
-        dummy[chat.id] += 1
-        puts dummy.to_yaml
         unless @@status == :stopped
           @@pool_mutex.synchronize do
             while  @@check_count > @@max_checks or @@login_in_progress

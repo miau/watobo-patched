@@ -19,3 +19,11 @@
 # along with WATOBO; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 # .
+module Watobo
+  module Gui
+    def self.save_session_settings()
+      puts "TODO: SAVE_SESSION_SETTINGS"
+      puts __FILE__
+    end
+  end
+end

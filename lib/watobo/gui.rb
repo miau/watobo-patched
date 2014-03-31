@@ -94,7 +94,6 @@ module Watobo
     end
     
     def self.active_project=(project)
-      puts "[GUI] Active Project; project.object_id"
       @active_project = project
     end
     

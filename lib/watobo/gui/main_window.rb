@@ -367,8 +367,8 @@ module Watobo
           #puts @active_project.getWwwAuthentication().to_yaml
           Watobo::Conf::General.save_passwords = w3adlg.savePasswords?
           saveProjectSettings(@active_project)
-          save_default_settings(@active_project)
-          @iproxy.www_auth = @active_project.settings[:www_auth]
+          Watobo::Gui.save_default_settings(@active_project)
+          @iproxy.www_auth = @active_project.getWwwAuthentication()
           end
         puts "* new www_auth settings"
         # puts YAML.dump(@active_project.settings[:www_auth])

@@ -65,8 +65,6 @@ include Watobo::Constants
       @@login_in_progress = false
       def subscribe(event, &callback)
         (@event_dispatcher_listeners[event] ||= []) << callback
-        #puts callback.class_
-        puts callback.object_id
       end
 
       def clearEvents(event)

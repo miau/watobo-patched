@@ -44,7 +44,7 @@ require 'watobo/framework'
 
 module Watobo
 
-  VERSION = "0.9.8.677"
+  VERSION = "0.9.8-680"
 
   def self.base_directory
     @base_directory ||= ""
