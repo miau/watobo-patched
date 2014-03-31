@@ -25,6 +25,7 @@ module Watobo#:nodoc: all
   module Gui
     def self.save_settings()
       begin
+        puts "SAVE SETTINGS"
 
         mp = ''
         save_pws = false
@@ -42,12 +43,17 @@ module Watobo#:nodoc: all
         Watobo.save_proxy_settings( :save_passwords => save_pws, :key => mp )
 
         Watobo::Gui.save_scanner_settings
+        
         unless Watobo.project.nil?
+         # puts "- save project settings"
+         # puts Watobo::Conf::General.dump.to_yaml
           Watobo::Conf::General.save_project
           Watobo::Conf::Interceptor.save_project
           Watobo::Conf::SidCache.save_project
         end
         # also save global settings here
+       # puts "- save global settings"
+       #   puts Watobo::Conf::General.dump.to_yaml
         Watobo::Conf::General.save
         Watobo::Conf::Interceptor.save
 

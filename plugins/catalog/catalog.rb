@@ -841,7 +841,8 @@ module Watobo#:nodoc: all
  
             end
           #scan_prefs = @project.getScanPreferences
-          scan_prefs = Watobo::Conf::Scanner.to_h          
+          scan_prefs = Watobo::Conf::Scanner.to_h
+          #scan_prefs[:scanlog_name] = ""          
           if @logScanChats.checked?
             scan_prefs[:scanlog_name] = @scanlog_dir_dt.value unless @scanlog_dir_dt.value.empty?
           end

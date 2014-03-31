@@ -44,7 +44,11 @@ module Watobo#:nodoc: all
     init_working_directory
 
     Watobo::Conf.each do |cm|
+     # puts "\n=== #{cm.group_name} ==="
+     # puts cm.to_h.to_yaml
       cm.update
+     # puts "#"
+     # puts cm.to_h.to_yaml
     end
 
     init_workspace_path

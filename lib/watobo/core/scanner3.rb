@@ -86,7 +86,7 @@ module Watobo#:nodoc: all
                 end
               end
 
-              unless prefs[:scanlog_name].nil?
+              unless prefs[:scanlog_name].nil? or prefs[:scanlog_name].empty?
                 chat = Chat.new(request, response, :id => 0, :chat_source => prefs[:chat_source])
                 Watobo::DataStore.add_scan_log(chat, prefs[:scanlog_name])
               end

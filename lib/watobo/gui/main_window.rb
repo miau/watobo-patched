@@ -741,7 +741,8 @@ module Watobo#:nodoc: all
             :project_name => newProjectWizzard.project_name,
             :session_name => newProjectWizzard.session_name
           }
-        #  @settings[:general][:workspace_path] = newProjectWizzard.workspace_dir
+        #  @settings[:general][:workspace_path] 
+        Watobo::Conf::General.workspace_path = newProjectWizzard.workspace_dir
         Watobo.workspace_path = newProjectWizzard.workspace_dir
 
         project = Watobo.create_project(:project_name => newProjectWizzard.project_name, :session_name => newProjectWizzard.session_name)

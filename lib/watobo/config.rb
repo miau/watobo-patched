@@ -84,7 +84,7 @@ module Watobo#:nodoc: all
         def self.save_session( *filter, &b)
           #raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
           s = filter_settings filter
-          yield s if block_given?
+          s = yield s if block_given?
          # puts group_name
           Watobo::DataStore.save_session_settings( group_name, s )
         end
@@ -92,6 +92,7 @@ module Watobo#:nodoc: all
         def self.save_project( *filter, &b)
          # raise ArgumentError, "Need a valid Watobo::DataStore" unless data_store.respond_to? :save_project_settings
           s = filter_settings filter
+          s = yield s if block_given?
          # puts @settings.to_yaml
          # puts s.to_yaml
           Watobo::DataStore.save_project_settings(group_name, s)
@@ -128,11 +129,13 @@ module Watobo#:nodoc: all
 
         def self.filter_settings(f)
           s = YAML.load(YAML.dump(@settings))
-
-          if f.length > 0
-            s.each_key do |k|
+          
+          return s unless f.is_a? Array
+          return s if f.empty?
+          #return s unless s.respond_to? :each_key
+          
+          s.each_key do |k|
               s.delete k unless f.include? k
-            end
           end
           s
         end
@@ -150,12 +153,14 @@ module Watobo#:nodoc: all
           file = File.join( p, n )
 
           s = filter_settings filter
+          
 
           yield s if block_given?
 
           if File.exist?(File.dirname(file))
-           # puts "* save config #{self} to: #{file}"
-           # puts s.to_yaml
+            puts "* save config #{self} to: #{file}"
+            puts s.to_yaml
+           
             File.open(file, "w") { |fh|
               YAML.dump(s, fh)
             }
@@ -179,6 +184,7 @@ module Watobo#:nodoc: all
         def self.to_h
           @settings
         end
+        
 
         #@@settings = settings
         def self.method_missing(name, *args, &block)

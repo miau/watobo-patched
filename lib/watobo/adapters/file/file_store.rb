@@ -85,9 +85,13 @@ module Watobo#:nodoc: all
       return false unless chat.respond_to? :request
       return false unless chat.respond_to? :response
       begin
+      
         return false if scan_name.nil?
+        return false if scan_name.empty?
+        
+        scan_name_clean = scan_name.gsub(/[:\\\/\.]*/,"_")
         # puts ">> scan_name"
-        path = File.join(@scanlog_path, scan_name)
+        path = File.join(@scanlog_path, scan_name_clean)
 
         Dir.mkdir path unless File.exist? path
 

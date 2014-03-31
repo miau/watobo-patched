@@ -529,11 +529,11 @@ end
           t1 = Net::NTLM::Message::Type1.new()
           msg = "NTLM " + t1.encode64
 
-          auth_request.removeHeader("Connection")
-          auth_request.removeHeader("Authorization")
+          #auth_request.removeHeader("Connection")
+          #auth_request.removeHeader("Authorization")
 
-          auth_request.addHeader("Authorization", msg)
-          auth_request.addHeader("Connection", "Keep-Alive")
+          auth_request.set_header("Authorization", msg)
+          auth_request.set_header("Connection", "Keep-Alive")
 
           if $DEBUG
             puts "============= T1 ======================="
@@ -608,7 +608,7 @@ end
           auth_request.set_header("Connection", "close")
 
           msg = "NTLM " + t3.encode64
-          auth_request.addHeader("Authorization", msg)
+          auth_request.set_header("Authorization", msg)
           #      puts "============= T3 ======================="
 
           data = auth_request.join + "\r\n"
@@ -622,6 +622,7 @@ end
           response_header = []
           response_header = readHTTPHeader(socket)
           response_header.each do |line|
+           # puts line
 
             if line =~ /^HTTP\/\d\.\d (\d+) (.*)/ then
               rcode = $1.to_i
@@ -733,11 +734,11 @@ end
           request.shift
           request.unshift dummy
 
-          request.removeHeader("Proxy-Connection")
+          #request.removeHeader("Proxy-Connection")
           request.removeHeader("Connection")
           request.removeHeader("Content-Length")
           request.removeBody()
-          request.addHeader("Proxy-Connection", "Keep-Alive")
+          request.set_header("Proxy-Connection", "Keep-Alive")
           request.addHeader("Pragma", "no-cache")
 
           #  puts "=== sslProxyConnect ==="

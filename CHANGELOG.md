@@ -1,7 +1,15 @@
+Version 0.9.19
+===
+
+Fixes
+---
+**General**
+ 
+ * NTLM authentication
+
+
 Version 0.9.18
 ===
-News
----
 
 Fixes
 ---
@@ -9,9 +17,10 @@ Fixes
 
  * excluded path definitions are now handled correctly
 
-***SSLChecker***
+**SSLChecker**
 
  * unsupported ciphers are now recognized
+ 
 
 Version 0.9.17
 ===
