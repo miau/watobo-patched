@@ -346,7 +346,7 @@ module Watobo
     end
 
     module Web10
-      
+      include Watobo::Constants
       def post_parms
         parmlist=[]
         begin
@@ -473,17 +473,17 @@ module Watobo
             puts dummy
             te = case dummy
             when 'chunked'
-              Watobo::TE_CHUNKED
+              TE_CHUNKED
             when 'compress'
-              Watobo::TE_COMPRESS
+              TE_COMPRESS
             when 'zip'
-              Watobo::TE_GZIP
+              TE_GZIP
             when 'deflate'
-              Watobo::TE_DEFLATE
+              TE_DEFLATE
             when 'identity'
-              Watobo::TE_IDENTITY
+              TE_IDENTITY
             else
-              Watobo::TE_NONE
+              TE_NONE
             end
             break
           end

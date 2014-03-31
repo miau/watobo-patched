@@ -23,6 +23,7 @@ module Watobo
   module Mixin
     module Shaper
       module Web10
+        include Watobo::Constants
         def replace_post_parm(parm,value)
           parm_quoted = Regexp.quote(parm)
           self.last.gsub!(/([?&]{0,1})#{parm_quoted}=([0-9a-zA-Z\-\._,+<>\%!=]*)(&{0,1})/i, "\\1#{parm}=#{value}\\3")
@@ -238,7 +239,7 @@ module Watobo
 
         def fixupContentLength
           te = self.transferEncoding
-          if te == Watobo::TE_CHUNKED then
+          if te == TE_CHUNKED then
             # puts "Transfer-Encoding = TE_CHUNKED"
             # puts self.body
             self.removeHeader("Transfer-Encoding")
@@ -277,7 +278,7 @@ module Watobo
           self.fix_content_length
           # puts "= FIXED ="
           # puts self.headers
-          elsif te == Watobo::TE_NONE then
+          elsif te == TE_NONE then
           self.fix_content_length
           end
 

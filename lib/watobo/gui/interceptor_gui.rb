@@ -392,7 +392,7 @@ module Watobo
 
       def resetTextbox()
         @textbox.setPrintable(@text)
-        @textbox.reset_filter
+        @textbox.reset_text
         @match_pos_label.text = "0/0"
         @match_pos_label.textColor = 'grey'
       end
